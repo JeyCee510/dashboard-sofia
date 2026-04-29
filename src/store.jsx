@@ -70,11 +70,6 @@ function useStore() {
   // ── Ajustes ──
   const updateAjustes = (patch) => ajustesHook.updateAjustes(patch);
 
-  // ── Reset ──
-  const resetTodo = () => {
-    alert('Reset deshabilitado: ahora los datos viven en Supabase.\nPara reiniciar la base de datos, usa el SQL Editor en Supabase.');
-  };
-
   return {
     state,
     loading,
@@ -83,7 +78,6 @@ function useStore() {
     registrarPago,
     toggleAsistencia, marcarTodosDia,
     updateAjustes,
-    resetTodo,
   };
 }
 

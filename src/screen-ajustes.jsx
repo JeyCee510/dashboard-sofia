@@ -6,7 +6,7 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 // ──────────────────────────────────────────
 
 const AjustesScreen = ({ store, onClose }) => {
-  const { state, updateAjustes, resetTodo } = store;
+  const { state, updateAjustes } = store;
   const a = state.ajustes;
   const [editing, setEditing] = React.useState(null); // plantilla id
   const [editingDay, setEditingDay] = React.useState(null);
@@ -147,17 +147,7 @@ const AjustesScreen = ({ store, onClose }) => {
         {/* Datos */}
         <Section title="Datos">
           <div style={{ padding: '0 22px 6px', fontSize: 12, color: 'var(--ink-mute)' }}>
-            {state.alumnas.length} alumnas · {state.leads.length} leads
-          </div>
-          <div style={{ padding: '6px 22px 6px' }}>
-            <button onClick={resetTodo} style={{
-              width: '100%', padding: '12px 14px',
-              background: 'transparent',
-              border: '1px solid #E5C8C0',
-              borderRadius: 12,
-              color: 'var(--rojo)',
-              fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            }}>Volver a datos de demo</button>
+            {state.alumnas.length} estudiantes · {state.leads.length} leads
           </div>
         </Section>
 

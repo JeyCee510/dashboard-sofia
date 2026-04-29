@@ -241,7 +241,6 @@ const App = () => {
         </TweakSection>
         <TweakSection title="Datos rápidos">
           <TweakButton label="Ir a Ajustes" onClick={() => navigate('ajustes')} />
-          <TweakButton label="🔄 Reset datos locales (no Supabase)" onClick={store.resetTodo} />
         </TweakSection>
         <TweakSection title="Atajos creación">
           <TweakButton label="+ Nueva alumna" onClick={() => setSheet('new-alumna')} />
