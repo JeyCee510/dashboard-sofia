@@ -1,4 +1,5 @@
 import React from 'react';
+import { alumnaAsisteDia, encuentroDelDia } from './lib/precios.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -71,14 +72,41 @@ const AsistenciaV2 = ({ store, onClose }) => {
                     </div>
                   </div>
                   <div className="serif" style={{ fontSize: 14, color: total > 0 ? 'var(--oliva)' : 'var(--ink-mute)', flexShrink: 0, marginLeft: 8 }}>
-                    {total}<span style={{ color: 'var(--ink-mute)', fontSize: 11 }}>/{dias.length}</span>
+                    {total}<span style={{ color: 'var(--ink-mute)', fontSize: 11 }}>/{dias.filter(d => alumnaAsisteDia(a, d.idx)).length}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {dias.map(d => {
+                    const aplica = alumnaAsisteDia(a, d.idx);
                     const status = state.asistencia[d.idx]?.[a.id];
                     const present = status === true;
                     const absent = status === false;
+                    if (!aplica) {
+                      return (
+                        <div
+                          key={d.idx}
+                          title="No asiste este día (inscripción parcial)"
+                          style={{
+                            flex: 1,
+                            aspectRatio: '1 / 1.05',
+                            minHeight: 0,
+                            borderRadius: 12,
+                            background: 'transparent',
+                            border: '1px dashed var(--line-soft)',
+                            color: 'var(--ink-mute)',
+                            opacity: 0.45,
+                            display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            padding: '6px 2px', gap: 1,
+                          }}
+                        >
+                          <span className="serif" style={{ fontSize: 14, lineHeight: 1 }}>—</span>
+                          <span style={{ fontSize: 9, letterSpacing: '0.06em', opacity: 0.6 }}>
+                            {d.fecha.split(' ')[0]}
+                          </span>
+                        </div>
+                      );
+                    }
                     return (
                       <button
                         key={d.idx}

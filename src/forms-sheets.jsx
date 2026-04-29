@@ -1,4 +1,5 @@
 import React from 'react';
+import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS } from './lib/precios.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -7,20 +8,52 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   const editing = alumnaId && store.state.alumnas.find(a => a.id === alumnaId);
-  const [form, setForm] = React.useState(() => editing || {
+  const defaultForm = () => ({
     nombre: '', tel: '', instagram: '', notas: '', bonoSilla: false, pago: 'pendiente',
-    pagado: 0, total: store.state.ajustes.precioRegular,
+    pagado: 0,
+    tipo_inscripcion: 'completa',
+    encuentros_asistir: [1, 2, 3],
+    total: calcularTotal({ tipo: 'completa', bonoSilla: false, ajustes: store.state.ajustes }),
+    totalManual: false,
   });
+  const [form, setForm] = React.useState(defaultForm);
 
   React.useEffect(() => {
-    if (editing) setForm(editing);
-    else setForm({
-      nombre: '', tel: '', instagram: '', notas: '', bonoSilla: false, pago: 'pendiente',
-      pagado: 0, total: store.state.ajustes.precioRegular,
-    });
+    if (editing) setForm({ ...editing, totalManual: true });
+    else setForm(defaultForm());
   }, [alumnaId, open]);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm(f => {
+    const next = { ...f, [k]: v };
+    // Auto-recalcular total cuando cambia tipo o silla, salvo que el usuario lo haya editado manualmente
+    if ((k === 'tipo_inscripcion' || k === 'bonoSilla') && !next.totalManual) {
+      next.total = calcularTotal({ tipo: next.tipo_inscripcion, bonoSilla: next.bonoSilla, ajustes: store.state.ajustes });
+    }
+    // Si cambia a completa, resetear encuentros a [1,2,3]
+    if (k === 'tipo_inscripcion') {
+      if (v === 'completa') next.encuentros_asistir = [1, 2, 3];
+      else if (v === 'dos_encuentros' && (next.encuentros_asistir || []).length !== 2) next.encuentros_asistir = [1, 2];
+      else if (v === 'un_encuentro' && (next.encuentros_asistir || []).length !== 1) next.encuentros_asistir = [1];
+    }
+    return next;
+  });
+
+  const setTotalManual = (v) => setForm(f => ({ ...f, total: v, totalManual: true }));
+
+  const toggleEncuentro = (num) => setForm(f => {
+    const cur = f.encuentros_asistir || [];
+    let next;
+    if (cur.includes(num)) next = cur.filter(x => x !== num);
+    else next = [...cur, num].sort();
+    // Mantener consistencia con el tipo
+    let tipo = f.tipo_inscripcion;
+    if (next.length === 3) tipo = 'completa';
+    else if (next.length === 2) tipo = 'dos_encuentros';
+    else if (next.length === 1) tipo = 'un_encuentro';
+    const upd = { ...f, encuentros_asistir: next, tipo_inscripcion: tipo };
+    if (!f.totalManual) upd.total = calcularTotal({ tipo, bonoSilla: f.bonoSilla, ajustes: store.state.ajustes });
+    return upd;
+  });
 
   const guardar = () => {
     if (!form.nombre.trim()) return;
@@ -63,6 +96,50 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
       <Field label="Instagram (opcional)">
         <TextInput value={form.instagram} onChange={v => set('instagram', v)} placeholder="@usuario" />
       </Field>
+      <Field label="Tipo de inscripción">
+        <SelectChips
+          value={form.tipo_inscripcion}
+          onChange={v => set('tipo_inscripcion', v)}
+          options={TIPOS_INSCRIPCION}
+        />
+      </Field>
+
+      {form.tipo_inscripcion !== 'completa' && (
+        <Field label={form.tipo_inscripcion === 'dos_encuentros' ? '¿Cuáles 2 encuentros asistirá?' : '¿Cuál encuentro asistirá?'}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {ENCUENTROS.map(e => {
+              const sel = (form.encuentros_asistir || []).includes(e.num);
+              return (
+                <button
+                  key={e.num} type="button" onClick={() => toggleEncuentro(e.num)}
+                  style={{
+                    padding: '10px 14px', borderRadius: 12,
+                    background: sel ? 'var(--ink)' : 'var(--surface)',
+                    color: sel ? 'var(--bg)' : 'var(--ink-soft)',
+                    border: '1px solid ' + (sel ? 'transparent' : 'var(--line-soft)'),
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+                    cursor: 'pointer', textAlign: 'left',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}
+                >
+                  <span>{e.label}</span>
+                  <span style={{ fontSize: 11, opacity: 0.7 }}>{e.fechas}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+      )}
+
+      <SwitchToggle
+        label="Bono silla"
+        hint={form.tipo_inscripcion === 'completa'
+          ? 'Recibe silla de yoga profesional (primeros 6 inscritos a completa)'
+          : 'Incluye silla (cuesta extra para inscripción parcial)'}
+        value={form.bonoSilla}
+        onChange={v => set('bonoSilla', v)}
+      />
+
       <Field label="Estado de pago">
         <SelectChips
           value={form.pago}
@@ -77,14 +154,13 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
       </Field>
       <div style={{ display: 'flex', gap: 10 }}>
         <Field label="Pagado ($)"><NumberInput value={form.pagado} onChange={v => set('pagado', v)} prefix="$" min={0} /></Field>
-        <Field label="Total ($)"><NumberInput value={form.total} onChange={v => set('total', v)} prefix="$" min={0} /></Field>
+        <Field label="Total ($)"><NumberInput value={form.total} onChange={setTotalManual} prefix="$" min={0} /></Field>
       </div>
-      <SwitchToggle
-        label="Bono silla"
-        hint="Recibe silla de yoga profesional (primeros 6 inscritos)"
-        value={form.bonoSilla}
-        onChange={v => set('bonoSilla', v)}
-      />
+      {!form.totalManual && (
+        <div style={{ marginTop: -8, marginBottom: 8, fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>
+          Total calculado automáticamente. Edítalo si necesitas un descuento especial.
+        </div>
+      )}
       <Field label="Notas">
         <TextArea value={form.notas} onChange={v => set('notas', v)} placeholder="Cómo la viste, recordatorios, etc." rows={3} />
       </Field>

@@ -19,6 +19,8 @@ function fromDb(row) {
     inscrita: row.inscrita || '',
     avatar: row.avatar || `oklch(0.74 0.07 ${Math.floor(Math.random() * 90) + 20})`,
     asistencia: [0, 0, 0, 0, 0, 0], // se hidrata desde tabla `asistencia` aparte
+    tipo_inscripcion: row.tipo_inscripcion || 'completa',
+    encuentros_asistir: Array.isArray(row.encuentros_asistir) ? row.encuentros_asistir : [1, 2, 3],
   };
 }
 
@@ -35,6 +37,8 @@ function toDb(patch) {
   if ('notas' in patch) out.notas = patch.notas;
   if ('inscrita' in patch) out.inscrita = patch.inscrita;
   if ('avatar' in patch) out.avatar = patch.avatar;
+  if ('tipo_inscripcion' in patch) out.tipo_inscripcion = patch.tipo_inscripcion;
+  if ('encuentros_asistir' in patch) out.encuentros_asistir = patch.encuentros_asistir;
   return out;
 }
 
@@ -96,6 +100,8 @@ export function useAlumnas() {
       notas: data.notas || '',
       inscrita,
       avatar: `oklch(0.74 0.07 ${hue})`,
+      tipo_inscripcion: data.tipo_inscripcion || 'completa',
+      encuentros_asistir: data.encuentros_asistir || [1, 2, 3],
     };
     const { data: inserted, error } = await supabase
       .from('alumnas')

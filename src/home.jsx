@@ -1,4 +1,5 @@
 import React from 'react';
+import { alumnaAsisteDia } from './lib/precios.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -95,10 +96,12 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const greeting = getGreeting();
   const todayStr = formatTodayLong();
 
-  // Today's stats
-  const presentesHoy = Object.values(asistenciaHoy).filter(v => v === true).length;
-  const ausentesHoy = Object.values(asistenciaHoy).filter(v => v === false).length;
-  const sinMarcar = totalAlumnas - presentesHoy - ausentesHoy;
+  // Today's stats — solo cuenta a las que asisten hoy según su tipo de inscripción
+  const diaHoyIdx = ctx.currentDia ? ctx.currentDia.idx : 0;
+  const alumnasHoy = safeAlumnas.filter(a => alumnaAsisteDia(a, diaHoyIdx));
+  const presentesHoy = Object.entries(asistenciaHoy).filter(([id, v]) => v === true && alumnasHoy.some(a => String(a.id) === String(id))).length;
+  const ausentesHoy = Object.entries(asistenciaHoy).filter(([id, v]) => v === false && alumnasHoy.some(a => String(a.id) === String(id))).length;
+  const sinMarcar = alumnasHoy.length - presentesHoy - ausentesHoy;
 
   // Pagos
   const pagosPendientes = safeAlumnas.filter(a => a.pago === 'pendiente' || a.pago === 'parcial');
