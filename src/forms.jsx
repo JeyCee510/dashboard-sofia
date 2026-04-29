@@ -357,13 +357,17 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
 
 const PREGUNTAS_LABELS = {
   edad: 'Edad',
-  ciudad: 'Ciudad',
+  ciudad: 'Zona / barrio',
   practica_yoga: '¿Practica yoga actualmente?',
-  tiempo_practica: 'Tiempo practicando',
+  tiempo_practica: 'Hace cuánto practica',
   estilos: 'Estilos practicados',
+  formaciones: 'Formaciones previas',
   'enseñado_antes': '¿Ha enseñado yoga antes?',
+  donde_ensena: 'Dónde da clases',
   motivacion: 'Motivación',
-  lesiones: 'Lesiones / restricciones',
+  lesiones: 'Lesiones / afecciones físicas o psicológicas',
+  alergias: 'Alergias',
+  contacto_emergencia: 'Contacto de emergencia',
   expectativas: 'Expectativas',
   algo_mas: 'Algo más',
 };
