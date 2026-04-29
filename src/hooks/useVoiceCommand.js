@@ -19,6 +19,19 @@ const { useState, useRef, useCallback } = React;
 
 const SPEECH_LANG = 'es-EC';
 
+// Detecta si la página fue abierta dentro del navegador integrado
+// de una app (WhatsApp, Instagram, Messenger, etc.). En esos webviews
+// Web Speech API está bloqueada y devuelve 'service-not-allowed'.
+export function isInAppBrowser() {
+  const ua = navigator.userAgent || '';
+  // Apps comunes que tienen webview propio sin Speech API
+  return /(WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Line\/|MicroMessenger|Twitter|TikTok)/i.test(ua);
+}
+
+export function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
 function getRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return null;
@@ -134,12 +147,20 @@ export function useVoiceCommand() {
     };
 
     recog.onerror = (event) => {
-      const msg = {
+      let msg = {
         'no-speech': 'No te escuché. Intenta de nuevo.',
         'audio-capture': 'No detecto micrófono. Revisa permisos.',
         'not-allowed': 'Permiso de micrófono denegado.',
         'network': 'Sin conexión.',
       }[event.error] || `Error: ${event.error}`;
+
+      // service-not-allowed casi siempre = navegador integrado (WhatsApp/Instagram)
+      if (event.error === 'service-not-allowed' || event.error === 'not-allowed') {
+        if (isInAppBrowser()) {
+          msg = 'Estás dentro del navegador de otra app (WhatsApp, Instagram…) y desde ahí no funciona el micrófono. Abre el dashboard en Safari para poder hablarle.';
+        }
+      }
+
       setError(msg);
       setState('error');
       recogRef.current = null;

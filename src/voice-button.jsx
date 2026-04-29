@@ -1,7 +1,17 @@
 import React from 'react';
-import { useVoiceCommand } from './hooks/useVoiceCommand.js';
+import { useVoiceCommand, isInAppBrowser, isIOS } from './hooks/useVoiceCommand.js';
 
 const { useState, useEffect } = React;
+
+// Construye un link para abrir la página actual en Safari real desde un webview iOS
+function buildSafariLink() {
+  const url = window.location.href;
+  if (isIOS()) {
+    // x-safari-https:// es el deep link para forzar Safari en iOS
+    return 'x-safari-' + url; // ej: x-safari-https://dashboard-sofia.vercel.app/
+  }
+  return url;
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // VoiceButton — micrófono flotante + modal de confirmación de comando.
@@ -165,6 +175,36 @@ const VoiceButton = ({ onExecute, executingResult }) => {
                 {v.error}
               </div>
 
+              {/* Botón especial si está en webview de otra app */}
+              {isInAppBrowser() && (
+                <div style={{ marginTop: 14, padding: 12, background: 'var(--bg-warm)', borderRadius: 10, fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 500, color: 'var(--ink)', marginBottom: 6 }}>Cómo abrir en Safari:</div>
+                  {isIOS() ? (
+                    <ol style={{ paddingLeft: 18, margin: 0 }}>
+                      <li>Toca el botón <strong>compartir</strong> (cuadrado con flecha hacia arriba) abajo a la derecha.</li>
+                      <li>Elige <strong>"Abrir en Safari"</strong>.</li>
+                    </ol>
+                  ) : (
+                    <ol style={{ paddingLeft: 18, margin: 0 }}>
+                      <li>Toca los <strong>tres puntos</strong> arriba a la derecha.</li>
+                      <li>Elige <strong>"Abrir en Chrome"</strong> u otro navegador.</li>
+                    </ol>
+                  )}
+                  <a
+                    href={buildSafariLink()}
+                    style={{
+                      display: 'block', marginTop: 10,
+                      padding: '10px 14px', borderRadius: 999,
+                      background: 'var(--ink)', color: '#fff',
+                      fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+                      textDecoration: 'none', textAlign: 'center',
+                    }}
+                  >
+                    Intentar abrir en Safari
+                  </a>
+                </div>
+              )}
+
               {/* Fallback: campo de texto si no hay micrófono */}
               <div style={{ marginTop: 18 }}>
                 <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginBottom: 6 }}>
@@ -183,12 +223,14 @@ const VoiceButton = ({ onExecute, executingResult }) => {
                   }}
                 />
               </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                 <button onClick={v.reset} style={btnGhost}>Cerrar</button>
                 {textInput.trim() && (
                   <button onClick={() => v.submitText(textInput)} style={btnPrimary}>Enviar texto</button>
                 )}
-                <button onClick={v.start} style={btnPrimary}>Reintentar voz</button>
+                {!isInAppBrowser() && (
+                  <button onClick={() => v.start()} style={btnPrimary}>Reintentar voz</button>
+                )}
               </div>
             </div>
           )}

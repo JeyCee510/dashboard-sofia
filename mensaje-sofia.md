@@ -1,37 +1,57 @@
 Hola Nena,
 
-hoy al abrir **https://dashboard-sofia.vercel.app** te encontrarás con todo funcionando, pero en particular con las dos cosas específicas que pediste y que ya están vivas en producción:
+abre **https://dashboard-sofia.vercel.app** desde el celular. Entras con tu cuenta de Google (la única autorizada es sofilira@gmail.com, así que es tu panel privado, nadie más puede entrar). Te encontrarás con todo funcionando, pero te resumo lo que pediste explícitamente:
 
 ---
 
 ### 🎤 Hablarle a la app
 
-Vas a ver un botón circular oscuro con un micrófono, flotando arriba del botón "+". Lo tocas y le hablas como me hablarías a mí:
+Vas a ver un **botón circular oscuro con un micrófono**, flotando arriba del botón "+". Lo tocas y le hablas como me hablarías a mí:
 
-> *"Anota a Mónica Salinas que escribió por Insta"*
+> *"Anota a Mónica Salinas, escribió por Insta"*
 > *"Mari Fer pagó cuatrocientos ochenta y cuatro pronto pago"*
+> *"Inscribe a Lucía"*
 > *"Ábreme la ficha de Andrea"*
 > *"Cuántos cupos quedan"*
-> *"Convierte a Lucía en estudiante"*
-> *"Bórrame a María Fernanda"* (esta siempre te pide confirmar antes)
+> *"Bórrame a Patricia"* (esta siempre te pide confirmar antes de borrar)
 
-Después de que hables, la app te muestra una pantalla de **confirmación** con lo que entendió, los datos exactos, y dos botones: ✓ Confirmar o ✗ Cancelar. Solo se ejecuta cuando tú confirmas — nada se hace solo. Si no entendió bien o te equivocaste, tocas "🎤 Repetir" y vuelves a hablar.
+**Cómo se siente la conversación:**
 
-Funciona en español ecuatoriano y entiende variaciones naturales: *"anota a..."* o *"regístrame a..."* o *"agrega un lead..."* — todas te llevan a lo mismo. Si dudas, dilo en la forma que te salga natural; si no entiende, te lo dice y reintentas.
+Si le das toda la info de un saque, te muestra una pantalla de confirmación con los datos exactos y tú tocas "Confirmar". Listo.
 
-**La primera vez** te va a pedir permiso del micrófono. Acepta y queda guardado.
+Si le falta algo, **te pregunta y te ofrece opciones tocables**. Por ejemplo, si dices *"anota a Mónica"* sin más:
 
-Esto está en fase prueba — si en algún comando se equivoca seguido o no te entiende, contame qué pasó y lo afinamos.
+```
+NECESITO QUE ME DIGAS
+Vamos a crear el lead de Mónica.
+
+¿Tienes su WhatsApp o Instagram?
+
+[ Tengo WhatsApp ]
+[ Tengo Instagram ]
+[ Tengo ambos ]
+[ No tengo ninguno ]
+```
+
+Tocas la que aplica, te pide el número (o handle, o ambos), tocas el botón 🎤 para dictarlo o lo escribes, y al final te muestra el preview completo: *"Crear lead Mónica · WhatsApp +593 99 234 5678 · Instagram @monica.yoga"*. Confirmas y entra a la lista al instante.
+
+**Reglas que tiene built-in:**
+- Si no tiene celular o Instagram, no la deja crear el registro a ciegas — siempre te pregunta para que tengas cómo escribirle después.
+- Para borrar siempre pide confirmación visual con botón rojo. No se borra por accidente.
+- Si dices un nombre y hay varias parecidas (ej. tres Marías), te muestra las opciones.
+- Funciona en español ecuatoriano. Entiende variaciones: *"anota"*, *"regístrame"*, *"agrégame"* — todas valen.
+
+**La primera vez** te pide permiso del micrófono. Aceptas y queda guardado.
 
 ---
 
-### 📝 Preinscripción dentro de la app (sin Google Forms ni nada externo)
+### 📝 Preinscripción dentro de la app (sin Google Forms)
 
-En la pestaña **Leads**, tocas cualquier persona de la lista y se abre su ficha. Ahí verás un panel nuevo: **"Preinscripción"**. Tocas **"Generar link de preinscripción"** y la app crea un link único para esa persona, vinculado a su ficha.
+En la pestaña **Leads**, tocas a cualquier persona y se abre su ficha. Ahí ves un panel nuevo: **"Preinscripción"**. Tocas **"Generar link de preinscripción"** y la app crea un link único para esa persona, vinculado a su ficha.
 
 Aparecen dos botones:
 - **Copiar link** — para pegar donde quieras
-- **Enviar por WhatsApp** 🟢 — abre WhatsApp directo, en el chat con esa persona, con un mensaje plantilla ya escrito que dice algo como:
+- **Enviar por WhatsApp** 🟢 — abre WhatsApp directo, en el chat con esa persona, con un mensaje plantilla ya escrito que dice:
 
 > *"Hola Mónica! Para conocernos un poco antes de empezar la formación, te paso una preinscripción rápida (5 min): [link]. Cualquier duda, por aquí 🌿"*
 
@@ -47,25 +67,33 @@ Tú solo tocas "enviar" en WhatsApp.
 - Expectativas
 - Algo más que quiera contarte
 
-Toma 5 minutos llenarlo. Cuando lo manda, ve una pantalla de gracias con un 🌿.
+Toma 5 minutos. Cuando lo manda, ve una pantalla de gracias con un 🌿.
 
-**Tú vuelves a la ficha de esa persona** y el panel ya cambió a verde olivo: *"Preinscripción completada"*, con todas las respuestas formateadas, listas para que las leas antes de hacer follow-up. Ya tienes contexto antes de la siguiente conversación.
-
-Si vuelves a entrar a una persona que ya tiene preinscripción pendiente, te muestra el link otra vez por si quieres reenviarlo. Si ya la completó, te muestra las respuestas.
+**Tú vuelves a la ficha** y el panel ya cambió a verde olivo: *"Preinscripción completada"*, con todas las respuestas formateadas. Lista para que las leas antes del próximo follow-up. Por fin: contexto antes de la conversación.
 
 ---
 
-### Lo otro que está nuevo y vale la pena que veas
+### Las otras cosas que quedaron buenas
 
-- **Difusión a inscritos** — desde la pestaña Inscritos, botón "Difundir" arriba a la derecha. Eliges audiencia (todos / pendientes de pago / bono silla), eliges plantilla, y la app te lleva uno por uno: te abre el WhatsApp de cada estudiante con el mensaje ya pre-cargado y personalizado con su primer nombre. Tú das "enviar" y vuelves — la app avanza al siguiente. Barra de progreso y todo.
-- **Botones WhatsApp e Instagram** en cada ficha de estudiante y lead — para escribirles directo. Y un selector de plantillas que abre WA con el mensaje pre-cargado.
-- **Fechas dinámicas** — el home te muestra "Faltan 38 días" hoy, irá cambiando solo. El 6 de junio te dirá "Hoy es Día 1" y se activará el cronograma del día y el botón de tomar asistencia. No tienes que hacer nada manual.
-- **Bono silla dinámico** — cuenta solo a quienes les marques bono silla en la ficha. Si no hay nadie, la fila desaparece.
-- **Ajustes** — en el avatar "S" arriba a la derecha del home. Ahí editas precios, plantillas de WhatsApp, fechas, etc.
+**Difusión a inscritos** — apenas tengas tu primer estudiante registrado, en la pestaña Inscritos arriba a la derecha aparece un botón "Difundir". Eliges:
+
+1. **A quién** (todos / con pago pendiente / bono silla)
+2. **Qué mensaje** (una de tus plantillas, o escribes uno custom)
+3. **Lo mandas uno por uno** — la app te abre WhatsApp del primero con el mensaje pre-cargado, tú envías, vuelves a la app, y ya está listo el siguiente. Barra de progreso y todo. No hace spam: tú decides cuándo mandar cada uno.
+
+Personaliza solo: si la plantilla empieza con *"Hola!"* lo reemplaza por *"Hola María Fernanda!"* automático.
+
+**Botones de WhatsApp e Instagram** en cada ficha — para escribirles directo. También un selector de plantillas que abre WA con el mensaje pre-cargado.
+
+**Fechas dinámicas** — el home te muestra hoy *"Faltan 38 días"* y va cambiando solo. El 6 de junio te dirá *"Hoy es Día 1"*, se activa el cronograma del día y el botón de tomar asistencia. No tienes que tocar nada manual para que aparezca.
+
+**Bono silla dinámico** — cuenta solo a quienes les marques el bono en su ficha. Si nadie tiene bono, esa fila desaparece del home (no más "6 de 6" inventado).
+
+**Ajustes** — tocas el avatar **"S"** arriba a la derecha del home. Ahí editas precios, plantillas de WhatsApp, fechas, etc. Cualquier cambio aparece al instante en todo el dashboard.
 
 ---
 
-Cualquier cosa rara que veas o que te frustre, mándame voz/captura. Estoy ahí.
+Cualquier cosa rara o frustrante, mándame voz/captura. Si la voz se equivoca con tu acento, también contame — estamos en una versión que va aprendiendo y la podemos afinar.
 
 Un beso,
 J
