@@ -5,9 +5,90 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 // Home — Resumen del día (pantalla principal)
 // ──────────────────────────────────────────
 
+// Fechas absolutas de los 6 días de formación (junio 2026)
+// Mes en JS: 0-indexed; junio = 5
+const DIAS_FECHAS = [
+  { idx: 0, date: new Date(2026, 5, 6),  label: 'Día 1', encuentro: 1, fechaCorta: '6 jun' },
+  { idx: 1, date: new Date(2026, 5, 7),  label: 'Día 2', encuentro: 1, fechaCorta: '7 jun' },
+  { idx: 2, date: new Date(2026, 5, 13), label: 'Día 3', encuentro: 2, fechaCorta: '13 jun' },
+  { idx: 3, date: new Date(2026, 5, 14), label: 'Día 4', encuentro: 2, fechaCorta: '14 jun' },
+  { idx: 4, date: new Date(2026, 5, 20), label: 'Día 5', encuentro: 3, fechaCorta: '20 jun' },
+  { idx: 5, date: new Date(2026, 5, 21), label: 'Día 6', encuentro: 3, fechaCorta: '21 jun' },
+];
+
+function getFormationContext() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const firstDay = DIAS_FECHAS[0].date;
+  const lastDay = DIAS_FECHAS[5].date;
+  const todayDia = DIAS_FECHAS.find(d => d.date.getTime() === today.getTime());
+  const nextDia = DIAS_FECHAS.find(d => d.date >= today);
+  const diffDays = Math.round((firstDay - today) / (1000 * 60 * 60 * 24));
+  const dayDiff = (d) => Math.round((d - today) / (1000 * 60 * 60 * 24));
+
+  if (todayDia) {
+    return {
+      phase: 'today',
+      currentDia: todayDia,
+      heroEyebrow: `Encuentro ${todayDia.encuentro} · ${todayDia.label} de 6`,
+      heroTitle: 'Hoy es',
+      heroEmphasis: todayDia.label,
+      showSchedule: true,
+    };
+  }
+  if (today < firstDay) {
+    return {
+      phase: 'before',
+      daysToStart: diffDays,
+      nextDia,
+      heroEyebrow: diffDays === 1 ? 'Mañana empieza' : `Faltan ${diffDays} días`,
+      heroTitle: 'Pronto empieza',
+      heroEmphasis: 'la formación',
+      showSchedule: false,
+    };
+  }
+  if (today > firstDay && today <= lastDay && nextDia) {
+    const dd = dayDiff(nextDia.date);
+    return {
+      phase: 'during',
+      nextDia,
+      heroEyebrow: `Encuentro ${nextDia.encuentro} · ${nextDia.label} de 6`,
+      heroTitle: dd === 1 ? 'Mañana toca' : `En ${dd} días`,
+      heroEmphasis: nextDia.label,
+      showSchedule: false,
+    };
+  }
+  // after
+  return {
+    phase: 'after',
+    heroEyebrow: 'Formación completa',
+    heroTitle: 'Hasta la',
+    heroEmphasis: 'próxima edición',
+    showSchedule: false,
+  };
+}
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos días';
+  if (h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function formatTodayLong() {
+  // Ej: "Sábado · 6 de junio"
+  const now = new Date();
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return `${dias[now.getDay()]} · ${now.getDate()} de ${meses[now.getMonth()]}`;
+}
+
 const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => {
   const totalAlumnas = MOCK_ALUMNAS.length;
   const cupos = tweaks.capacidad - totalAlumnas;
+  const ctx = getFormationContext();
+  const greeting = getGreeting();
+  const todayStr = formatTodayLong();
 
   // Today's stats
   const presentesHoy = Object.values(asistenciaHoy).filter(v => v === true).length;
@@ -31,8 +112,8 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
       <div className="page-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div className="eyebrow">Sábado · 6 de junio</div>
-            <h1>Buenos días,<br/><em>Sofía</em></h1>
+            <div className="eyebrow">{todayStr}</div>
+            <h1>{greeting},<br/><em>Sofía</em></h1>
           </div>
           <button onClick={() => onNavigate('settings')} style={{
             width: 40, height: 40, borderRadius: '50%',
@@ -59,10 +140,10 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.6 }}>
-              Encuentro 1 · Día 1 de 6
+              {ctx.heroEyebrow}
             </div>
             <div className="serif" style={{ fontSize: 28, lineHeight: 1.05, marginTop: 6, fontWeight: 400 }}>
-              Hoy empieza<br/><em style={{ color: 'var(--terracota-soft)', fontStyle: 'italic' }}>la formación</em>
+              {ctx.heroTitle}<br/><em style={{ color: 'var(--terracota-soft)', fontStyle: 'italic' }}>{ctx.heroEmphasis}</em>
             </div>
           </div>
           <div style={{
@@ -71,11 +152,29 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
             border: '1px solid rgba(251,247,240,0.18)',
             borderRadius: 14, padding: '8px 12px',
             textAlign: 'center',
+            minWidth: 76,
           }}>
-            <div className="serif" style={{ fontSize: 26, lineHeight: 1, fontWeight: 400 }}>{HORARIO_HOY[0].hora}</div>
-            <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>
-              empieza
-            </div>
+            {ctx.phase === 'today' ? (
+              <>
+                <div className="serif" style={{ fontSize: 26, lineHeight: 1, fontWeight: 400 }}>{HORARIO_HOY[0].hora}</div>
+                <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>empieza</div>
+              </>
+            ) : ctx.phase === 'before' ? (
+              <>
+                <div className="serif" style={{ fontSize: 26, lineHeight: 1, fontWeight: 400 }}>{ctx.daysToStart}</div>
+                <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>{ctx.daysToStart === 1 ? 'día' : 'días'}</div>
+              </>
+            ) : ctx.phase === 'during' && ctx.nextDia ? (
+              <>
+                <div className="serif" style={{ fontSize: 18, lineHeight: 1, fontWeight: 400 }}>{ctx.nextDia.fechaCorta}</div>
+                <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>próximo</div>
+              </>
+            ) : (
+              <>
+                <div className="serif" style={{ fontSize: 22, lineHeight: 1, fontWeight: 400 }}>✨</div>
+                <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>fin</div>
+              </>
+            )}
           </div>
         </div>
 
@@ -108,7 +207,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
         </div>
 
         <button
-          onClick={() => onNavigate('asistencia')}
+          onClick={() => onNavigate(ctx.phase === 'today' ? 'asistencia' : 'reservas')}
           style={{
             marginTop: 18, width: '100%',
             background: 'var(--terracota)', color: '#FBF7F0',
@@ -117,39 +216,46 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          <Icon name="check" size={16} />
-          Tomar asistencia de hoy
+          <Icon name={ctx.phase === 'today' ? 'check' : 'users'} size={16} />
+          {ctx.phase === 'today' ? 'Tomar asistencia de hoy'
+            : ctx.phase === 'before' ? 'Ver inscritas'
+            : ctx.phase === 'during' ? 'Ver inscritas'
+            : 'Ver resumen'}
         </button>
       </div>
 
       {/* ───── Cronograma de hoy ───── */}
-      <div className="section-title">
-        <h2>Hoy</h2>
-        <span className="link">Domo Soulspace · Tumbaco</span>
-      </div>
-      <div style={{ padding: '0 22px' }}>
-        <div className="card flat" style={{ padding: 4 }}>
-          {HORARIO_HOY.map((bloque, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 14,
-              padding: '12px 14px',
-              borderBottom: i < HORARIO_HOY.length - 1 ? '1px solid var(--line-soft)' : 'none',
-              opacity: bloque.tipoPausa ? 0.55 : 1,
-            }}>
-              <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', minWidth: 50 }}>
-                {bloque.hora}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{bloque.tipo}</div>
-                <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 1 }}>{bloque.dur}</div>
-              </div>
-              {bloque.estado === 'siguiente' && (
-                <span className="pill terracota">siguiente</span>
-              )}
+      {ctx.showSchedule && (
+        <>
+          <div className="section-title">
+            <h2>Hoy</h2>
+            <span className="link">Domo Soulspace · Tumbaco</span>
+          </div>
+          <div style={{ padding: '0 22px' }}>
+            <div className="card flat" style={{ padding: 4 }}>
+              {HORARIO_HOY.map((bloque, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '12px 14px',
+                  borderBottom: i < HORARIO_HOY.length - 1 ? '1px solid var(--line-soft)' : 'none',
+                  opacity: bloque.tipoPausa ? 0.55 : 1,
+                }}>
+                  <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', minWidth: 50 }}>
+                    {bloque.hora}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{bloque.tipo}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 1 }}>{bloque.dur}</div>
+                  </div>
+                  {bloque.estado === 'siguiente' && (
+                    <span className="pill terracota">siguiente</span>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       {/* ───── Pendientes del día (acciones) ───── */}
       <div className="section-title">

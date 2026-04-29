@@ -6,3 +6,5 @@ dist
 .DS_Store
 *.log
 .vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
