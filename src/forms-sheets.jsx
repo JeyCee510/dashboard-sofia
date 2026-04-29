@@ -153,6 +153,14 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
               nombre={form.nombre}
             />
           </div>
+          <div style={{ marginBottom: 14 }}>
+            <PreinscripcionAdminPanel
+              leadId={leadId}
+              leadNombre={form.nombre}
+              leadTel={form.tel}
+              plantillas={store.state.ajustes.plantillasWA}
+            />
+          </div>
           <button className="btn btn-secondary btn-block" style={{ marginBottom: 14 }} onClick={convertir}>
             <Icon name="arrow" size={14} /> Convertir en estudiante
           </button>

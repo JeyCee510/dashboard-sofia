@@ -351,12 +351,163 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
   );
 };
 
+// ──────────────────────────────────────────
+// PreinscripcionAdminPanel — para Sofía dentro de LeadForm/FichaAlumna
+// ──────────────────────────────────────────
+
+const PREGUNTAS_LABELS = {
+  edad: 'Edad',
+  ciudad: 'Ciudad',
+  practica_yoga: '¿Practica yoga actualmente?',
+  tiempo_practica: 'Tiempo practicando',
+  estilos: 'Estilos practicados',
+  'enseñado_antes': '¿Ha enseñado yoga antes?',
+  motivacion: 'Motivación',
+  lesiones: 'Lesiones / restricciones',
+  expectativas: 'Expectativas',
+  algo_mas: 'Algo más',
+};
+
+const PreinscripcionAdminPanel = ({ leadId, leadNombre, leadTel, plantillas }) => {
+  const usePreinscripcion = window.usePreinscripcion;
+  const { pre, loading, generar } = usePreinscripcion(leadId, null);
+  const [link, setLink] = React.useState('');
+  const [copiado, setCopiado] = React.useState(false);
+  const [generando, setGenerando] = React.useState(false);
+
+  React.useEffect(() => {
+    if (pre?.token) setLink(`${window.location.origin}/preinscripcion/${pre.token}`);
+  }, [pre]);
+
+  const onGenerar = async () => {
+    setGenerando(true);
+    const token = await generar();
+    setGenerando(false);
+    if (token) setLink(`${window.location.origin}/preinscripcion/${token}`);
+  };
+
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(link); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = link;
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    setCopiado(true); setTimeout(() => setCopiado(false), 1800);
+  };
+
+  // Plantilla automática para enviar el link por WhatsApp
+  const mensajeWa = `Hola ${(leadNombre || '').split(' ')[0]}! Para conocernos un poco antes de empezar la formación, te paso una preinscripción rápida (5 min):\n\n${link}\n\nCualquier duda, por aquí 🌿`;
+  const waUrl = leadTel && link ? buildWaUrl(leadTel, mensajeWa) : null;
+
+  if (loading) {
+    return <div style={{ fontSize: 12, color: 'var(--ink-mute)', padding: 8 }}>Cargando preinscripción…</div>;
+  }
+
+  if (!pre) {
+    return (
+      <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
+        <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
+          Genera un link único de preinscripción. El cliente lo abre sin cuenta y llena un formulario que queda vinculado a su ficha.
+        </div>
+        <button
+          type="button" onClick={onGenerar} disabled={generando}
+          style={{
+            width: '100%', padding: '10px 14px', borderRadius: 10,
+            background: 'var(--terracota)', color: '#fff', border: 'none',
+            fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            opacity: generando ? 0.6 : 1,
+          }}
+        >
+          {generando ? 'Generando…' : 'Generar link de preinscripción'}
+        </button>
+      </div>
+    );
+  }
+
+  if (pre.estado === 'completada') {
+    const data = pre.data || {};
+    return (
+      <div style={{ padding: 14, borderRadius: 12, background: '#DDE0CC', border: '1px solid transparent' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4D5230', fontWeight: 600 }}>
+            Preinscripción completada
+          </div>
+          <div style={{ fontSize: 11, color: '#4D5230' }}>
+            {pre.completed_at ? new Date(pre.completed_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' }) : ''}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+          {Object.entries(PREGUNTAS_LABELS).map(([k, label]) => {
+            const v = data[k];
+            if (!v) return null;
+            return (
+              <div key={k} style={{ paddingTop: 8, borderTop: '1px solid rgba(77,82,48,0.15)' }}>
+                <div style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#4D5230', fontWeight: 500 }}>{label}</div>
+                <div style={{ fontSize: 13, color: 'var(--ink)', marginTop: 3, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{v}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Pendiente — mostrar link y compartir
+  return (
+    <div style={{ padding: 14, borderRadius: 12, background: 'var(--terracota-tint)', border: '1px solid transparent' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 600 }}>
+          Preinscripción pendiente
+        </div>
+        <div style={{ fontSize: 11, color: '#8A3D26' }}>
+          {pre.created_at ? new Date(pre.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' }) : ''}
+        </div>
+      </div>
+      <div style={{
+        background: 'var(--surface)', padding: '8px 12px', borderRadius: 8,
+        fontSize: 11, color: 'var(--ink)', wordBreak: 'break-all',
+        fontFamily: 'monospace',
+      }}>
+        {link}
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+        <button
+          type="button" onClick={copiar}
+          style={{
+            flex: 1, padding: '9px 12px', borderRadius: 10,
+            background: copiado ? 'var(--oliva)' : 'var(--surface)',
+            color: copiado ? '#fff' : 'var(--ink)',
+            border: '1px solid ' + (copiado ? 'transparent' : 'var(--line-soft)'),
+            fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}
+        >
+          {copiado ? 'Copiado ✓' : 'Copiar link'}
+        </button>
+        {waUrl && (
+          <a
+            href={waUrl} target="_blank" rel="noopener noreferrer"
+            style={{
+              flex: 1, padding: '9px 12px', borderRadius: 10,
+              background: '#25D366', color: '#fff',
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+              textDecoration: 'none', textAlign: 'center',
+            }}
+          >
+            Enviar por WhatsApp
+          </a>
+        )}
+      </div>
+    </div>
+  );
+};
+
 window.TextInput = TextInput;
 window.TextArea = TextArea;
 window.NumberInput = NumberInput;
 window.SelectChips = SelectChips;
 window.SwitchToggle = SwitchToggle;
 window.ContactPanel = ContactPanel;
+window.PreinscripcionAdminPanel = PreinscripcionAdminPanel;
 window.cleanPhone = cleanPhone;
 window.cleanInstagram = cleanInstagram;
 window.buildWaUrl = buildWaUrl;

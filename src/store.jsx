@@ -4,6 +4,10 @@ import { useLeads } from './hooks/useLeads.js';
 import { useAsistencia } from './hooks/useAsistencia.js';
 import { useAjustes, DEFAULT_AJUSTES } from './hooks/useAjustes.js';
 import { useMensajes } from './hooks/useMensajes.js';
+import { usePreinscripcion } from './hooks/usePreinscripcion.js';
+
+// Exponer hooks que necesitan acceder componentes que viven en window.X
+window.usePreinscripcion = usePreinscripcion;
 
 // ─────────────────────────────────────────────────────────────────────
 // Estado central — todo en Supabase: alumnas, leads, pagos, asistencia,
