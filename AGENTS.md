@@ -121,6 +121,7 @@ Triggers `updated_at` en alumnas/leads/ajustes. RLS habilitado en todas, políti
 - **NO meter el frame IOSDevice en mobile**. Solo aplica para viewports >600px (mockup en desktop). En mobile real renderiza fullscreen.
 - **NO refactorizar `window.X` → imports puros** en las screens. Funciona, es estable, y romperlo gratis cuesta tiempo.
 - **NO confiar en `localStorage`** para datos persistentes — todo va a Supabase ahora. Solo el panel de Tweaks usa localStorage para preferencias de UI.
+- **NO usar `SECURITY DEFINER` en funciones SQL llamadas desde RLS policies** (como `is_authorized()`). Bajo SECURITY DEFINER, `auth.jwt()` no devuelve el JWT del caller real y la función retorna NULL → todos los inserts/updates fallan silenciosamente. Usar `SECURITY INVOKER` (default) + `STABLE`. Ver `migration-003-fix-rls-security-invoker.sql` para el incidente del 2026-04-29.
 
 ## Lógica de fechas (home.jsx)
 

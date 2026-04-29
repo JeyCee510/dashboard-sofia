@@ -9,13 +9,17 @@
 -- Para invitar a otra persona: añadir su email a la lista de abajo y
 -- volver a ejecutar este bloque (CREATE OR REPLACE).
 
+-- IMPORTANTE: SECURITY INVOKER (no DEFINER) para que auth.jwt() lea
+-- el JWT del caller autenticado y no del owner (postgres). Con DEFINER
+-- la función retorna NULL y todos los inserts vía API REST fallan.
 CREATE OR REPLACE FUNCTION public.is_authorized()
 RETURNS boolean
 LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
+STABLE
+SECURITY INVOKER
+SET search_path = public, auth
 AS $$
-  SELECT auth.jwt() ->> 'email' IN (
+  SELECT coalesce(auth.jwt() ->> 'email', '') IN (
     'sofilira@gmail.com',
     'jclira@gmail.com'
   );
