@@ -11,17 +11,14 @@ const preinscripcionMatch = path.match(/^\/preinscripcion\/([\w-]+)\/?$/);
 if (preinscripcionMatch) {
   // Modo público — solo carga lo necesario para el form
   const token = preinscripcionMatch[1];
+  // Marcar body para que el CSS desactive las restricciones de scroll del modo app
+  document.body.classList.add('public-route');
+  document.documentElement.classList.add('public-route');
   import('./icons.jsx').then(() =>
     import('./preinscripcion-public.jsx').then(({ PreinscripcionPublic }) => {
       ReactDOM.createRoot(document.getElementById('root')).render(
         <PreinscripcionPublic token={token} />
       );
-      // Reset cualquier transform/fit del modo desktop
-      document.body.style.overflow = 'auto';
-      const stage = document.getElementById('stage');
-      if (stage) { stage.style.position = 'static'; stage.style.display = 'block'; }
-      const root = document.getElementById('root');
-      if (root) root.style.transform = '';
     })
   );
 } else {

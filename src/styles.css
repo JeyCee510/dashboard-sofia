@@ -61,10 +61,10 @@ body {
 
 /* ──────────── Mobile real (sin frame de iPhone) ──────────── */
 @media (max-width: 600px) {
-  body { overflow: hidden !important; min-height: 100vh; background: var(--bg); }
-  #stage { position: fixed !important; inset: 0 !important; min-height: 100vh; display: block !important; }
-  #root { transform: none !important; width: 100%; height: 100%; }
-  .app {
+  body:not(.public-route) { overflow: hidden !important; min-height: 100vh; background: var(--bg); }
+  body:not(.public-route) #stage { position: fixed !important; inset: 0 !important; min-height: 100vh; display: block !important; }
+  body:not(.public-route) #root { transform: none !important; width: 100%; height: 100%; }
+  body:not(.public-route) .app {
     width: 100vw;
     height: 100vh;
     height: 100dvh;
@@ -75,16 +75,37 @@ body {
   .device-label { display: none; }
 
   /* En mobile no hay status bar simulado, pero sí hay safe area inset arriba (notch) */
-  .app-scroll {
+  body:not(.public-route) .app-scroll {
     padding-top: env(safe-area-inset-top, 12px) !important;
   }
 
   /* Tabbar fijo al bottom del viewport en mobile real */
-  .tabbar {
+  body:not(.public-route) .tabbar {
     position: fixed !important;
     bottom: 0;
     padding-bottom: max(34px, env(safe-area-inset-bottom)) !important;
   }
+}
+
+/* ──────────── Ruta pública (preinscripción) — scroll normal ──────────── */
+body.public-route, html.public-route {
+  overflow: auto !important;
+  height: auto !important;
+  min-height: 100vh;
+  background: #FBF7F0 !important;
+}
+body.public-route #stage {
+  position: static !important;
+  display: block !important;
+  height: auto !important;
+  min-height: 100vh;
+  align-items: flex-start !important;
+}
+body.public-route #root {
+  transform: none !important;
+  height: auto !important;
+  min-height: 100vh;
+  width: 100%;
 }
 
 .serif {
