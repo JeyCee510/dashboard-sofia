@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard · Yoga Sofía Lira</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<!-- styles.css se importa desde src/main.jsx para que Vite lo procese -->
+
+<style>
+  html, body { height: 100%; }
+  body {
+    background: #1B1410;
+    background-image:
+      radial-gradient(ellipse 70% 40% at 50% 10%, rgba(181, 86, 58, 0.16), transparent 60%),
+      radial-gradient(ellipse 60% 35% at 50% 100%, rgba(110, 117, 73, 0.14), transparent 65%);
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  #stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  #root { transform-origin: center center; }
+  .device-label {
+    position: fixed; top: 24px; left: 24px;
+    color: rgba(245, 239, 230, 0.55);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic; font-size: 16px; letter-spacing: 0.02em;
+  }
+  .device-label .dot {
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    background: #B5563A; margin-right: 8px; vertical-align: middle;
+  }
+  @media (max-width: 460px) { .device-label { display: none; } }
+</style>
+</head>
+<body>
+<div class="device-label"><span class="dot"></span>Dashboard · Sofía Lira</div>
+<div id="stage"><div id="root"></div></div>
+<script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

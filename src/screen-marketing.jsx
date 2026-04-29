@@ -1,0 +1,155 @@
+import React from 'react';
+const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
+
+// ──────────────────────────────────────────
+// Marketing / Leads + CRM screens
+// ──────────────────────────────────────────
+
+const fuenteIcon = {
+  instagram: 'instagram',
+  whatsapp: 'whatsapp',
+  referido: 'users',
+};
+const fuenteLabel = {
+  instagram: 'Instagram',
+  whatsapp: 'WhatsApp',
+  referido: 'Referida',
+};
+const estadoColor = {
+  nuevo: { bg: 'var(--terracota-tint)', fg: '#8A3D26', label: 'Nuevo' },
+  interesado: { bg: '#F2E2C2', fg: 'var(--gold)', label: 'Interesada' },
+  reservado: { bg: '#DDE0CC', fg: '#4D5230', label: 'Reservó' },
+  'frío': { bg: 'var(--bg-warm)', fg: 'var(--ink-mute)', label: 'Frío' },
+};
+
+const MarketingScreen = ({ onOpenLead }) => {
+  const [filter, setFilter] = React.useState('todos');
+  let leads = MOCK_LEADS;
+  if (filter !== 'todos') leads = leads.filter(l => l.estado === filter);
+
+  const counts = {
+    nuevo: MOCK_LEADS.filter(l => l.estado === 'nuevo').length,
+    interesado: MOCK_LEADS.filter(l => l.estado === 'interesado').length,
+    reservado: MOCK_LEADS.filter(l => l.estado === 'reservado').length,
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="eyebrow">Embudo</div>
+        <h1>Leads</h1>
+      </div>
+
+      {/* Embudo visual */}
+      <div style={{ padding: '0 22px', display: 'flex', gap: 8, marginTop: 6 }}>
+        <FunnelStep n={counts.nuevo} label="Nuevos" tint="terracota" />
+        <FunnelStep n={counts.interesado} label="Interesadas" tint="gold" />
+        <FunnelStep n={counts.reservado} label="Reservaron" tint="oliva" />
+      </div>
+
+      <div className="section-title">
+        <h2>Por fuente</h2>
+      </div>
+      <div style={{ padding: '0 22px' }}>
+        <div className="card flat" style={{ padding: '14px 16px', display: 'flex', gap: 16 }}>
+          {['instagram', 'whatsapp', 'referido'].map(f => {
+            const n = MOCK_LEADS.filter(l => l.fuente === f).length;
+            return (
+              <div key={f} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 10,
+                  background: 'var(--bg-warm)', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)',
+                }}>
+                  <Icon name={fuenteIcon[f]} size={16} />
+                </div>
+                <div>
+                  <div className="serif" style={{ fontSize: 18, lineHeight: 1 }}>{n}</div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-mute)', letterSpacing: '0.04em', marginTop: 2 }}>
+                    {fuenteLabel[f]}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ padding: '20px 22px 10px' }}>
+        <div className="segmented">
+          <button className={filter === 'todos' ? 'active' : ''} onClick={() => setFilter('todos')}>Todos</button>
+          <button className={filter === 'nuevo' ? 'active' : ''} onClick={() => setFilter('nuevo')}>Nuevos</button>
+          <button className={filter === 'interesado' ? 'active' : ''} onClick={() => setFilter('interesado')}>Interesadas</button>
+          <button className={filter === 'reservado' ? 'active' : ''} onClick={() => setFilter('reservado')}>Reservaron</button>
+        </div>
+      </div>
+
+      <div style={{ padding: '0 22px' }}>
+        <div className="card flat" style={{ padding: '4px 16px' }}>
+          {leads.map(l => {
+            const e = estadoColor[l.estado];
+            return (
+              <div key={l.id} className="row" onClick={() => onOpenLead && onOpenLead(l.id)} style={{ cursor: 'pointer' }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: '50%',
+                  background: e.bg, color: e.fg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Icon name={fuenteIcon[l.fuente]} size={16} />
+                </div>
+                <div className="body">
+                  <div className="t1">{l.nombre}</div>
+                  <div className="t2" style={{ fontStyle: 'italic' }}>"{l.mensaje}"</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                  <span className="pill" style={{ background: e.bg, color: e.fg, border: 'none' }}>{e.label}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ink-mute)' }}>{l.tiempo}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ padding: '14px 22px' }}>
+        <button className="btn btn-ghost btn-block" onClick={() => onOpenLead && onOpenLead(null)}>
+          <Icon name="plus" size={15} />
+          Registrar lead manual
+        </button>
+      </div>
+
+      <div className="section-title">
+        <h2>Contenido</h2>
+      </div>
+      <div style={{ padding: '0 22px' }}>
+        <div className="card flat" style={{ padding: 16 }}>
+          <div style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+            Programa tu próxima publicación o campaña. Recordatorio: queda <strong style={{ color: 'var(--terracota)' }}>1 cupo</strong> para llenar la silla 6.
+          </div>
+          <button className="btn btn-secondary" style={{ marginTop: 12 }}>
+            <Icon name="sparkle" size={14} />
+            Crear publicación
+          </button>
+        </div>
+      </div>
+      <div style={{ height: 30 }} />
+    </div>
+  );
+};
+
+const FunnelStep = ({ n, label, tint }) => {
+  const colors = {
+    terracota: { bg: 'var(--terracota-tint)', fg: '#8A3D26' },
+    gold: { bg: '#F2E2C2', fg: 'var(--gold)' },
+    oliva: { bg: '#DDE0CC', fg: '#4D5230' },
+  }[tint];
+  return (
+    <div className="card flat" style={{ flex: 1, padding: 14, background: colors.bg, borderColor: 'transparent', textAlign: 'center' }}>
+      <div className="serif" style={{ fontSize: 28, color: colors.fg, lineHeight: 1 }}>{n}</div>
+      <div style={{ fontSize: 10, color: colors.fg, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4, fontWeight: 500 }}>{label}</div>
+    </div>
+  );
+};
+
+window.MarketingScreen = MarketingScreen;
