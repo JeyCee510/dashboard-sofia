@@ -147,18 +147,24 @@ export function useVoiceCommand() {
     };
 
     recog.onerror = (event) => {
-      let msg = {
-        'no-speech': 'No te escuché. Intenta de nuevo.',
-        'audio-capture': 'No detecto micrófono. Revisa permisos.',
-        'not-allowed': 'Permiso de micrófono denegado.',
-        'network': 'Sin conexión.',
-      }[event.error] || `Error: ${event.error}`;
+      const err = event.error;
+      let msg;
 
-      // service-not-allowed casi siempre = navegador integrado (WhatsApp/Instagram)
-      if (event.error === 'service-not-allowed' || event.error === 'not-allowed') {
-        if (isInAppBrowser()) {
-          msg = 'Estás dentro del navegador de otra app (WhatsApp, Instagram…) y desde ahí no funciona el micrófono. Abre el dashboard en Safari para poder hablarle.';
-        }
+      if (isInAppBrowser() && (err === 'service-not-allowed' || err === 'not-allowed')) {
+        msg = 'Estás dentro del navegador de otra app (WhatsApp, Instagram…) y desde ahí Apple bloquea el micrófono. Abre el dashboard en Safari real.';
+      } else if (err === 'service-not-allowed' && isIOS()) {
+        msg = 'iOS está bloqueando el reconocimiento de voz. Ve a Ajustes → General → Teclado → "Permitir dictado" y enciéndelo. Después recarga esta página.';
+      } else if (err === 'not-allowed' && isIOS()) {
+        msg = 'Safari bloqueó el micrófono para este sitio. Ve a Ajustes → Safari → desliza abajo → "Cámara y micrófono" → permitir. Después recarga.';
+      } else {
+        msg = {
+          'no-speech': 'No te escuché. Intenta de nuevo más cerca del micrófono.',
+          'audio-capture': 'No detecto micrófono. Revisa que no esté siendo usado por otra app.',
+          'not-allowed': 'Permiso de micrófono denegado. Activa el permiso en los ajustes del navegador.',
+          'service-not-allowed': 'El navegador no permite reconocimiento de voz. Prueba en Safari (iPhone) o Chrome (Android/desktop).',
+          'network': 'Sin conexión a internet.',
+          'aborted': 'Cancelado.',
+        }[err] || `Error: ${err}`;
       }
 
       setError(msg);
