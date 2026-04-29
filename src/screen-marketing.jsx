@@ -119,20 +119,6 @@ const MarketingScreen = ({ onOpenLead }) => {
         </button>
       </div>
 
-      <div className="section-title">
-        <h2>Contenido</h2>
-      </div>
-      <div style={{ padding: '0 22px' }}>
-        <div className="card flat" style={{ padding: 16 }}>
-          <div style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
-            Programa tu próxima publicación o campaña. Recordatorio: queda <strong style={{ color: 'var(--terracota)' }}>1 cupo</strong> para llenar la silla 6.
-          </div>
-          <button className="btn btn-secondary" style={{ marginTop: 12 }}>
-            <Icon name="sparkle" size={14} />
-            Crear publicación
-          </button>
-        </div>
-      </div>
       <div style={{ height: 30 }} />
     </div>
   );

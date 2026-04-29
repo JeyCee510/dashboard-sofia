@@ -124,22 +124,13 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
             <div className="eyebrow">{todayStr}</div>
             <h1>{greeting},<br/><em>Sofía</em></h1>
           </div>
-          <button onClick={() => onNavigate('settings')} style={{
+          <button onClick={() => onNavigate('ajustes')} style={{
             width: 40, height: 40, borderRadius: '50%',
             background: 'var(--surface)', border: '1px solid var(--line-soft)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', position: 'relative',
           }}>
-            <span className="serif" style={{ fontSize: 16, color: 'var(--terracota)' }}>S</span>
-            {sinLeer > 0 && (
-              <span style={{
-                position: 'absolute', top: -2, right: -2,
-                width: 16, height: 16, borderRadius: '50%',
-                background: 'var(--terracota)', color: '#fff',
-                fontSize: 10, fontWeight: 600,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{sinLeer}</span>
-            )}
+            <Icon name="settings" size={16} stroke="var(--ink-soft)" />
           </button>
         </div>
       </div>
@@ -285,13 +276,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
           subtitle={leadsNuevos[0] ? `Más reciente: ${leadsNuevos[0].nombre}` : 'Sin nuevos'}
           onClick={() => onNavigate('marketing')}
         />
-        <ActionRow
-          icon="whatsapp"
-          accent="oliva"
-          title={`${sinLeer} mensajes sin leer`}
-          subtitle="WhatsApp e Instagram"
-          onClick={() => onNavigate('crm')}
-        />
+        {/* Mensajes WA/IG removidos: sin integración API, no hay forma de detectarlos */}
         {sillasOtorgadas > 0 && (
           <ActionRow
             icon="chair"

@@ -22,8 +22,30 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
   return (
     <div>
       <div className="page-header">
-        <div className="eyebrow">Formación junio</div>
-        <h1>Inscritos</h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div className="eyebrow">Formación junio</div>
+            <h1>Inscritos</h1>
+          </div>
+          {total > 0 && onNavigate && (
+            <button
+              onClick={() => onNavigate('difusion')}
+              style={{
+                marginTop: 8,
+                padding: '8px 14px',
+                borderRadius: 999,
+                background: 'var(--bg-warm)',
+                border: '1px solid var(--line-soft)',
+                fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <Icon name="bullhorn" size={13} stroke="var(--terracota)" />
+              Difundir
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Capacidad */}

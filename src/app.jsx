@@ -24,6 +24,7 @@ const App = () => {
   const FichaAlumna = window.FichaAlumna;
   const AsistenciaV2 = window.AsistenciaV2;
   const AjustesScreen = window.AjustesScreen;
+  const DifusionScreen = window.DifusionScreen;
   const AlumnaForm = window.AlumnaForm;
   const LeadForm = window.LeadForm;
   const PagoForm = window.PagoForm;
@@ -85,6 +86,7 @@ const App = () => {
   const navigate = (target) => {
     if (target === 'asistencia') setOverlay('asistencia');
     else if (target === 'ajustes') setOverlay('ajustes');
+    else if (target === 'difusion') setOverlay('difusion');
     else { setTab(target); setOverlay(null); }
   };
 
@@ -122,14 +124,13 @@ const App = () => {
   else if (tab === 'reservas') screen = <ReservasScreen tweaks={screenTweaks} onNavigate={navigate} onOpenAlumna={openAlumna} />;
   else if (tab === 'pagos') screen = <PagosScreen tweaks={screenTweaks} onOpenAlumna={openAlumna} onNewPago={() => setSheet('new-pago')} />;
   else if (tab === 'marketing') screen = <MarketingScreen onOpenLead={(id) => setSheet(id ? { type: 'edit-lead', id } : 'new-lead')} />;
-  else if (tab === 'crm') screen = <CRMScreen plantillas={store.state.ajustes.plantillasWA} mensajes={store.state.mensajes} />;
+  // Tab CRM eliminado: sin integración WA/IG no aporta. Plantillas viven en Ajustes y en el flujo de difusión.
 
   const tabs = [
     { id: 'home', label: 'Hoy', icon: 'home' },
     { id: 'reservas', label: 'Inscritos', icon: 'users' },
     { id: 'pagos', label: 'Pagos', icon: 'cash' },
     { id: 'marketing', label: 'Leads', icon: 'bullhorn' },
-    { id: 'crm', label: 'Chat', icon: 'chat' },
   ];
 
   const fabAction = () => {
@@ -145,7 +146,7 @@ const App = () => {
         <div className="fade-in">{screen}</div>
       </div>
 
-      {tweaks.showFAB && tab !== 'crm' && tab !== 'home' && (
+      {tweaks.showFAB && tab !== 'home' && (
         <button className="fab" onClick={fabAction} aria-label="Nuevo">
           <Icon name="plus" size={20} stroke="var(--bg)" strokeWidth={2.2} />
         </button>
@@ -166,22 +167,16 @@ const App = () => {
         </div>
       </div>
 
-      {tab === 'home' && (
-        <button onClick={() => navigate('ajustes')} aria-label="Ajustes" style={{
-          position: 'absolute', top: 56, right: 18, zIndex: 5,
-          width: 36, height: 36, borderRadius: '50%',
-          background: 'var(--bg-warm)', border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon name="settings" size={16} stroke="var(--ink-soft)" />
-        </button>
-      )}
+      {/* gear flotante removido — el avatar S del home navega a ajustes */}
 
       {overlay === 'asistencia' && (
         <AsistenciaV2 store={store} onClose={() => setOverlay(null)} />
       )}
       {overlay === 'ajustes' && (
         <AjustesScreen store={store} onClose={() => setOverlay(null)} />
+      )}
+      {overlay === 'difusion' && (
+        <DifusionScreen store={store} onClose={() => setOverlay(null)} />
       )}
       {overlay && overlay.type === 'alumna' && (
         <FichaAlumna
