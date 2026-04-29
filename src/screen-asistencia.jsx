@@ -51,7 +51,7 @@ const AsistenciaV2 = ({ store, onClose }) => {
         <div style={{ padding: '14px 22px 0' }}>
           <div className="search">
             <Icon name="search" size={15} stroke="var(--ink-mute)" />
-            <input placeholder="Buscar alumna…" value={search} onChange={e => setSearch(e.target.value)} />
+            <input placeholder="Buscar estudiante…" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
 
@@ -115,7 +115,7 @@ const AsistenciaV2 = ({ store, onClose }) => {
           })}
           {alumnas.length === 0 && (
             <div style={{ padding: 30, textAlign: 'center', color: 'var(--ink-mute)', fontSize: 13 }}>
-              Sin alumnas registradas. Ve a Inscritas para agregar la primera.
+              Sin estudiantes registrados. Ve a Inscritos para agregar el primero.
             </div>
           )}
         </div>

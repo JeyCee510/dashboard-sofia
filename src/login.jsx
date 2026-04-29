@@ -17,7 +17,7 @@ const LoginScreen = ({ onLogin, ownerName, studioName, authError }) => (
         <h1>el arte de <em>guiar</em><br/>tu estudio</h1>
       </div>
       <p className="fade-in" style={{ animationDelay: '0.12s' }}>
-        Tu panel privado para gestionar la formación, las alumnas y todo lo que sucede entre clases.
+        Tu panel privado para gestionar la formación, los estudiantes y todo lo que sucede entre clases.
       </p>
     </div>
 

@@ -23,14 +23,14 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
     <div>
       <div className="page-header">
         <div className="eyebrow">Formación junio</div>
-        <h1>Inscritas</h1>
+        <h1>Inscritos</h1>
       </div>
 
       {/* Capacidad */}
       <div style={{ padding: '0 22px', display: 'flex', gap: 10, marginTop: 8 }}>
         <div className="card flat" style={{ flex: 1, padding: 16 }}>
           <div className="kpi-num">{total}<span style={{ fontSize: 18, color: 'var(--ink-mute)' }}>/{tweaks.capacidad}</span></div>
-          <div className="kpi-label" style={{ marginTop: 4 }}>Inscritas</div>
+          <div className="kpi-label" style={{ marginTop: 4 }}>Inscritos</div>
           <div className="progress" style={{ marginTop: 10 }}>
             <div style={{ width: `${(total / tweaks.capacidad) * 100}%` }} />
           </div>
@@ -54,12 +54,12 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
       <div style={{ padding: '20px 22px 10px' }}>
         <div className="search">
           <Icon name="search" size={15} stroke="var(--ink-mute)" />
-          <input placeholder="Buscar alumna…" value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder="Buscar estudiante…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
       <div style={{ padding: '0 22px' }}>
         <div className="segmented">
-          <button className={filter === 'todas' ? 'active' : ''} onClick={() => setFilter('todas')}>Todas · {MOCK_ALUMNAS.length}</button>
+          <button className={filter === 'todas' ? 'active' : ''} onClick={() => setFilter('todas')}>Todos · {MOCK_ALUMNAS.length}</button>
           <button className={filter === 'pendientes' ? 'active' : ''} onClick={() => setFilter('pendientes')}>Pendientes · {MOCK_ALUMNAS.filter(a => a.pago === 'pendiente' || a.pago === 'parcial').length}</button>
           <button className={filter === 'silla' ? 'active' : ''} onClick={() => setFilter('silla')}>Silla · {sillas}</button>
         </div>
@@ -78,7 +78,7 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
               <div className="body">
                 <div className="t1">{a.nombre}</div>
                 <div className="t2" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>Inscrita {a.inscrita}</span>
+                  <span>Se inscribió {a.inscrita}</span>
                   {a.bonoSilla && <span style={{ color: 'var(--gold)' }}>· silla</span>}
                 </div>
               </div>

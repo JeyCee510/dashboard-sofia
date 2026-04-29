@@ -62,8 +62,8 @@ const PagosScreen = ({ tweaks, onOpenAlumna, onNewPago }) => {
       <div style={{ padding: '14px 22px 0' }}>
         <div className="segmented">
           <button className={filter === 'pendientes' ? 'active' : ''} onClick={() => setFilter('pendientes')}>Pendientes</button>
-          <button className={filter === 'pagadas' ? 'active' : ''} onClick={() => setFilter('pagadas')}>Pagadas</button>
-          <button className={filter === 'todas' ? 'active' : ''} onClick={() => setFilter('todas')}>Todas</button>
+          <button className={filter === 'pagadas' ? 'active' : ''} onClick={() => setFilter('pagadas')}>Pagados</button>
+          <button className={filter === 'todas' ? 'active' : ''} onClick={() => setFilter('todas')}>Todos</button>
         </div>
       </div>
 

@@ -27,7 +27,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
       <div className="detail-header">
         <button className="back" onClick={onClose}>
           <Icon name="chevronL" size={20} />
-          Inscritas
+          Inscritos
         </button>
         <div style={{ flex: 1 }} />
         <button onClick={onEdit} style={{ background: 'transparent', border: 'none', padding: 8, cursor: 'pointer' }}>
@@ -167,7 +167,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
             borderRadius: 12,
             color: 'var(--rojo)',
             fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-          }}>Borrar alumna</button>
+          }}>Borrar estudiante</button>
         </div>
       </div>
     </div>

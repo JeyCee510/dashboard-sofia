@@ -83,8 +83,13 @@ function formatTodayLong() {
   return `${dias[now.getDay()]} · ${now.getDate()} de ${meses[now.getMonth()]}`;
 }
 
-const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => {
-  const totalAlumnas = MOCK_ALUMNAS.length;
+const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensajes }) => {
+  // alumnas/leads/mensajes vienen del store via props (reactivos).
+  // MOCK_ALUMNAS/MOCK_LEADS/MENSAJES_RECIENTES siguen sincronizados como fallback.
+  const safeAlumnas = alumnas || MOCK_ALUMNAS || [];
+  const safeLeads = leads || MOCK_LEADS || [];
+  const safeMensajes = mensajes || MENSAJES_RECIENTES || [];
+  const totalAlumnas = safeAlumnas.length;
   const cupos = tweaks.capacidad - totalAlumnas;
   const ctx = getFormationContext();
   const greeting = getGreeting();
@@ -96,12 +101,12 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
   const sinMarcar = totalAlumnas - presentesHoy - ausentesHoy;
 
   // Pagos
-  const pagosPendientes = MOCK_ALUMNAS.filter(a => a.pago === 'pendiente' || a.pago === 'parcial');
+  const pagosPendientes = safeAlumnas.filter(a => a.pago === 'pendiente' || a.pago === 'parcial');
   const totalPendiente = pagosPendientes.reduce((s, a) => s + (a.total - a.pagado), 0);
 
   // Leads nuevos
-  const leadsNuevos = MOCK_LEADS.filter(l => l.estado === 'nuevo');
-  const sinLeer = MENSAJES_RECIENTES.filter(m => m.sinLeer).length;
+  const leadsNuevos = safeLeads.filter(l => l.estado === 'nuevo');
+  const sinLeer = safeMensajes.filter(m => m.sinLeer).length;
 
   // Pronto pago deadline countdown — assume hoy = sábado 6 jun (día de inicio)
   const prontoPagoVencido = true; // 10 mayo ya pasó
@@ -187,7 +192,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
               {totalAlumnas}<span style={{ fontSize: 14, opacity: 0.5 }}>/{tweaks.capacidad}</span>
             </div>
             <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
-              inscritas
+              inscritos
             </div>
           </div>
           <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
@@ -218,8 +223,8 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
         >
           <Icon name={ctx.phase === 'today' ? 'check' : 'users'} size={16} />
           {ctx.phase === 'today' ? 'Tomar asistencia de hoy'
-            : ctx.phase === 'before' ? 'Ver inscritas'
-            : ctx.phase === 'during' ? 'Ver inscritas'
+            : ctx.phase === 'before' ? 'Ver inscritos'
+            : ctx.phase === 'during' ? 'Ver inscritos'
             : 'Ver resumen'}
         </button>
       </div>
@@ -293,59 +298,38 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, onMarkAttendance }) => 
       </div>
 
       {/* ───── Mensajes recientes ───── */}
-      <div className="section-title">
-        <h2>Conversaciones</h2>
-        <span className="link" onClick={() => onNavigate('crm')} style={{ cursor: 'pointer' }}>Ver todas →</span>
-      </div>
-      <div style={{ padding: '0 22px' }}>
-        <div className="card flat" style={{ padding: '4px 16px' }}>
-          {MENSAJES_RECIENTES.slice(0, 3).map(m => (
-            <div key={m.id} className="row" onClick={() => onNavigate('crm')} style={{ cursor: 'pointer' }}>
-              <div className="avatar" style={{ background: m.esLead ? 'var(--terracota-soft)' : 'oklch(0.74 0.06 45)' }}>
-                {m.alumna.split(' ').map(p => p[0]).slice(0, 2).join('')}
-              </div>
-              <div className="body">
-                <div className="t1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {m.alumna}
-                  {m.esLead && <span style={{ fontSize: 10, color: 'var(--terracota)', fontWeight: 500 }}>· lead</span>}
+      {safeMensajes.length > 0 && (
+        <>
+          <div className="section-title">
+            <h2>Conversaciones</h2>
+            <span className="link" onClick={() => onNavigate('crm')} style={{ cursor: 'pointer' }}>Ver todas →</span>
+          </div>
+          <div style={{ padding: '0 22px' }}>
+            <div className="card flat" style={{ padding: '4px 16px' }}>
+              {safeMensajes.slice(0, 3).map(m => (
+                <div key={m.id} className="row" onClick={() => onNavigate('crm')} style={{ cursor: 'pointer' }}>
+                  <div className="avatar" style={{ background: m.esLead ? 'var(--terracota-soft)' : 'oklch(0.74 0.06 45)' }}>
+                    {m.alumna.split(' ').map(p => p[0]).slice(0, 2).join('')}
+                  </div>
+                  <div className="body">
+                    <div className="t1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {m.alumna}
+                      {m.esLead && <span style={{ fontSize: 10, color: 'var(--terracota)', fontWeight: 500 }}>· lead</span>}
+                    </div>
+                    <div className="t2">{m.preview}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{m.tiempo}</span>
+                    {m.sinLeer && <span className="dot" style={{ background: 'var(--terracota)' }} />}
+                  </div>
                 </div>
-                <div className="t2">{m.preview}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{m.tiempo}</span>
-                {m.sinLeer && <span className="dot" style={{ background: 'var(--terracota)' }} />}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ───── 3 Encuentros ───── */}
-      <div className="section-title">
-        <h2>Los 3 encuentros</h2>
-      </div>
-      <div style={{ padding: '0 22px', display: 'flex', gap: 10 }}>
-        {ENCUENTROS.map(e => (
-          <div key={e.num} className="card flat" style={{
-            flex: 1, padding: '14px 12px',
-            background: e.estado === 'hoy' ? 'var(--terracota-tint)' : 'var(--surface)',
-            borderColor: e.estado === 'hoy' ? 'transparent' : undefined,
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: e.estado === 'hoy' ? '#8A3D26' : 'var(--ink-mute)', fontWeight: 500 }}>
-              Encuentro {e.num}
-            </div>
-            <div className="serif" style={{ fontSize: 18, marginTop: 4, color: e.estado === 'hoy' ? '#8A3D26' : 'var(--ink)' }}>
-              {e.sabado}
-            </div>
-            <div style={{ fontSize: 11, color: e.estado === 'hoy' ? '#8A3D26' : 'var(--ink-mute)', marginTop: 1 }}>
-              y {e.domingo}
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      <div style={{ height: 30 }} />
+      <div style={{ height: 40 }} />
     </div>
   );
 };

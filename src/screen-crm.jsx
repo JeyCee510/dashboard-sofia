@@ -11,13 +11,7 @@ const CRMScreen = () => {
   if (filter === 'sinleer') msgs = msgs.filter(m => m.sinLeer);
   if (filter === 'leads') msgs = msgs.filter(m => m.esLead);
 
-  // Build full list including alumnas
-  const conversaciones = [
-    ...msgs,
-    { id: 99, alumna: 'Camila Ortega', preview: 'Llevaré el manual impreso 📖', tiempo: 'mar', sinLeer: false },
-    { id: 100, alumna: 'Regina Solís', preview: 'Tengo una pregunta sobre el bono silla', tiempo: 'lun', sinLeer: false },
-    { id: 101, alumna: 'Paulina Velázquez', preview: 'Te confirmo asistencia para el sábado', tiempo: 'lun', sinLeer: false },
-  ];
+  const conversaciones = msgs;
 
   const sinLeer = MENSAJES_RECIENTES.filter(m => m.sinLeer).length;
 
@@ -59,33 +53,40 @@ const CRMScreen = () => {
       </div>
 
       <div style={{ padding: '0 22px' }}>
-        <div className="card flat" style={{ padding: '4px 16px' }}>
-          {conversaciones.map(m => (
-            <div key={m.id} className="row" style={{ cursor: 'pointer' }}>
-              <div className="avatar" style={{ background: m.esLead ? 'var(--terracota-soft)' : 'oklch(0.74 0.06 45)' }}>
-                {m.alumna.split(' ').map(p => p[0]).slice(0, 2).join('')}
-              </div>
-              <div className="body">
-                <div className="t1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {m.alumna}
-                  <Icon name="whatsapp" size={11} stroke="var(--whatsapp)" />
-                  {m.esLead && <span style={{ fontSize: 10, color: 'var(--terracota)', fontWeight: 500 }}>· lead</span>}
+        {conversaciones.length === 0 ? (
+          <div className="card flat" style={{ padding: '32px 22px', textAlign: 'center', color: 'var(--ink-mute)', fontSize: 13, lineHeight: 1.5 }}>
+            Aún no hay conversaciones registradas.<br/>
+            Cuando llegue un mensaje por WhatsApp o Instagram, aparecerá aquí.
+          </div>
+        ) : (
+          <div className="card flat" style={{ padding: '4px 16px' }}>
+            {conversaciones.map(m => (
+              <div key={m.id} className="row" style={{ cursor: 'pointer' }}>
+                <div className="avatar" style={{ background: m.esLead ? 'var(--terracota-soft)' : 'oklch(0.74 0.06 45)' }}>
+                  {m.alumna.split(' ').map(p => p[0]).slice(0, 2).join('')}
                 </div>
-                <div className="t2">{m.preview}</div>
+                <div className="body">
+                  <div className="t1" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {m.alumna}
+                    <Icon name="whatsapp" size={11} stroke="var(--whatsapp)" />
+                    {m.esLead && <span style={{ fontSize: 10, color: 'var(--terracota)', fontWeight: 500 }}>· lead</span>}
+                  </div>
+                  <div className="t2">{m.preview}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{m.tiempo}</span>
+                  {m.sinLeer && <span className="dot" style={{ background: 'var(--terracota)' }} />}
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{m.tiempo}</span>
-                {m.sinLeer && <span className="dot" style={{ background: 'var(--terracota)' }} />}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ padding: '14px 22px' }}>
         <button className="btn btn-secondary btn-block">
           <Icon name="bullhorn" size={14} />
-          Difusión a inscritas (22)
+          Difusión a inscritos
         </button>
       </div>
       <div style={{ height: 30 }} />

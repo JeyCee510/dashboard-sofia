@@ -61,17 +61,30 @@ body {
 
 /* ──────────── Mobile real (sin frame de iPhone) ──────────── */
 @media (max-width: 600px) {
-  body { overflow: auto !important; min-height: 100vh; background: var(--bg); }
-  #stage { position: static !important; min-height: 100vh; display: block !important; }
-  #root { transform: none !important; width: 100%; min-height: 100vh; }
+  body { overflow: hidden !important; min-height: 100vh; background: var(--bg); }
+  #stage { position: fixed !important; inset: 0 !important; min-height: 100vh; display: block !important; }
+  #root { transform: none !important; width: 100%; height: 100%; }
   .app {
     width: 100vw;
-    min-height: 100vh;
+    height: 100vh;
     height: 100dvh;
     border-radius: 0 !important;
     max-width: 100%;
+    position: relative;
   }
   .device-label { display: none; }
+
+  /* En mobile no hay status bar simulado, pero sí hay safe area inset arriba (notch) */
+  .app-scroll {
+    padding-top: env(safe-area-inset-top, 12px) !important;
+  }
+
+  /* Tabbar fijo al bottom del viewport en mobile real */
+  .tabbar {
+    position: fixed !important;
+    bottom: 0;
+    padding-bottom: max(34px, env(safe-area-inset-bottom)) !important;
+  }
 }
 
 .serif {

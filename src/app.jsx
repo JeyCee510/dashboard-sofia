@@ -91,7 +91,7 @@ const App = () => {
   const asistenciaHoy = store.state.asistencia[0] || {};
 
   let screen;
-  if (tab === 'home') screen = <HomeScreen tweaks={screenTweaks} onNavigate={navigate} asistenciaHoy={asistenciaHoy} />;
+  if (tab === 'home') screen = <HomeScreen tweaks={screenTweaks} onNavigate={navigate} asistenciaHoy={asistenciaHoy} alumnas={store.state.alumnas} leads={store.state.leads} mensajes={store.state.mensajes} />;
   else if (tab === 'reservas') screen = <ReservasScreen tweaks={screenTweaks} onNavigate={navigate} onOpenAlumna={openAlumna} />;
   else if (tab === 'pagos') screen = <PagosScreen tweaks={screenTweaks} onOpenAlumna={openAlumna} onNewPago={() => setSheet('new-pago')} />;
   else if (tab === 'marketing') screen = <MarketingScreen onOpenLead={(id) => setSheet(id ? { type: 'edit-lead', id } : 'new-lead')} />;
@@ -99,7 +99,7 @@ const App = () => {
 
   const tabs = [
     { id: 'home', label: 'Hoy', icon: 'home' },
-    { id: 'reservas', label: 'Inscritas', icon: 'users' },
+    { id: 'reservas', label: 'Inscritos', icon: 'users' },
     { id: 'pagos', label: 'Pagos', icon: 'cash' },
     { id: 'marketing', label: 'Leads', icon: 'bullhorn' },
     { id: 'crm', label: 'Chat', icon: 'chat' },

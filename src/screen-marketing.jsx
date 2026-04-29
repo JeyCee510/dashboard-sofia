@@ -13,11 +13,11 @@ const fuenteIcon = {
 const fuenteLabel = {
   instagram: 'Instagram',
   whatsapp: 'WhatsApp',
-  referido: 'Referida',
+  referido: 'Referido',
 };
 const estadoColor = {
   nuevo: { bg: 'var(--terracota-tint)', fg: '#8A3D26', label: 'Nuevo' },
-  interesado: { bg: '#F2E2C2', fg: 'var(--gold)', label: 'Interesada' },
+  interesado: { bg: '#F2E2C2', fg: 'var(--gold)', label: 'Interesado' },
   reservado: { bg: '#DDE0CC', fg: '#4D5230', label: 'Reservó' },
   'frío': { bg: 'var(--bg-warm)', fg: 'var(--ink-mute)', label: 'Frío' },
 };
@@ -43,8 +43,8 @@ const MarketingScreen = ({ onOpenLead }) => {
       {/* Embudo visual */}
       <div style={{ padding: '0 22px', display: 'flex', gap: 8, marginTop: 6 }}>
         <FunnelStep n={counts.nuevo} label="Nuevos" tint="terracota" />
-        <FunnelStep n={counts.interesado} label="Interesadas" tint="gold" />
-        <FunnelStep n={counts.reservado} label="Reservaron" tint="oliva" />
+        <FunnelStep n={counts.interesado} label="Interesados" tint="gold" />
+        <FunnelStep n={counts.reservado} label="Reservados" tint="oliva" />
       </div>
 
       <div className="section-title">
@@ -79,8 +79,8 @@ const MarketingScreen = ({ onOpenLead }) => {
         <div className="segmented">
           <button className={filter === 'todos' ? 'active' : ''} onClick={() => setFilter('todos')}>Todos</button>
           <button className={filter === 'nuevo' ? 'active' : ''} onClick={() => setFilter('nuevo')}>Nuevos</button>
-          <button className={filter === 'interesado' ? 'active' : ''} onClick={() => setFilter('interesado')}>Interesadas</button>
-          <button className={filter === 'reservado' ? 'active' : ''} onClick={() => setFilter('reservado')}>Reservaron</button>
+          <button className={filter === 'interesado' ? 'active' : ''} onClick={() => setFilter('interesado')}>Interesados</button>
+          <button className={filter === 'reservado' ? 'active' : ''} onClick={() => setFilter('reservado')}>Reservados</button>
         </div>
       </div>
 

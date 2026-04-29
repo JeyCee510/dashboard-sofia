@@ -40,7 +40,7 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
     <Sheet
       open={open}
       onClose={onClose}
-      title={editing ? 'Editar alumna' : 'Nueva alumna'}
+      title={editing ? 'Editar estudiante' : 'Nuevo estudiante'}
       footer={
         <div style={{ display: 'flex', gap: 8 }}>
           {editing && (
@@ -49,7 +49,7 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
             </button>
           )}
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={guardar} disabled={!form.nombre.trim()}>
-            {editing ? 'Guardar cambios' : 'Crear alumna'}
+            {editing ? 'Guardar cambios' : 'Crear estudiante'}
           </button>
         </div>
       }
@@ -142,7 +142,7 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
     >
       {editing && (
         <button className="btn btn-secondary btn-block" style={{ marginBottom: 14 }} onClick={convertir}>
-          <Icon name="arrow" size={14} /> Convertir en alumna
+          <Icon name="arrow" size={14} /> Convertir en estudiante
         </button>
       )}
       <Field label="Nombre">
@@ -158,7 +158,7 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
           options={[
             { value: 'instagram', label: 'Instagram' },
             { value: 'whatsapp', label: 'WhatsApp' },
-            { value: 'referido', label: 'Referida' },
+            { value: 'referido', label: 'Referido/a' },
           ]}
         />
       </Field>
@@ -168,8 +168,8 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
           onChange={v => set('estado', v)}
           options={[
             { value: 'nuevo', label: 'Nuevo' },
-            { value: 'interesado', label: 'Interesada' },
-            { value: 'reservado', label: 'Reservó' },
+            { value: 'interesado', label: 'Interesado' },
+            { value: 'reservado', label: 'Reservado' },
             { value: 'frío', label: 'Frío' },
           ]}
         />
