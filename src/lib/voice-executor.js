@@ -73,14 +73,21 @@ export async function executeVoiceCommand(toolName, params, store, ui) {
     }
 
     case 'crear_estudiante': {
+      const tipo = params.tipo_inscripcion || 'completa';
+      const encuentros = Array.isArray(params.encuentros_asistir) && params.encuentros_asistir.length
+        ? params.encuentros_asistir
+        : (tipo === 'completa' ? [1, 2, 3] : [1]);
       const id = await store.addAlumna({
         nombre: params.nombre,
         tel: params.tel || '',
         instagram: params.instagram || '',
         bonoSilla: !!params.bonoSilla,
         notas: params.notas || '',
+        tipo_inscripcion: tipo,
+        encuentros_asistir: encuentros,
       });
-      return { ok: true, message: `Estudiante "${params.nombre}" inscrito.`, navigate: 'reservas', openAlumna: id };
+      const desc = tipo === 'completa' ? 'completa' : `parcial · encuentros ${encuentros.join(',')}`;
+      return { ok: true, message: `Estudiante "${params.nombre}" inscrito (${desc}).`, navigate: 'reservas', openAlumna: id };
     }
 
     case 'registrar_pago': {

@@ -33,7 +33,7 @@ const TOOLS = [
   },
   {
     name: "crear_estudiante",
-    description: "Inscribir nuevo estudiante. REQUIERE al menos uno de: tel o instagram. Si Sofía no los menciona, usa preguntar_clarificacion antes.",
+    description: "Inscribir nuevo estudiante. REQUIERE al menos uno de: tel o instagram. También REQUIERE tipo_inscripcion. Si Sofía no especifica el tipo o cuáles encuentros, usa preguntar_clarificacion antes de crear. Si dice 'inscribe a X' sin más detalle, asume completa con [1,2,3].",
     input_schema: {
       type: "object",
       properties: {
@@ -42,8 +42,20 @@ const TOOLS = [
         instagram: { type: "string" },
         bonoSilla: { type: "boolean", default: false },
         notas: { type: "string" },
+        tipo_inscripcion: {
+          type: "string",
+          enum: ["completa", "dos_encuentros", "un_encuentro"],
+          description: "completa = los 3 encuentros (50h), dos_encuentros = 2, un_encuentro = solo 1.",
+          default: "completa",
+        },
+        encuentros_asistir: {
+          type: "array",
+          items: { type: "integer", enum: [1, 2, 3] },
+          description: "Qué encuentros asiste. Para 'completa' usa [1,2,3]. Para parciales pregunta cuáles si Sofía no lo dice.",
+          default: [1, 2, 3],
+        },
       },
-      required: ["nombre"],
+      required: ["nombre", "tipo_inscripcion"],
     },
   },
   {
@@ -180,6 +192,16 @@ REGLA CLAVE — contacto obligatorio:
   contexto: "Vamos a crear el lead de [nombre]."
 - Si Sofía contesta "tengo whatsapp" o similar, vuelve a preguntar el número con preguntar_clarificacion (sin opciones, respuesta abierta).
 - Si responde "no tengo ninguno", crea el registro igual pero adviérteselo en el siguiente paso.
+
+REGLA — tipo de inscripción al crear estudiante:
+- La formación tiene 3 encuentros: E1 (6-7 jun), E2 (13-14 jun), E3 (20-21 jun).
+- Si Sofía dice "inscríbela completa" o no especifica → tipo_inscripcion="completa", encuentros_asistir=[1,2,3].
+- Si dice "solo al primer encuentro" / "solo al E2" / "solo el último" → tipo="un_encuentro", encuentros=[N].
+- Si dice "dos encuentros, el 1 y el 3" → tipo="dos_encuentros", encuentros=[1,3].
+- Si dice "parcial" o "media formación" sin más detalle → preguntar_clarificacion con opciones:
+  pregunta: "¿Cuáles encuentros asistirá?"
+  opciones: ["Solo Encuentro 1 (6-7 jun)", "Solo Encuentro 2 (13-14 jun)", "Solo Encuentro 3 (20-21 jun)", "Encuentros 1 y 2", "Encuentros 1 y 3", "Encuentros 2 y 3"]
+  contexto: "Estudiante parcial, no asiste a todo."
 
 Conversación multi-turno (CRÍTICO):
 - Recibirás el HISTORIAL COMPLETO de la conversación con todos los turnos previos.

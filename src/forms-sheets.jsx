@@ -282,31 +282,76 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
 };
 
 const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
-  const [alumnaId, setAlumnaId] = React.useState(alumnaPreId || null);
+  // selection puede ser:
+  //   "alumna:<id>" → estudiante existente
+  //   "lead:<id>"   → lead que se convertirá a estudiante al registrar pago
+  const [selection, setSelection] = React.useState(alumnaPreId ? `alumna:${alumnaPreId}` : '');
   const [monto, setMonto] = React.useState(0);
   const [tipo, setTipo] = React.useState('parcial');
+  const [convirtiendo, setConvirtiendo] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
-      setAlumnaId(alumnaPreId || null);
+      setSelection(alumnaPreId ? `alumna:${alumnaPreId}` : '');
       setMonto(0);
       setTipo('parcial');
+      setConvirtiendo(false);
     }
   }, [open, alumnaPreId]);
 
-  const alumna = store.state.alumnas.find(a => a.id === alumnaId);
+  const [tipoSel, idSel] = selection.split(':');
+  const idNum = idSel ? Number(idSel) : null;
+  const alumna = tipoSel === 'alumna' ? store.state.alumnas.find(a => a.id === idNum) : null;
+  const lead = tipoSel === 'lead' ? store.state.leads.find(l => l.id === idNum) : null;
   const restante = alumna ? alumna.total - alumna.pagado : 0;
+  const esLead = !!lead;
 
-  const guardar = () => {
-    if (!alumnaId || !monto) return;
-    store.registrarPago(alumnaId, monto, tipo);
-    onClose();
+  const guardar = async () => {
+    if (!selection || !monto) return;
+    if (tipoSel === 'alumna') {
+      store.registrarPago(idNum, monto, tipo);
+      onClose();
+      return;
+    }
+    if (tipoSel === 'lead' && lead) {
+      // Convertir lead → estudiante con el monto ya pagado
+      setConvirtiendo(true);
+      try {
+        const total = store.state.ajustes.precioRegular || 640;
+        // addAlumna directo con datos del lead + monto inicial
+        const nuevaId = await store.addAlumna({
+          nombre: lead.nombre,
+          tel: lead.tel,
+          instagram: lead.instagram || '',
+          pago: monto >= total ? (tipo === 'pronto-pago' ? 'pronto-pago' : 'completo') : 'parcial',
+          pagado: monto,
+          total,
+          tipo_inscripcion: 'completa',
+          encuentros_asistir: [1, 2, 3],
+        });
+        // Registrar el pago en la tabla de pagos para mantener el audit trail
+        if (nuevaId) {
+          await store.registrarPago(nuevaId, 0, tipo); // dummy: el pagado ya está en el row
+        }
+        // Borrar el lead
+        await store.deleteLead(idNum);
+      } catch (e) {
+        console.error('[pago lead → alumna]', e);
+      } finally {
+        setConvirtiendo(false);
+        onClose();
+      }
+    }
   };
 
   const quickButtons = alumna ? [
     { label: 'Reserva $200', v: 200, t: 'reserva' },
     { label: `Pronto pago $${store.state.ajustes.precioProntoPago}`, v: store.state.ajustes.precioProntoPago, t: 'pronto-pago' },
     { label: `Saldo $${restante}`, v: restante, t: 'saldo' },
+  ] : esLead ? [
+    { label: 'Reserva $200', v: 200, t: 'reserva' },
+    { label: `Pronto pago $${store.state.ajustes.precioProntoPago}`, v: store.state.ajustes.precioProntoPago, t: 'pronto-pago' },
+    { label: `Total $${store.state.ajustes.precioRegular}`, v: store.state.ajustes.precioRegular, t: 'completo' },
   ] : [];
 
   return (
@@ -315,15 +360,21 @@ const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
       onClose={onClose}
       title="Registrar pago"
       footer={
-        <button className="btn btn-primary btn-block" onClick={guardar} disabled={!alumnaId || !monto}>
-          Registrar ${monto || 0}
+        <button
+          className="btn btn-primary btn-block"
+          onClick={guardar}
+          disabled={!selection || !monto || convirtiendo}
+        >
+          {convirtiendo ? 'Convirtiendo…' :
+           esLead ? `Inscribir y registrar $${monto || 0}` :
+           `Registrar $${monto || 0}`}
         </button>
       }
     >
-      <Field label="Alumna">
+      <Field label="Estudiante o lead">
         <select
-          value={alumnaId || ''}
-          onChange={e => setAlumnaId(Number(e.target.value))}
+          value={selection}
+          onChange={e => setSelection(e.target.value)}
           style={{
             width: '100%', background: 'var(--surface)',
             border: '1px solid var(--line-soft)', borderRadius: 12,
@@ -332,9 +383,20 @@ const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
           }}
         >
           <option value="">— Selecciona —</option>
-          {store.state.alumnas.map(a => (
-            <option key={a.id} value={a.id}>{a.nombre} · ${a.pagado}/${a.total}</option>
-          ))}
+          {store.state.alumnas.length > 0 && (
+            <optgroup label="Estudiantes inscritos">
+              {store.state.alumnas.map(a => (
+                <option key={a.id} value={`alumna:${a.id}`}>{a.nombre} · ${a.pagado}/${a.total}</option>
+              ))}
+            </optgroup>
+          )}
+          {store.state.leads.length > 0 && (
+            <optgroup label="Leads (al pagar se inscriben)">
+              {store.state.leads.map(l => (
+                <option key={l.id} value={`lead:${l.id}`}>{l.nombre} · {l.tel || l.instagram || 'sin contacto'}</option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </Field>
 
@@ -346,16 +408,27 @@ const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
         </div>
       )}
 
+      {lead && (
+        <div className="card flat" style={{ padding: 14, marginBottom: 14, background: 'var(--terracota-tint)', borderColor: 'transparent' }}>
+          <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 600, marginBottom: 4 }}>
+            Convirtiendo lead → estudiante
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink)' }}>
+            Al registrar este pago, <strong>{lead.nombre}</strong> queda inscrito como estudiante (formación completa) y el lead se elimina del embudo.
+          </div>
+        </div>
+      )}
+
       <Field label="Monto del pago">
         <NumberInput value={monto} onChange={setMonto} prefix="$" min={0} />
       </Field>
 
-      {alumna && (
+      {(alumna || lead) && quickButtons.length > 0 && (
         <Field label="Atajos">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {quickButtons.map(qb => (
               <button key={qb.t} type="button"
-                onClick={() => { setMonto(qb.v); setTipo(qb.t === 'pronto-pago' ? 'pronto-pago' : 'parcial'); }}
+                onClick={() => { setMonto(qb.v); setTipo(qb.t === 'pronto-pago' ? 'pronto-pago' : qb.t === 'reserva' ? 'reserva' : qb.t === 'completo' ? 'completo' : 'parcial'); }}
                 style={{
                   background: 'var(--surface)', border: '1px solid var(--line-soft)',
                   borderRadius: 10, padding: '10px 14px', fontFamily: 'inherit',
