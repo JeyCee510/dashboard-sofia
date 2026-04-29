@@ -235,10 +235,30 @@ serve(async (req) => {
     });
   }
 
-  // Construir messages: history previo + nuevo turno del usuario
+  // Construir messages: history previo + nuevo turno del usuario.
+  //
+  // IMPORTANTE: si el último mensaje del history es un assistant con tool_use,
+  // Anthropic exige que el siguiente user message contenga un tool_result block
+  // referenciando el tool_use_id, o devuelve 400.
   const messages = [...history];
   if (text) {
-    messages.push({ role: "user", content: text });
+    const last = messages[messages.length - 1];
+    let lastToolUseId: string | null = null;
+    if (last?.role === "assistant" && Array.isArray(last.content)) {
+      const tu = last.content.find((c: any) => c.type === "tool_use");
+      if (tu) lastToolUseId = tu.id;
+    }
+    if (lastToolUseId) {
+      // Wrap respuesta del usuario en tool_result + texto (para que Haiku lo lea claramente)
+      messages.push({
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: lastToolUseId, content: text },
+        ],
+      });
+    } else {
+      messages.push({ role: "user", content: text });
+    }
   }
 
   const anthropicReq = {
