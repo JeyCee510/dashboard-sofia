@@ -10,6 +10,7 @@ function fromDb(row) {
     nombre: row.nombre,
     iniciales: row.iniciales || (row.nombre || '').split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join(''),
     tel: row.tel || '',
+    instagram: row.instagram || '',
     pago: row.pago || 'pendiente',
     pagado: Number(row.pagado) || 0,
     total: Number(row.total) || 640,
@@ -26,6 +27,7 @@ function toDb(patch) {
   if ('nombre' in patch) out.nombre = patch.nombre;
   if ('iniciales' in patch) out.iniciales = patch.iniciales;
   if ('tel' in patch) out.tel = patch.tel;
+  if ('instagram' in patch) out.instagram = patch.instagram;
   if ('pago' in patch) out.pago = patch.pago;
   if ('pagado' in patch) out.pagado = patch.pagado;
   if ('total' in patch) out.total = patch.total;
@@ -86,6 +88,7 @@ export function useAlumnas() {
       nombre: data.nombre,
       iniciales,
       tel: data.tel || '',
+      instagram: data.instagram || '',
       pago: data.pago || 'pendiente',
       pagado: data.pagado || 0,
       total: data.total || 640,

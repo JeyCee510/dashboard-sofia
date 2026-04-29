@@ -8,6 +8,7 @@ function fromDb(row) {
     id: row.id,
     nombre: row.nombre,
     tel: row.tel || '',
+    instagram: row.instagram || '',
     fuente: row.fuente || 'otro',
     estado: row.estado || 'nuevo',
     mensaje: row.mensaje || '',
@@ -19,6 +20,7 @@ function toDb(patch) {
   const out = {};
   if ('nombre' in patch) out.nombre = patch.nombre;
   if ('tel' in patch) out.tel = patch.tel;
+  if ('instagram' in patch) out.instagram = patch.instagram;
   if ('fuente' in patch) out.fuente = patch.fuente;
   if ('estado' in patch) out.estado = patch.estado;
   if ('mensaje' in patch) out.mensaje = patch.mensaje;

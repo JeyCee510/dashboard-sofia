@@ -5,13 +5,33 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 // CRM / WhatsApp screen
 // ──────────────────────────────────────────
 
-const CRMScreen = () => {
+const CRMScreen = ({ plantillas = [], mensajes }) => {
   const [filter, setFilter] = React.useState('todos');
-  let msgs = MENSAJES_RECIENTES;
+  const [copiada, setCopiada] = React.useState(null);
+  const fuente = mensajes || MENSAJES_RECIENTES || [];
+  let msgs = fuente;
   if (filter === 'sinleer') msgs = msgs.filter(m => m.sinLeer);
   if (filter === 'leads') msgs = msgs.filter(m => m.esLead);
 
   const conversaciones = msgs;
+
+  const copiarPlantilla = async (p) => {
+    try {
+      await navigator.clipboard.writeText(p.cuerpo);
+      setCopiada(p.id);
+      setTimeout(() => setCopiada(null), 1800);
+    } catch (e) {
+      // Fallback para mobile sin permiso
+      const ta = document.createElement('textarea');
+      ta.value = p.cuerpo;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiada(p.id);
+      setTimeout(() => setCopiada(null), 1800);
+    }
+  };
 
   const sinLeer = MENSAJES_RECIENTES.filter(m => m.sinLeer).length;
 
@@ -26,20 +46,32 @@ const CRMScreen = () => {
       <div className="section-title">
         <h2>Respuestas rápidas</h2>
       </div>
-      <div style={{ padding: '0 22px', display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-        {[
-          { label: 'Datos del programa', icon: 'note' },
-          { label: 'Cómo reservar $200', icon: 'cash' },
-          { label: 'Ubicación Tumbaco', icon: 'location' },
-          { label: 'Cronograma', icon: 'calendar' },
-        ].map((t, i) => (
-          <button key={i} className="card flat" style={{
-            flexShrink: 0, padding: '10px 14px', display: 'flex', gap: 8,
-            alignItems: 'center', fontFamily: 'inherit', fontSize: 12,
-            fontWeight: 500, color: 'var(--ink)', cursor: 'pointer',
-          }}>
-            <Icon name={t.icon} size={14} stroke="var(--terracota)" />
-            {t.label}
+      <div style={{ padding: '0 22px 4px', fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>
+        Toca una plantilla para copiarla y pégala donde quieras
+      </div>
+      <div style={{ padding: '8px 22px', display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+        {plantillas.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--ink-mute)', padding: '10px 0' }}>
+            Aún no tienes plantillas. Edítalas en Ajustes.
+          </div>
+        ) : plantillas.map(p => (
+          <button
+            key={p.id}
+            onClick={() => copiarPlantilla(p)}
+            className="card flat"
+            style={{
+              flexShrink: 0, padding: '10px 14px', display: 'flex', gap: 8,
+              alignItems: 'center', fontFamily: 'inherit', fontSize: 12,
+              fontWeight: 500, color: 'var(--ink)', cursor: 'pointer',
+              background: copiada === p.id ? 'var(--oliva)' : 'var(--surface)',
+              borderColor: copiada === p.id ? 'transparent' : 'var(--line-soft)',
+              transition: 'background 0.18s',
+            }}
+          >
+            <Icon name={copiada === p.id ? 'check' : 'note'} size={14} stroke={copiada === p.id ? '#fff' : 'var(--terracota)'} />
+            <span style={{ color: copiada === p.id ? '#fff' : 'var(--ink)' }}>
+              {copiada === p.id ? 'Copiada ✓' : p.titulo}
+            </span>
           </button>
         ))}
       </div>

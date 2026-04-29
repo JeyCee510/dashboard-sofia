@@ -44,17 +44,22 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
           <h1 className="serif" style={{ fontSize: 28, fontWeight: 500, marginTop: 14, marginBottom: 4, lineHeight: 1.1 }}>
             {a.nombre}
           </h1>
-          <div style={{ fontSize: 12, color: 'var(--ink-mute)', display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center' }}>
-            <span>{a.tel || 'sin teléfono'}</span>
+          <div style={{ fontSize: 12, color: 'var(--ink-mute)', display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {a.tel && <span>{a.tel}</span>}
+            {a.tel && a.instagram && <span>·</span>}
+            {a.instagram && <span>@{a.instagram.replace(/^@/, '')}</span>}
+            {!a.tel && !a.instagram && <span>sin contacto</span>}
             {a.bonoSilla && <><span>·</span><span style={{ color: 'var(--gold)' }}>bono silla</span></>}
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 14 }}>
-            {a.tel && (
-              <a className="btn btn-primary btn-sm" href={wa} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                <Icon name="whatsapp" size={13} />
-                WhatsApp
-              </a>
-            )}
+          <div style={{ marginTop: 14 }}>
+            <ContactPanel
+              tel={a.tel}
+              instagram={a.instagram}
+              plantillas={store.state.ajustes.plantillasWA}
+              nombre={a.nombre}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
             <button className="btn btn-ghost btn-sm" onClick={onPagar}>
               <Icon name="cash" size={13} />
               Pagar

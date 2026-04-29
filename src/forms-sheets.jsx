@@ -8,14 +8,14 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   const editing = alumnaId && store.state.alumnas.find(a => a.id === alumnaId);
   const [form, setForm] = React.useState(() => editing || {
-    nombre: '', tel: '', notas: '', bonoSilla: false, pago: 'pendiente',
+    nombre: '', tel: '', instagram: '', notas: '', bonoSilla: false, pago: 'pendiente',
     pagado: 0, total: store.state.ajustes.precioRegular,
   });
 
   React.useEffect(() => {
     if (editing) setForm(editing);
     else setForm({
-      nombre: '', tel: '', notas: '', bonoSilla: false, pago: 'pendiente',
+      nombre: '', tel: '', instagram: '', notas: '', bonoSilla: false, pago: 'pendiente',
       pagado: 0, total: store.state.ajustes.precioRegular,
     });
   }, [alumnaId, open]);
@@ -60,6 +60,9 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
       <Field label="Teléfono / WhatsApp">
         <TextInput value={form.tel} onChange={v => set('tel', v)} placeholder="+593 99 234 5678" />
       </Field>
+      <Field label="Instagram (opcional)">
+        <TextInput value={form.instagram} onChange={v => set('instagram', v)} placeholder="@usuario" />
+      </Field>
       <Field label="Estado de pago">
         <SelectChips
           value={form.pago}
@@ -92,12 +95,12 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
 const LeadForm = ({ open, onClose, store, leadId }) => {
   const editing = leadId && store.state.leads.find(l => l.id === leadId);
   const [form, setForm] = React.useState(() => editing || {
-    nombre: '', tel: '', mensaje: '', fuente: 'instagram', estado: 'nuevo',
+    nombre: '', tel: '', instagram: '', mensaje: '', fuente: 'instagram', estado: 'nuevo',
   });
 
   React.useEffect(() => {
     if (editing) setForm(editing);
-    else setForm({ nombre: '', tel: '', mensaje: '', fuente: 'instagram', estado: 'nuevo' });
+    else setForm({ nombre: '', tel: '', instagram: '', mensaje: '', fuente: 'instagram', estado: 'nuevo' });
   }, [leadId, open]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -141,15 +144,28 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
       }
     >
       {editing && (
-        <button className="btn btn-secondary btn-block" style={{ marginBottom: 14 }} onClick={convertir}>
-          <Icon name="arrow" size={14} /> Convertir en estudiante
-        </button>
+        <>
+          <div style={{ marginBottom: 14 }}>
+            <ContactPanel
+              tel={form.tel}
+              instagram={form.instagram}
+              plantillas={store.state.ajustes.plantillasWA}
+              nombre={form.nombre}
+            />
+          </div>
+          <button className="btn btn-secondary btn-block" style={{ marginBottom: 14 }} onClick={convertir}>
+            <Icon name="arrow" size={14} /> Convertir en estudiante
+          </button>
+        </>
       )}
       <Field label="Nombre">
         <TextInput value={form.nombre} onChange={v => set('nombre', v)} placeholder="Ej. Mónica Salinas" />
       </Field>
       <Field label="Teléfono / WhatsApp">
         <TextInput value={form.tel} onChange={v => set('tel', v)} placeholder="+593 99 …" />
+      </Field>
+      <Field label="Instagram (opcional)">
+        <TextInput value={form.instagram} onChange={v => set('instagram', v)} placeholder="@usuario" />
       </Field>
       <Field label="¿Cómo llegó?">
         <SelectChips

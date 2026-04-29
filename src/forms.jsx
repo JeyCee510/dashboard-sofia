@@ -208,8 +208,155 @@ const SwitchToggle = ({ value, onChange, label, hint }) => (
 
 window.Sheet = Sheet;
 window.Field = Field;
+// ──────────────────────────────────────────
+// ContactPanel — botones WhatsApp + Instagram + Plantillas
+// ──────────────────────────────────────────
+
+// Limpia un teléfono a solo dígitos (ej "+593 99 234 5678" → "593992345678")
+function cleanPhone(tel) {
+  return (tel || '').replace(/[^\d]/g, '');
+}
+
+// Limpia un handle de IG: quita @, espacios, https://instagram.com/, etc.
+function cleanInstagram(h) {
+  if (!h) return '';
+  let s = h.trim();
+  s = s.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '');
+  s = s.replace(/^@/, '');
+  s = s.split(/[/?#]/)[0]; // por si pegan URL completa con path
+  return s;
+}
+
+function buildWaUrl(tel, mensaje) {
+  const phone = cleanPhone(tel);
+  if (!phone) return null;
+  const text = mensaje ? `?text=${encodeURIComponent(mensaje)}` : '';
+  return `https://wa.me/${phone}${text}`;
+}
+
+function buildIgUrl(handle) {
+  const h = cleanInstagram(handle);
+  if (!h) return null;
+  // ig.me/m/<handle> abre DM en la app si el handle es correcto; fallback al perfil
+  return `https://ig.me/m/${h}`;
+}
+
+const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
+  const [showPlantillas, setShowPlantillas] = React.useState(false);
+  const waUrl = buildWaUrl(tel);
+  const igUrl = buildIgUrl(instagram);
+  const firstName = (nombre || '').split(' ')[0] || '';
+
+  // Personaliza la plantilla con el primer nombre si aplica
+  const personalizar = (cuerpo) => {
+    if (!firstName) return cuerpo;
+    // Si la plantilla empieza con "Hola!" o "Hola," → reemplazar por "Hola <nombre>!"
+    return cuerpo.replace(/^Hola!?,?/i, `Hola ${firstName}!`);
+  };
+
+  if (!tel && !instagram) {
+    return (
+      <div style={{
+        padding: '14px 16px', borderRadius: 12,
+        background: 'var(--bg-warm)', border: '1px dashed var(--line-soft)',
+        fontSize: 12, color: 'var(--ink-mute)', textAlign: 'center',
+      }}>
+        Sin contacto. Agrega teléfono o Instagram para escribirle.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {waUrl && (
+          <a
+            href={waUrl} target="_blank" rel="noopener noreferrer"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '12px 14px', borderRadius: 12,
+              background: '#25D366', color: '#fff',
+              fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+              textDecoration: 'none',
+            }}
+          >
+            <Icon name="whatsapp" size={16} stroke="#fff" />
+            WhatsApp
+          </a>
+        )}
+        {igUrl && (
+          <a
+            href={igUrl} target="_blank" rel="noopener noreferrer"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '12px 14px', borderRadius: 12,
+              background: 'linear-gradient(45deg, #F09433, #E6683C, #DC2743, #CC2366, #BC1888)',
+              color: '#fff',
+              fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+              textDecoration: 'none',
+            }}
+          >
+            <Icon name="instagram" size={16} stroke="#fff" />
+            Instagram
+          </a>
+        )}
+      </div>
+
+      {waUrl && plantillas && plantillas.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowPlantillas(s => !s)}
+            style={{
+              padding: '10px 14px', borderRadius: 12,
+              background: 'var(--surface)', border: '1px solid var(--line-soft)',
+              fontFamily: 'inherit', fontSize: 13, color: 'var(--ink)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icon name="note" size={14} stroke="var(--terracota)" />
+              Enviar plantilla por WhatsApp
+            </span>
+            <Icon name="chevronD" size={14} stroke="var(--ink-mute)" />
+          </button>
+          {showPlantillas && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 6 }}>
+              {plantillas.map(p => {
+                const url = buildWaUrl(tel, personalizar(p.cuerpo));
+                return (
+                  <a
+                    key={p.id} href={url} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      padding: '10px 14px', borderRadius: 10,
+                      background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
+                      fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
+                      textDecoration: 'none', display: 'block',
+                    }}
+                  >
+                    <div style={{ fontWeight: 500, fontSize: 12, color: 'var(--ink)' }}>{p.titulo}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 2, lineHeight: 1.35,
+                      overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box',
+                      WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                      {personalizar(p.cuerpo)}
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 window.TextInput = TextInput;
 window.TextArea = TextArea;
 window.NumberInput = NumberInput;
 window.SelectChips = SelectChips;
 window.SwitchToggle = SwitchToggle;
+window.ContactPanel = ContactPanel;
+window.cleanPhone = cleanPhone;
+window.cleanInstagram = cleanInstagram;
+window.buildWaUrl = buildWaUrl;

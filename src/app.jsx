@@ -96,7 +96,7 @@ const App = () => {
   else if (tab === 'reservas') screen = <ReservasScreen tweaks={screenTweaks} onNavigate={navigate} onOpenAlumna={openAlumna} />;
   else if (tab === 'pagos') screen = <PagosScreen tweaks={screenTweaks} onOpenAlumna={openAlumna} onNewPago={() => setSheet('new-pago')} />;
   else if (tab === 'marketing') screen = <MarketingScreen onOpenLead={(id) => setSheet(id ? { type: 'edit-lead', id } : 'new-lead')} />;
-  else if (tab === 'crm') screen = <CRMScreen />;
+  else if (tab === 'crm') screen = <CRMScreen plantillas={store.state.ajustes.plantillasWA} mensajes={store.state.mensajes} />;
 
   const tabs = [
     { id: 'home', label: 'Hoy', icon: 'home' },
