@@ -22,7 +22,7 @@ const estadoColor = {
   'frío': { bg: 'var(--bg-warm)', fg: 'var(--ink-mute)', label: 'Frío' },
 };
 
-const MarketingScreen = ({ onOpenLead }) => {
+const MarketingScreen = ({ onOpenLead, onNavigate }) => {
   const [filter, setFilter] = React.useState('todos');
   let leads = MOCK_LEADS;
   if (filter !== 'todos') leads = leads.filter(l => l.estado === filter);
@@ -36,8 +36,30 @@ const MarketingScreen = ({ onOpenLead }) => {
   return (
     <div>
       <div className="page-header">
-        <div className="eyebrow">Embudo</div>
-        <h1>Leads</h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div className="eyebrow">Embudo</div>
+            <h1>Leads</h1>
+          </div>
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('papelera-leads')}
+              style={{
+                marginTop: 8,
+                padding: '8px 12px',
+                borderRadius: 999,
+                background: 'var(--bg-warm)',
+                border: '1px solid var(--line-soft)',
+                fontFamily: 'inherit', fontSize: 12, color: 'var(--ink-soft)',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <Icon name="x" size={12} stroke="var(--ink-mute)" />
+              Borrados
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Embudo visual */}

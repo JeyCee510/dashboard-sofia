@@ -25,6 +25,7 @@ const App = () => {
   const AsistenciaV2 = window.AsistenciaV2;
   const AjustesScreen = window.AjustesScreen;
   const DifusionScreen = window.DifusionScreen;
+  const PapeleraLeadsScreen = window.PapeleraLeadsScreen;
   const AlumnaForm = window.AlumnaForm;
   const LeadForm = window.LeadForm;
   const PagoForm = window.PagoForm;
@@ -87,6 +88,7 @@ const App = () => {
     if (target === 'asistencia') setOverlay('asistencia');
     else if (target === 'ajustes') setOverlay('ajustes');
     else if (target === 'difusion') setOverlay('difusion');
+    else if (target === 'papelera-leads') setOverlay('papelera-leads');
     else { setTab(target); setOverlay(null); }
   };
 
@@ -123,7 +125,7 @@ const App = () => {
   if (tab === 'home') screen = <HomeScreen tweaks={screenTweaks} onNavigate={navigate} asistenciaHoy={asistenciaHoy} alumnas={store.state.alumnas} leads={store.state.leads} mensajes={store.state.mensajes} />;
   else if (tab === 'reservas') screen = <ReservasScreen tweaks={screenTweaks} onNavigate={navigate} onOpenAlumna={openAlumna} />;
   else if (tab === 'pagos') screen = <PagosScreen tweaks={screenTweaks} onOpenAlumna={openAlumna} onNewPago={() => setSheet('new-pago')} />;
-  else if (tab === 'marketing') screen = <MarketingScreen onOpenLead={(id) => setSheet(id ? { type: 'edit-lead', id } : 'new-lead')} />;
+  else if (tab === 'marketing') screen = <MarketingScreen onOpenLead={(id) => setSheet(id ? { type: 'edit-lead', id } : 'new-lead')} onNavigate={navigate} />;
   // Tab CRM eliminado: sin integración WA/IG no aporta. Plantillas viven en Ajustes y en el flujo de difusión.
 
   const tabs = [
@@ -177,6 +179,9 @@ const App = () => {
       )}
       {overlay === 'difusion' && (
         <DifusionScreen store={store} onClose={() => setOverlay(null)} />
+      )}
+      {overlay === 'papelera-leads' && (
+        <PapeleraLeadsScreen onClose={() => setOverlay(null)} />
       )}
       {overlay && overlay.type === 'alumna' && (
         <FichaAlumna
