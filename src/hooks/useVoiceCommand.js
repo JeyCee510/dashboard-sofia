@@ -61,16 +61,35 @@ export function useVoiceCommand() {
     setState('processing');
     setError(null);
     try {
+      // Construir el user message correctamente.
+      // Si el assistant previo tenía un tool_use, este user turn DEBE wrappear
+      // con tool_result para que Anthropic acepte la conversación.
+      let userMessage;
+      const last = currentHistory[currentHistory.length - 1];
+      if (last?.role === 'assistant' && Array.isArray(last.content)) {
+        const tu = last.content.find(c => c.type === 'tool_use');
+        if (tu) {
+          userMessage = {
+            role: 'user',
+            content: [{ type: 'tool_result', tool_use_id: tu.id, content: text }],
+          };
+        }
+      }
+      if (!userMessage) {
+        userMessage = { role: 'user', content: text };
+      }
+
+      const messagesToSend = [...currentHistory, userMessage];
+
       const { data, error: fnError } = await supabase.functions.invoke('voice-command', {
-        body: { text, history: currentHistory },
+        body: { messages: messagesToSend },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
 
-      // Acumular history para posible siguiente turno
+      // Persistir el history completo con el user formateado correctamente
       const newHistory = [
-        ...currentHistory,
-        { role: 'user', content: text },
+        ...messagesToSend,
         { role: 'assistant', content: data.assistant_turn },
       ];
       setHistory(newHistory);

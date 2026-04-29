@@ -181,9 +181,12 @@ REGLA CLAVE — contacto obligatorio:
 - Si Sofía contesta "tengo whatsapp" o similar, vuelve a preguntar el número con preguntar_clarificacion (sin opciones, respuesta abierta).
 - Si responde "no tengo ninguno", crea el registro igual pero adviérteselo en el siguiente paso.
 
-Conversación multi-turno:
-- Recibirás el historial completo de la conversación. Úsalo para mantener contexto.
-- Cuando Sofía responde una clarificación, junta la info con el comando original y ejecuta la acción definitiva.
+Conversación multi-turno (CRÍTICO):
+- Recibirás el HISTORIAL COMPLETO de la conversación con todos los turnos previos.
+- NUNCA olvides información que ya recolectaste en turnos anteriores.
+- Si en turno 1 Sofía dijo "inscribe a Mónica", en turno 5 sigues construyendo el registro de Mónica. NO vuelvas a preguntar el nombre.
+- Cuando ya tengas todos los datos necesarios (nombre + tel o instagram), EJECUTA la acción definitiva (crear_lead/crear_estudiante/etc.). No sigas preguntando.
+- Cuando preguntes por algo, sé EXPLÍCITA en el contexto: "Vamos a crear el lead de Mónica. ¿Cuál es su número de WhatsApp?" — así si Sofía relee no se pierde.
 
 Reglas generales:
 - Convierte montos: "doscientos" → 200, "cuatrocientos ochenta y cuatro" → 484.
@@ -217,11 +220,17 @@ serve(async (req) => {
     });
   }
 
-  const text = (payload?.text || "").trim();
-  const history = Array.isArray(payload?.history) ? payload.history : [];
+  // Recibimos messages completos del frontend (que ya construye tool_result blocks
+  // cuando aplica). Backwards compat: si solo viene `text`, lo wrappeamos como user simple.
+  let messages: any[] = [];
+  if (Array.isArray(payload?.messages)) {
+    messages = payload.messages;
+  } else if (payload?.text) {
+    messages = [{ role: "user", content: String(payload.text) }];
+  }
 
-  if (!text && history.length === 0) {
-    return new Response(JSON.stringify({ error: "Missing text or history" }), {
+  if (messages.length === 0) {
+    return new Response(JSON.stringify({ error: "Missing messages" }), {
       status: 400,
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
@@ -235,31 +244,11 @@ serve(async (req) => {
     });
   }
 
-  // Construir messages: history previo + nuevo turno del usuario.
-  //
-  // IMPORTANTE: si el último mensaje del history es un assistant con tool_use,
-  // Anthropic exige que el siguiente user message contenga un tool_result block
-  // referenciando el tool_use_id, o devuelve 400.
-  const messages = [...history];
-  if (text) {
-    const last = messages[messages.length - 1];
-    let lastToolUseId: string | null = null;
-    if (last?.role === "assistant" && Array.isArray(last.content)) {
-      const tu = last.content.find((c: any) => c.type === "tool_use");
-      if (tu) lastToolUseId = tu.id;
-    }
-    if (lastToolUseId) {
-      // Wrap respuesta del usuario en tool_result + texto (para que Haiku lo lea claramente)
-      messages.push({
-        role: "user",
-        content: [
-          { type: "tool_result", tool_use_id: lastToolUseId, content: text },
-        ],
-      });
-    } else {
-      messages.push({ role: "user", content: text });
-    }
-  }
+  // Para el campo transcript en la respuesta, extrae el último input del usuario
+  const lastUser = [...messages].reverse().find(m => m.role === "user");
+  const text = typeof lastUser?.content === "string"
+    ? lastUser.content
+    : (Array.isArray(lastUser?.content) ? lastUser.content.find((c: any) => c.type === "tool_result")?.content || "" : "");
 
   const anthropicReq = {
     model: "claude-haiku-4-5-20251001",
