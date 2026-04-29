@@ -64,6 +64,10 @@ export function useLeads() {
     const row = { estado: 'nuevo', tiempo: 'ahora', mensaje: '', ...data };
     const { data: inserted, error } = await supabase.from('leads').insert(row).select().single();
     if (error) { console.error('[leads] add', error); throw error; }
+    // Optimistic local update: no esperamos al realtime
+    if (inserted) {
+      setLeads(prev => prev.some(l => l.id === inserted.id) ? prev : [fromDb(inserted), ...prev]);
+    }
     return inserted.id;
   }, []);
 

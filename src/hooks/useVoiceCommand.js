@@ -4,15 +4,17 @@ import { supabase } from '../lib/supabase.js';
 const { useState, useRef, useCallback } = React;
 
 // ─────────────────────────────────────────────────────────────────────
-// useVoiceCommand — captura voz vía Web Speech API y la envía a la
-// Edge Function `voice-command` que retorna {tool_name, parameters}.
+// useVoiceCommand — captura voz vía Web Speech API + envía a la
+// Edge Function `voice-command`. Soporta conversación multi-turno:
+// si Haiku pregunta clarificación, el usuario responde (voz, texto o
+// chip tocable) y se envía con el history para que mantenga contexto.
 //
 // Estados:
 //   idle        — nada activo
-//   listening   — micrófono escuchando, transcribiendo
-//   processing  — texto enviado al LLM, esperando respuesta
+//   listening   — micrófono escuchando
+//   processing  — esperando respuesta del LLM
 //   result      — recibido tool_call, mostrar preview
-//   error       — algo falló (sin permisos, sin internet, etc.)
+//   error       — algo falló
 // ─────────────────────────────────────────────────────────────────────
 
 const SPEECH_LANG = 'es-EC';
@@ -34,6 +36,7 @@ export function useVoiceCommand() {
   const [interim, setInterim] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [history, setHistory] = useState([]); // multi-turn conversation
   const recogRef = useRef(null);
 
   const stop = useCallback(() => {
@@ -51,17 +54,26 @@ export function useVoiceCommand() {
     setInterim('');
     setResult(null);
     setError(null);
+    setHistory([]);
   }, [stop]);
 
-  const sendToLLM = useCallback(async (text) => {
+  const sendToLLM = useCallback(async (text, currentHistory) => {
     setState('processing');
     setError(null);
     try {
       const { data, error: fnError } = await supabase.functions.invoke('voice-command', {
-        body: { text },
+        body: { text, history: currentHistory },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
+
+      // Acumular history para posible siguiente turno
+      const newHistory = [
+        ...currentHistory,
+        { role: 'user', content: text },
+        { role: 'assistant', content: data.assistant_turn },
+      ];
+      setHistory(newHistory);
       setResult(data);
       setState('result');
     } catch (e) {
@@ -71,12 +83,16 @@ export function useVoiceCommand() {
     }
   }, []);
 
-  const start = useCallback(() => {
+  const start = useCallback((options = {}) => {
     const recog = getRecognition();
     if (!recog) {
       setError('Tu navegador no soporta reconocimiento de voz. Prueba Chrome o Safari.');
       setState('error');
       return;
+    }
+    // Si es turno nuevo (no continuación), limpiar history
+    if (!options.continueConversation) {
+      setHistory([]);
     }
     recogRef.current = recog;
     setState('listening');
@@ -102,7 +118,7 @@ export function useVoiceCommand() {
       const msg = {
         'no-speech': 'No te escuché. Intenta de nuevo.',
         'audio-capture': 'No detecto micrófono. Revisa permisos.',
-        'not-allowed': 'Permiso de micrófono denegado. Activa en ajustes del navegador.',
+        'not-allowed': 'Permiso de micrófono denegado.',
         'network': 'Sin conexión.',
       }[event.error] || `Error: ${event.error}`;
       setError(msg);
@@ -114,7 +130,6 @@ export function useVoiceCommand() {
       const final = (finalText || interim).trim();
       recogRef.current = null;
       if (!final) {
-        // Onend sin texto = usuario canceló o no habló
         if (state === 'listening') {
           setError('No escuché nada. Vuelve a tocar el micrófono.');
           setState('error');
@@ -122,7 +137,8 @@ export function useVoiceCommand() {
         return;
       }
       setTranscript(final);
-      sendToLLM(final);
+      // Usar el history actual al momento del envío
+      sendToLLM(final, options.continueConversation ? history : []);
     };
 
     try {
@@ -131,14 +147,14 @@ export function useVoiceCommand() {
       setError('No pude activar el micrófono. ' + e.message);
       setState('error');
     }
-  }, [sendToLLM, state]);
+  }, [sendToLLM, state, history]);
 
-  // Permite enviar texto manualmente (modo "escribir" si no quiere hablar)
-  const submitText = useCallback((text) => {
+  // Enviar texto (desde chip tocable, fallback de teclado, o respuesta abierta)
+  const submitText = useCallback((text, continueConversation = false) => {
     if (!text || !text.trim()) return;
     setTranscript(text.trim());
-    sendToLLM(text.trim());
-  }, [sendToLLM]);
+    sendToLLM(text.trim(), continueConversation ? history : []);
+  }, [sendToLLM, history]);
 
   return {
     state,
@@ -146,6 +162,7 @@ export function useVoiceCommand() {
     interim,
     result,
     error,
+    history,
     start,
     stop,
     reset,

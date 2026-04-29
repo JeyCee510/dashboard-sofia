@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Edge Function: voice-command
-// Recibe { text } (transcripción de Web Speech API) y devuelve la acción
-// más probable usando Claude Haiku 4.5 con tool use.
-// La key Anthropic vive en ANTHROPIC_API_KEY (configurada como secret).
+// Recibe { text, history? } y devuelve la acción del LLM (Claude Haiku 4.5)
+// con tool use. Soporta conversación multi-turno: el frontend envía el
+// history previo cuando el usuario responde a una clarificación.
 // ─────────────────────────────────────────────────────────────────────────
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -13,35 +13,35 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// ─── Definición de las 11 herramientas (acciones del dashboard) ───
+// ─── Tools (acciones del dashboard) ───
 const TOOLS = [
   {
     name: "crear_lead",
-    description: "Registrar un nuevo lead (persona interesada que aún no se inscribe).",
+    description: "Registrar un nuevo lead. REQUIERE al menos uno de: tel o instagram. Si Sofía no los menciona, usa preguntar_clarificacion con opciones [WhatsApp, Instagram, Ambos] antes de crear.",
     input_schema: {
       type: "object",
       properties: {
-        nombre: { type: "string", description: "Nombre completo del lead" },
-        tel: { type: "string", description: "Teléfono con prefijo +593 si es Ecuador. Opcional." },
-        instagram: { type: "string", description: "Handle sin @ si Sofía lo menciona. Opcional." },
-        fuente: { type: "string", enum: ["instagram", "whatsapp", "referido", "otro"], description: "Cómo llegó" },
+        nombre: { type: "string" },
+        tel: { type: "string", description: "Con +593 si Ecuador" },
+        instagram: { type: "string", description: "Handle sin @" },
+        fuente: { type: "string", enum: ["instagram", "whatsapp", "referido", "otro"] },
         estado: { type: "string", enum: ["nuevo", "interesado", "reservado", "frío"], default: "nuevo" },
-        mensaje: { type: "string", description: "Lo que dijo el lead, si Sofía lo cuenta. Opcional." },
+        mensaje: { type: "string" },
       },
       required: ["nombre"],
     },
   },
   {
     name: "crear_estudiante",
-    description: "Inscribir un nuevo estudiante (persona que ya confirmó participación en la formación).",
+    description: "Inscribir nuevo estudiante. REQUIERE al menos uno de: tel o instagram. Si Sofía no los menciona, usa preguntar_clarificacion antes.",
     input_schema: {
       type: "object",
       properties: {
         nombre: { type: "string" },
-        tel: { type: "string", description: "Con +593 si es Ecuador. Opcional." },
-        instagram: { type: "string", description: "Handle. Opcional." },
-        bonoSilla: { type: "boolean", description: "Si Sofía dice que recibe bono silla", default: false },
-        notas: { type: "string", description: "Notas opcionales" },
+        tel: { type: "string" },
+        instagram: { type: "string" },
+        bonoSilla: { type: "boolean", default: false },
+        notas: { type: "string" },
       },
       required: ["nombre"],
     },
@@ -52,8 +52,8 @@ const TOOLS = [
     input_schema: {
       type: "object",
       properties: {
-        nombre_alumna: { type: "string", description: "Nombre o parte del nombre de la alumna que pagó" },
-        monto: { type: "number", description: "Monto en USD. Convertir 'doscientos' → 200, 'cuatrocientos ochenta y cuatro' → 484" },
+        nombre_alumna: { type: "string" },
+        monto: { type: "number" },
         tipo: { type: "string", enum: ["reserva", "parcial", "pronto-pago", "saldo"], default: "parcial" },
       },
       required: ["nombre_alumna", "monto"],
@@ -61,7 +61,7 @@ const TOOLS = [
   },
   {
     name: "cambiar_estado_lead",
-    description: "Mover un lead a otro estado en el embudo.",
+    description: "Mover un lead a otro estado del embudo.",
     input_schema: {
       type: "object",
       properties: {
@@ -76,20 +76,18 @@ const TOOLS = [
     description: "Convertir un lead existente en estudiante inscrito.",
     input_schema: {
       type: "object",
-      properties: {
-        nombre_lead: { type: "string" },
-      },
+      properties: { nombre_lead: { type: "string" } },
       required: ["nombre_lead"],
     },
   },
   {
     name: "marcar_asistencia",
-    description: "Marcar a una alumna como presente o ausente en un día específico.",
+    description: "Marcar a una alumna como presente o ausente en un día.",
     input_schema: {
       type: "object",
       properties: {
         nombre_alumna: { type: "string" },
-        dia: { type: "string", description: "Puede ser 'hoy', 'día 1', 'día 2'... 'día 6', o una fecha como '6 jun'" },
+        dia: { type: "string", description: "'hoy', 'día 1'…'día 6', o '6 jun'" },
         presente: { type: "boolean", default: true },
       },
       required: ["nombre_alumna"],
@@ -97,7 +95,7 @@ const TOOLS = [
   },
   {
     name: "eliminar_registro",
-    description: "Borrar un lead o un estudiante. SIEMPRE requiere confirmación visual del usuario antes de ejecutar.",
+    description: "Borrar un lead o un estudiante. Requiere confirmación visual del usuario antes de ejecutar.",
     input_schema: {
       type: "object",
       properties: {
@@ -109,12 +107,10 @@ const TOOLS = [
   },
   {
     name: "generar_preinscripcion",
-    description: "Generar y enviar el link de preinscripción a un lead por WhatsApp.",
+    description: "Abrir la ficha del lead para generar y enviar el link de preinscripción por WhatsApp.",
     input_schema: {
       type: "object",
-      properties: {
-        nombre_lead: { type: "string" },
-      },
+      properties: { nombre_lead: { type: "string" } },
       required: ["nombre_lead"],
     },
   },
@@ -125,14 +121,14 @@ const TOOLS = [
       type: "object",
       properties: {
         nombre: { type: "string" },
-        tipo: { type: "string", enum: ["estudiante", "lead"], description: "Si Sofía no especifica, intentar primero estudiante" },
+        tipo: { type: "string", enum: ["estudiante", "lead"] },
       },
       required: ["nombre"],
     },
   },
   {
     name: "consultar",
-    description: "Responder preguntas sobre el estado actual: cupos, pagos pendientes, asistencia, leads nuevos.",
+    description: "Responder preguntas sobre el estado actual del dashboard.",
     input_schema: {
       type: "object",
       properties: {
@@ -150,11 +146,20 @@ const TOOLS = [
   },
   {
     name: "preguntar_clarificacion",
-    description: "Usar cuando no estás segura del comando o falta información clave. Pide a Sofía que clarifique.",
+    description: "Pedir información que falta. Usa esta tool SIEMPRE que falte un dato crítico (especialmente tel/instagram al crear lead/estudiante). Si la respuesta tiene opciones predefinidas, ponlas en `opciones` (chips tocables). Si es respuesta abierta (ej. nombre, número), deja `opciones` vacío.",
     input_schema: {
       type: "object",
       properties: {
-        pregunta: { type: "string", description: "La pregunta de clarificación, en español natural" },
+        pregunta: { type: "string", description: "Pregunta clara y corta en español" },
+        opciones: {
+          type: "array",
+          items: { type: "string" },
+          description: "2-5 opciones cortas tocables. Vacío si la respuesta es abierta.",
+        },
+        contexto: {
+          type: "string",
+          description: "Una frase con lo que ya sabemos para darle contexto al usuario. Ej: 'Vamos a registrar a Mónica como lead.'",
+        },
       },
       required: ["pregunta"],
     },
@@ -165,21 +170,29 @@ const SYSTEM_PROMPT = `Eres un asistente de voz que opera el dashboard de Sofía
 
 Sofía te dicta comandos en español para gestionar leads, estudiantes, pagos y asistencia de su formación de 50 horas.
 
-Tu ÚNICA respuesta debe ser una llamada a una de las tools disponibles. Nunca respondas en texto plano.
+Tu ÚNICA respuesta debe ser una llamada a tool. Nunca respondas en texto plano.
 
-Reglas:
-- Convierte montos hablados a números: "doscientos" → 200, "cuatrocientos ochenta y cuatro" → 484, "640" → 640.
-- Para teléfonos ecuatorianos sin prefijo, agrega "+593 ".
-- Para nombres, usa lo que Sofía haya dicho aunque suene incompleto (ej "Mari Fer" → "Mari Fer", el frontend hará match aproximado).
-- Si el comando es ambiguo o falta info crítica (ej "registra un pago" sin nombre o monto), usa preguntar_clarificacion.
-- Si Sofía dice "Insta" interpreta como "instagram", "Wasap"/"Whatsapp" como "whatsapp".
-- Si dice "anota a X que me escribió por...", típicamente es crear_lead.
-- Si dice "inscribe a X" o "registra a X como estudiante", es crear_estudiante.
-- "X pagó Y" → registrar_pago.
-- "borra a X" → eliminar_registro (siempre con tipo).
-- "manda preinscripción" / "envíale el formulario" → generar_preinscripcion.
-- "ábreme la ficha de" / "muéstrame a" → abrir_ficha.
-- "cuántos cupos quedan", "quién no ha pagado", etc → consultar.
+REGLA CLAVE — contacto obligatorio:
+- Al crear un lead o estudiante, SIEMPRE necesitas tel o instagram (uno de los dos mínimo).
+- Si Sofía no los menciona, NO crees el registro. Llama preguntar_clarificacion con:
+  pregunta: "¿Tienes su WhatsApp o Instagram?"
+  opciones: ["Tengo WhatsApp", "Tengo Instagram", "Tengo ambos", "No tengo ninguno"]
+  contexto: "Vamos a crear el lead de [nombre]."
+- Si Sofía contesta "tengo whatsapp" o similar, vuelve a preguntar el número con preguntar_clarificacion (sin opciones, respuesta abierta).
+- Si responde "no tengo ninguno", crea el registro igual pero adviérteselo en el siguiente paso.
+
+Conversación multi-turno:
+- Recibirás el historial completo de la conversación. Úsalo para mantener contexto.
+- Cuando Sofía responde una clarificación, junta la info con el comando original y ejecuta la acción definitiva.
+
+Reglas generales:
+- Convierte montos: "doscientos" → 200, "cuatrocientos ochenta y cuatro" → 484.
+- Teléfonos ecuatorianos sin prefijo → agrega "+593 ".
+- "Insta" / "Instagram" → fuente "instagram". "Wasap" → "whatsapp".
+- Preguntas como "cuántos cupos quedan" → consultar.
+- "Borra/elimina X" → eliminar_registro (siempre con tipo).
+- Nombres parciales como "Mari Fer" → pásalos tal cual, el frontend hace match aproximado.
+- Si el comando es totalmente ambiguo, preguntar_clarificacion con opciones de las acciones más probables.
 
 Hoy es ${new Date().toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}.`;
 
@@ -205,8 +218,10 @@ serve(async (req) => {
   }
 
   const text = (payload?.text || "").trim();
-  if (!text) {
-    return new Response(JSON.stringify({ error: "Missing text" }), {
+  const history = Array.isArray(payload?.history) ? payload.history : [];
+
+  if (!text && history.length === 0) {
+    return new Response(JSON.stringify({ error: "Missing text or history" }), {
       status: 400,
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
@@ -220,13 +235,19 @@ serve(async (req) => {
     });
   }
 
+  // Construir messages: history previo + nuevo turno del usuario
+  const messages = [...history];
+  if (text) {
+    messages.push({ role: "user", content: text });
+  }
+
   const anthropicReq = {
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 512,
+    max_tokens: 1024,
     system: SYSTEM_PROMPT,
     tools: TOOLS,
     tool_choice: { type: "any" },
-    messages: [{ role: "user", content: text }],
+    messages,
   };
 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -254,17 +275,23 @@ serve(async (req) => {
   if (!toolUse) {
     return new Response(JSON.stringify({
       tool_name: "preguntar_clarificacion",
-      parameters: { pregunta: "No entendí, ¿puedes repetirlo?" },
+      parameters: { pregunta: "No te entendí, ¿puedes repetirlo?", opciones: [] },
       transcript: text,
+      assistant_turn: data.content,
     }), {
       headers: { ...corsHeaders, "content-type": "application/json" },
     });
   }
 
+  // El assistant_turn permite al frontend acumular history para multi-turno.
+  // En la siguiente request, el frontend mandará history con role:"user" + role:"assistant"
+  // (este turn) + role:"user" (nueva respuesta de Sofía).
   return new Response(JSON.stringify({
     tool_name: toolUse.name,
     parameters: toolUse.input,
     transcript: text,
+    tool_use_id: toolUse.id,
+    assistant_turn: data.content, // todo el contenido del turno (incluye el tool_use)
     usage: data.usage,
   }), {
     headers: { ...corsHeaders, "content-type": "application/json" },

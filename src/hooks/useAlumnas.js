@@ -103,6 +103,10 @@ export function useAlumnas() {
       .select()
       .single();
     if (error) { console.error('[alumnas] add', error); throw error; }
+    // Optimistic local update: no esperamos al realtime
+    if (inserted) {
+      setAlumnas(prev => prev.some(a => a.id === inserted.id) ? prev : [...prev, fromDb(inserted)]);
+    }
     return inserted.id;
   }, []);
 
@@ -136,6 +140,7 @@ export function useAlumnas() {
     await supabase.from('pagos').insert({ alumna_id: alumnaId, monto, tipo });
     // 2. Actualizar acumulado en `alumnas`
     await supabase.from('alumnas').update({ pagado: nuevoPagado, pago: nuevoEstado }).eq('id', alumnaId);
+    // El state local ya se actualizó arriba (optimistic). Realtime confirmará la consistencia.
   }, [alumnas]);
 
   return { alumnas, loading, error, addAlumna, updateAlumna, deleteAlumna, registrarPago };

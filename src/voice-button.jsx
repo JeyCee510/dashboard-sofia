@@ -143,8 +143,17 @@ const VoiceButton = ({ onExecute, executingResult }) => {
             </div>
           )}
 
-          {v.state === 'result' && v.result && (
-            <ResultPreview result={v.result} onConfirm={handleConfirm} onCancel={v.reset} onRetry={v.start} />
+          {v.state === 'result' && v.result && v.result.tool_name === 'preguntar_clarificacion' && (
+            <ClarificationPrompt
+              result={v.result}
+              onTextResponse={(text) => v.submitText(text, true)}
+              onVoiceResponse={() => v.start({ continueConversation: true })}
+              onCancel={v.reset}
+            />
+          )}
+
+          {v.state === 'result' && v.result && v.result.tool_name !== 'preguntar_clarificacion' && (
+            <ResultPreview result={v.result} onConfirm={handleConfirm} onCancel={v.reset} onRetry={() => v.start()} />
           )}
 
           {v.state === 'error' && (
@@ -201,6 +210,73 @@ const ACTION_LABELS = {
   abrir_ficha: { titulo: 'Abrir ficha', icon: 'user', color: 'var(--ink-soft)' },
   consultar: { titulo: 'Consultar', icon: 'search', color: 'var(--ink-soft)' },
   preguntar_clarificacion: { titulo: 'Necesito que repitas', icon: 'chat', color: 'var(--gold)' },
+};
+
+const ClarificationPrompt = ({ result, onTextResponse, onVoiceResponse, onCancel }) => {
+  const [textInput, setTextInput] = React.useState('');
+  const params = result.parameters || {};
+  const opciones = Array.isArray(params.opciones) ? params.opciones : [];
+  const tieneOpciones = opciones.length > 0;
+
+  return (
+    <div>
+      <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: 600 }}>
+        Necesito que me digas
+      </div>
+      {params.contexto && (
+        <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginTop: 4, fontStyle: 'italic' }}>
+          {params.contexto}
+        </div>
+      )}
+      <div className="serif" style={{ fontSize: 22, marginTop: 8, marginBottom: 14, color: 'var(--ink)', lineHeight: 1.25, fontWeight: 500 }}>
+        {params.pregunta || '¿…?'}
+      </div>
+
+      {tieneOpciones && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+          {opciones.map((opt, i) => (
+            <button
+              key={i}
+              onClick={() => onTextResponse(opt)}
+              style={{
+                padding: '12px 14px', borderRadius: 12,
+                background: 'var(--surface)', border: '1px solid var(--line-soft)',
+                fontFamily: 'inherit', fontSize: 14, color: 'var(--ink)',
+                textAlign: 'left', cursor: 'pointer',
+              }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!tieneOpciones && (
+        <div style={{ marginBottom: 10 }}>
+          <textarea
+            value={textInput}
+            onChange={e => setTextInput(e.target.value)}
+            rows={2}
+            placeholder="Escribe la respuesta o toca 🎤 para hablar"
+            style={{
+              width: '100%', padding: '10px 12px', borderRadius: 10,
+              border: '1px solid var(--line-soft)', fontFamily: 'inherit',
+              fontSize: 13, color: 'var(--ink)', resize: 'vertical',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <button onClick={onCancel} style={btnGhost}>Cancelar</button>
+        <button onClick={onVoiceResponse} style={btnGhost}>🎤 Hablar</button>
+        {!tieneOpciones && textInput.trim() && (
+          <button onClick={() => onTextResponse(textInput)} style={btnPrimary}>Enviar</button>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const ResultPreview = ({ result, onConfirm, onCancel, onRetry }) => {
