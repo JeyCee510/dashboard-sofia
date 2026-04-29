@@ -53,6 +53,7 @@ const App = () => {
     ownerName: store.state.ajustes.ownerName,
     studioName: store.state.ajustes.studioName,
     lugar: store.state.ajustes.lugar,
+    bonoSillaCupos: store.state.ajustes.bonoSillaCupos,
   };
 
   const navigate = (target) => {

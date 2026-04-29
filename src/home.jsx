@@ -108,6 +108,10 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const leadsNuevos = safeLeads.filter(l => l.estado === 'nuevo');
   const sinLeer = safeMensajes.filter(m => m.sinLeer).length;
 
+  // Bono silla
+  const sillasOtorgadas = safeAlumnas.filter(a => a.bonoSilla).length;
+  const sillasMax = tweaks.bonoSillaCupos || 6;
+
   // Pronto pago deadline countdown — assume hoy = sábado 6 jun (día de inicio)
   const prontoPagoVencido = true; // 10 mayo ya pasó
 
@@ -288,13 +292,18 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
           subtitle="WhatsApp e Instagram"
           onClick={() => onNavigate('crm')}
         />
-        <ActionRow
-          icon="chair"
-          accent="gold"
-          title="Bono silla — 6 de 6 entregados"
-          subtitle="Recuérdales traerla mañana"
-          onClick={() => onNavigate('reservas')}
-        />
+        {sillasOtorgadas > 0 && (
+          <ActionRow
+            icon="chair"
+            accent="gold"
+            title={`Bono silla — ${sillasOtorgadas} de ${sillasMax} entregados`}
+            subtitle={
+              sillasOtorgadas >= sillasMax ? 'Bono cerrado' :
+              `Quedan ${sillasMax - sillasOtorgadas} ${sillasMax - sillasOtorgadas === 1 ? 'cupo' : 'cupos'}`
+            }
+            onClick={() => onNavigate('reservas')}
+          />
+        )}
       </div>
 
       {/* ───── Mensajes recientes ───── */}
