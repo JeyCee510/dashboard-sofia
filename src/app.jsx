@@ -1,6 +1,8 @@
 import React from 'react';
 import { useAuth } from './hooks/useAuth.js';
 import { useStore } from './store.jsx';
+import { VoiceButton } from './voice-button.jsx';
+import { executeVoiceCommand } from './lib/voice-executor.js';
 
 const { useState, useEffect } = React;
 
@@ -37,6 +39,30 @@ const App = () => {
   const [tab, setTab] = useState('home');
   const [overlay, setOverlay] = useState(null);
   const [sheet, setSheet] = useState(null);
+  const [voiceToast, setVoiceToast] = useState(null);
+  const [voiceExecResult, setVoiceExecResult] = useState(null);
+
+  // Ejecutor de comandos de voz: traduce {tool, params} a llamadas al store + UI
+  const handleVoiceExecute = async (toolName, params, transcript) => {
+    setVoiceExecResult(null);
+    try {
+      const result = await executeVoiceCommand(toolName, params, store);
+      setVoiceToast({ ok: result.ok, message: result.message });
+      setTimeout(() => setVoiceToast(null), 4500);
+      // Side effects de navegación
+      if (result.ok) {
+        if (result.navigate) { setTab(result.navigate); setOverlay(null); }
+        if (result.openAlumna) setOverlay({ type: 'alumna', id: result.openAlumna });
+        if (result.openSheet) setSheet(result.openSheet);
+      }
+      setVoiceExecResult(result.ok ? 'success' : 'failed');
+    } catch (e) {
+      console.error('[voice] exec error', e);
+      setVoiceToast({ ok: false, message: 'Error ejecutando: ' + e.message });
+      setTimeout(() => setVoiceToast(null), 4500);
+      setVoiceExecResult('failed');
+    }
+  };
 
   // Sync store data into globals para que las screens (que leen window.X) funcionen
   window.MOCK_ALUMNAS = store.state.alumnas;
@@ -185,6 +211,28 @@ const App = () => {
         store={store}
         alumnaPreId={sheet && sheet.type === 'new-pago' ? sheet.id : null}
       />
+
+      {/* Voice button (mic flotante) — encima del FAB */}
+      <VoiceButton onExecute={handleVoiceExecute} executingResult={voiceExecResult} />
+
+      {/* Toast de feedback del comando */}
+      {voiceToast && (
+        <div style={{
+          position: 'absolute',
+          bottom: 170, left: 16, right: 16,
+          padding: '12px 16px',
+          borderRadius: 14,
+          background: voiceToast.ok ? 'var(--oliva)' : 'var(--terracota)',
+          color: '#fff',
+          fontSize: 13, lineHeight: 1.4,
+          boxShadow: '0 6px 18px rgba(0,0,0,0.15)',
+          zIndex: 95,
+          animation: 'slideUp 0.25s ease',
+          textAlign: 'center',
+        }}>
+          {voiceToast.message}
+        </div>
+      )}
 
       <TweaksPanel title="Tweaks">
         <TweakSection title="Diseño">
