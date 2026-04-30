@@ -1,7 +1,7 @@
 import React from 'react';
 import { supabase } from '../lib/supabase.js';
 
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef } = React;
 
 // Convierte una fila de Supabase (snake_case) al shape que el resto de la app espera (camelCase)
 function fromDb(row) {
@@ -46,6 +46,12 @@ export function useAlumnas() {
   const [alumnas, setAlumnas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Ref siempre apunta al array más reciente. Lo necesitamos en `registrarPago`
+  // porque cuando convertimos lead → alumna, llamamos addAlumna+registrarPago
+  // sincrónicamente y el closure de `alumnas` aún no incluye la recién creada.
+  const alumnasRef = useRef(alumnas);
+  useEffect(() => { alumnasRef.current = alumnas; }, [alumnas]);
 
   // Carga inicial
   useEffect(() => {
@@ -109,9 +115,15 @@ export function useAlumnas() {
       .select()
       .single();
     if (error) { console.error('[alumnas] add', error); throw error; }
-    // Optimistic local update: no esperamos al realtime
+    // Optimistic local update: no esperamos al realtime.
+    // ALSO: actualizamos el ref inmediatamente para que un registrarPago()
+    // llamado en el mismo tick (ej. tras convertir lead) encuentre la alumna.
     if (inserted) {
-      setAlumnas(prev => prev.some(a => a.id === inserted.id) ? prev : [...prev, fromDb(inserted)]);
+      const fila = fromDb(inserted);
+      setAlumnas(prev => prev.some(a => a.id === inserted.id) ? prev : [...prev, fila]);
+      alumnasRef.current = alumnasRef.current.some(a => a.id === inserted.id)
+        ? alumnasRef.current
+        : [...alumnasRef.current, fila];
     }
     return inserted.id;
   }, []);
@@ -147,8 +159,23 @@ export function useAlumnas() {
   //   Esto pasa apenas se registra cualquier pago (incluso reserva $200).
   // ─────────────────────────────────────────────────────────────────
   const registrarPago = useCallback(async (alumnaId, monto, tipo, opts = {}) => {
-    const a = alumnas.find(x => x.id === alumnaId);
-    if (!a) return;
+    // Usar ref en vez de closure para que funcione tras un addAlumna
+    // sincrónico (caso conversión lead → alumna).
+    const lista = alumnasRef.current;
+    const a = lista.find(x => x.id === alumnaId);
+    if (!a) {
+      console.warn('[registrarPago] alumna no encontrada en local state, leyendo de DB', alumnaId);
+      const { data, error } = await supabase.from('alumnas').select('*').eq('id', alumnaId).single();
+      if (error || !data) {
+        console.error('[registrarPago] tampoco existe en DB', error);
+        return;
+      }
+      // Hidratar y reintentar
+      const fila = fromDb(data);
+      alumnasRef.current = [...lista.filter(x => x.id !== alumnaId), fila];
+      setAlumnas(prev => prev.some(x => x.id === alumnaId) ? prev : [...prev, fila]);
+      return registrarPago(alumnaId, monto, tipo, opts);
+    }
     const m = Number(monto) || 0;
 
     let nuevoTotal = a.total;
@@ -181,7 +208,7 @@ export function useAlumnas() {
       !a.bonoSilla &&
       nuevoPagado >= 200 // mínimo reserva
     ) {
-      const sillasOtorgadas = alumnas.filter(x => x.bonoSilla).length;
+      const sillasOtorgadas = lista.filter(x => x.bonoSilla).length;
       if (sillasOtorgadas < sillasMax) asignarSilla = true;
     }
 
