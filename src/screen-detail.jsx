@@ -177,7 +177,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
                 <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
                   Quedan <strong>{sillasLibres}</strong> {sillasLibres === 1 ? 'cupo' : 'cupos'} de silla.
                   {a.pagado >= 200
-                    ? ' Esta alumna califica — debería habérsele asignado al pagar.'
+                    ? ' Esta persona califica — debería habérsele asignado al pagar.'
                     : ' Se asignará automáticamente apenas registre reserva o más.'}
                 </div>
                 {a.pagado >= 200 && (

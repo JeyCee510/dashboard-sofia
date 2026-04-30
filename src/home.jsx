@@ -386,7 +386,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
               </span>
             </div>
             <div style={{ fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.45 }}>
-              Las primeras {sillasMax} alumnas que pagan reserva o más de la formación completa reciben silla automáticamente. El precio ya la incluye.
+              Las primeras {sillasMax} personas que se inscriben a la formación completa y pagan reserva o más reciben silla automáticamente. El precio ya la incluye.
             </div>
             <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-mute)', lineHeight: 1.45 }}>
               Si renuncian: <strong>−$30</strong> al total · pronto pago <strong>sin descuento</strong> (precio fijo).

@@ -277,7 +277,7 @@ const ValidarSheet = ({ comprobante, alumnas, leads = [], onClose, onConfirm }) 
           <select value={selection} onChange={e => setSelection(e.target.value)} style={inputStyle}>
             <option value="">— Selecciona —</option>
             {alumnas.length > 0 && (
-              <optgroup label="Estudiantes inscritas">
+              <optgroup label="Estudiantes inscritos">
                 {alumnas.map(a => (
                   <option key={`a-${a.id}`} value={`alumna:${a.id}`}>
                     {a.nombre} · ${a.pagado}/${a.total}
@@ -306,7 +306,7 @@ const ValidarSheet = ({ comprobante, alumnas, leads = [], onClose, onConfirm }) 
               Convirtiendo lead → estudiante
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink)', lineHeight: 1.4 }}>
-              Al validar, <strong>{lead.nombre}</strong> queda inscrita como estudiante (formación completa) y el lead se elimina del embudo.
+              Al validar, <strong>{lead.nombre}</strong> queda inscrito como estudiante (formación completa) y el lead se elimina del embudo.
             </div>
           </div>
         )}

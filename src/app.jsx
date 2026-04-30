@@ -314,7 +314,7 @@ const App = () => {
           <TweakButton label="Ir a Ajustes" onClick={() => navigate('ajustes')} />
         </TweakSection>
         <TweakSection title="Atajos creación">
-          <TweakButton label="+ Nueva alumna" onClick={() => setSheet('new-alumna')} />
+          <TweakButton label="+ Nuevo estudiante" onClick={() => setSheet('new-alumna')} />
           <TweakButton label="+ Nuevo lead" onClick={() => setSheet('new-lead')} />
           <TweakButton label="+ Registrar pago" onClick={() => setSheet('new-pago')} />
         </TweakSection>

@@ -425,7 +425,7 @@ const MaterialPdfCard = ({ store }) => {
           <>
             <div style={{ fontSize: 13, color: 'var(--ink)', marginBottom: 4 }}>Sin PDF cargado.</div>
             <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginBottom: 12, lineHeight: 1.4 }}>
-              Sube el PDF del programa para activar la plantilla automática que envía el link a leads e inscritas.
+              Sube el PDF del programa para activar la plantilla automática que envía el link a leads e inscritos.
             </div>
             <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
               width: '100%', padding: '10px 14px', borderRadius: 10,
