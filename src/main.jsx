@@ -47,39 +47,7 @@ async function initApp() {
   await import('./store.jsx');
   const { App } = await import('./app.jsx');
 
-  const IOSDevice = window.IOSDevice;
-
-  const isMobile = () =>
-    window.matchMedia('(max-width: 600px)').matches ||
-    ('ontouchstart' in window && window.innerWidth < 800);
-
-  const Root = () => {
-    if (isMobile()) return <App />;
-    return (
-      <IOSDevice width={402} height={874}>
-        <App />
-      </IOSDevice>
-    );
-  };
-
-  ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
-
-  function fitDevice() {
-    const root = document.getElementById('root');
-    if (!root) return;
-    if (isMobile()) {
-      root.style.transform = '';
-      document.body.style.overflow = 'auto';
-      return;
-    }
-    const pad = 24;
-    const sw = (window.innerWidth - pad) / 402;
-    const sh = (window.innerHeight - pad) / 874;
-    const scale = Math.min(sw, sh, 1.4);
-    root.style.transform = 'scale(' + scale + ')';
-  }
-  window.addEventListener('resize', fitDevice);
-  setTimeout(fitDevice, 50);
-  setTimeout(fitDevice, 400);
-  setTimeout(fitDevice, 1200);
+  // App responsive en cualquier tamaño. En desktop el container queda centrado
+  // con max-width (ver styles.css). En mobile ocupa fullscreen. Sin frame iOS.
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 }

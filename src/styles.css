@@ -46,9 +46,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* App scope inside the iOS frame */
+/* App container (responsive) */
+#stage {
+  position: static !important;
+  display: flex !important;
+  align-items: stretch;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0;
+  background: #1B1410;
+}
+#root {
+  transform: none !important;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
 .app {
-  height: 100%;
   background: var(--bg);
   color: var(--ink);
   font-family: 'Inter Tight', -apple-system, system-ui, sans-serif;
@@ -57,32 +72,56 @@ body {
   letter-spacing: -0.005em;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
 }
 
-/* ──────────── Mobile real (sin frame de iPhone) ──────────── */
-@media (max-width: 600px) {
-  body:not(.public-route) { overflow: hidden !important; min-height: 100vh; background: var(--bg); }
-  body:not(.public-route) #stage { position: fixed !important; inset: 0 !important; min-height: 100vh; display: block !important; }
-  body:not(.public-route) #root { transform: none !important; width: 100%; height: 100%; }
+/* Desktop / tablet: centrado con max-width como webapp moderna */
+@media (min-width: 700px) {
+  body { background: #1B1410 !important; overflow: auto !important; min-height: 100vh; }
+  .app {
+    max-width: 460px;
+    min-height: calc(100vh - 48px);
+    margin: 24px auto;
+    border-radius: 32px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(245,239,230,0.06);
+    overflow: hidden;
+  }
+  .device-label { display: block; }
+  .tabbar {
+    position: absolute !important;
+    bottom: 0 !important;
+  }
+  .app-scroll {
+    padding-top: 12px !important;
+  }
+}
+
+/* ──────────── Mobile (< 700px): fullscreen sin frame ──────────── */
+@media (max-width: 699px) {
+  body:not(.public-route) { background: var(--bg) !important; min-height: 100vh; }
+  body:not(.public-route) #stage { padding: 0 !important; min-height: 100vh; min-height: 100dvh; }
   body:not(.public-route) .app {
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
+    max-width: 100% !important;
+    margin: 0 !important;
     border-radius: 0 !important;
-    max-width: 100%;
-    position: relative;
+    box-shadow: none !important;
+    min-height: 100vh;
+    min-height: 100dvh;
   }
   .device-label { display: none; }
 
-  /* En mobile no hay status bar simulado, pero sí hay safe area inset arriba (notch) */
   body:not(.public-route) .app-scroll {
     padding-top: env(safe-area-inset-top, 12px) !important;
   }
 
-  /* Tabbar fijo al bottom del viewport en mobile real */
+  /* Tabbar fijo al bottom del viewport en mobile */
   body:not(.public-route) .tabbar {
     position: fixed !important;
     bottom: 0;
+    left: 0; right: 0;
     padding-bottom: max(34px, env(safe-area-inset-bottom)) !important;
   }
 }

@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth.js';
 import { useStore } from './store.jsx';
 import { VoiceButton } from './voice-button.jsx';
 import { executeVoiceCommand } from './lib/voice-executor.js';
+import { usePullToRefresh } from './hooks/usePullToRefresh.js';
 
 const { useState, useEffect } = React;
 
@@ -142,9 +143,55 @@ const App = () => {
     else setSheet('new-alumna');
   };
 
+  // Pull-to-refresh: jala desde el top del scroll para recargar.
+  // En lugar de window.location.reload(), forzamos un re-fetch suave.
+  const ptr = usePullToRefresh({
+    onRefresh: () => new Promise((resolve) => {
+      window.location.reload();
+      // resolve() nunca se llama porque la página recarga
+      setTimeout(resolve, 1500);
+    }),
+  });
+
   return (
     <div className="app">
-      <div className="app-scroll" key={tab}>
+      <div
+        ref={ptr.ref}
+        className="app-scroll"
+        key={tab}
+        style={{
+          transform: ptr.refreshing ? 'translateY(50px)' : (ptr.pullDistance > 0 ? `translateY(${ptr.pullDistance}px)` : ''),
+          transition: ptr.pullDistance === 0 || ptr.refreshing ? 'transform 0.25s ease' : 'none',
+        }}
+      >
+        {/* Indicador pull-to-refresh */}
+        {(ptr.pullDistance > 0 || ptr.refreshing) && (
+          <div style={{
+            position: 'absolute', top: -50, left: 0, right: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: 50, color: 'var(--ink-soft)',
+            pointerEvents: 'none',
+          }}>
+            {ptr.refreshing ? (
+              <span style={{
+                display: 'inline-block', width: 22, height: 22, borderRadius: '50%',
+                border: '2px solid var(--terracota)', borderTopColor: 'transparent',
+                animation: 'spin 0.8s linear infinite',
+              }} />
+            ) : (
+              <span style={{
+                fontSize: 12,
+                opacity: Math.min(1, ptr.pullDistance / ptr.UMBRAL),
+                transform: ptr.triggered ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.25s ease',
+                fontWeight: 500,
+                letterSpacing: '0.06em',
+              }}>
+                {ptr.triggered ? '↑ Suelta para actualizar' : '↓ Jala para actualizar'}
+              </span>
+            )}
+          </div>
+        )}
         <div className="fade-in">{screen}</div>
       </div>
 
