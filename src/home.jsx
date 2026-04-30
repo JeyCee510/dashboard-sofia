@@ -115,6 +115,11 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const sillasOtorgadas = safeAlumnas.filter(a => a.bonoSilla).length;
   const sillasMax = tweaks.bonoSillaCupos || 6;
 
+  // Consolidado financiero
+  const totalVendido = safeAlumnas.reduce((s, a) => s + (Number(a.total) || 0), 0);
+  const totalRecibido = safeAlumnas.reduce((s, a) => s + (Number(a.pagado) || 0), 0);
+  const fmt = (n) => '$' + Math.round(n).toLocaleString('en-US');
+
   // Pronto pago deadline countdown — assume hoy = sábado 6 jun (día de inicio)
   const prontoPagoVencido = true; // 10 mayo ya pasó
 
@@ -205,6 +210,39 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
             <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>50 h</div>
             <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
               programa
+            </div>
+          </div>
+        </div>
+
+        {/* Consolidado financiero */}
+        <div style={{
+          display: 'flex', gap: 10, marginTop: 14, paddingTop: 14,
+          borderTop: '1px solid rgba(251,247,240,0.14)',
+        }}>
+          <div style={{ flex: 1 }}>
+            <div className="serif" style={{ fontSize: 22, lineHeight: 1, fontWeight: 400, color: 'var(--terracota-soft)' }}>
+              {fmt(totalRecibido)}
+            </div>
+            <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+              recibido
+            </div>
+          </div>
+          <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
+          <div style={{ flex: 1 }}>
+            <div className="serif" style={{ fontSize: 22, lineHeight: 1, fontWeight: 400 }}>
+              {fmt(totalVendido)}
+            </div>
+            <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+              vendido
+            </div>
+          </div>
+          <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
+          <div style={{ flex: 1 }}>
+            <div className="serif" style={{ fontSize: 22, lineHeight: 1, fontWeight: 400, opacity: totalVendido > 0 ? 1 : 0.4 }}>
+              {totalVendido > 0 ? Math.round((totalRecibido / totalVendido) * 100) : 0}<span style={{ fontSize: 14, opacity: 0.5 }}>%</span>
+            </div>
+            <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+              cobrado
             </div>
           </div>
         </div>
