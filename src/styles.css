@@ -78,38 +78,53 @@ body {
   position: relative;
 }
 
-/* Desktop / tablet: centrado con max-width como webapp moderna */
+/* Desktop / tablet: layout adaptive con más espacio */
 @media (min-width: 700px) {
   body { background: #1B1410 !important; overflow: auto !important; min-height: 100vh; }
   .app {
-    max-width: 460px;
+    max-width: 720px;
     min-height: calc(100vh - 48px);
     margin: 24px auto;
-    border-radius: 32px;
+    border-radius: 24px;
     box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(245,239,230,0.06);
     overflow: hidden;
   }
   .device-label { display: block; }
-  .tabbar {
-    position: absolute !important;
-    bottom: 0 !important;
+  .tabbar { position: absolute !important; bottom: 0 !important; }
+  .app-scroll { padding-top: 16px !important; }
+
+  /* Densidad de contenido más cómoda en desktop */
+  .page-header { padding: 24px 32px 14px; }
+  .page-header h1 { font-size: 32px; }
+  .section-title { padding: 22px 32px 8px; }
+  .app-scroll > * > [style*="padding: 0 22px"],
+  .app-scroll > .fade-in > * > [style*="padding: 0 22px"] {
+    padding-left: 32px !important;
+    padding-right: 32px !important;
   }
-  .app-scroll {
-    padding-top: 12px !important;
+  .hero { padding: 26px 28px !important; }
+}
+
+/* Pantallas grandes: aún más generoso */
+@media (min-width: 1024px) {
+  .app {
+    max-width: 880px;
   }
 }
 
 /* ──────────── Mobile (< 700px): fullscreen sin frame ──────────── */
 @media (max-width: 699px) {
-  body:not(.public-route) { background: var(--bg) !important; min-height: 100vh; }
-  body:not(.public-route) #stage { padding: 0 !important; min-height: 100vh; min-height: 100dvh; }
+  body:not(.public-route) { background: var(--bg) !important; overflow: hidden !important; height: 100vh; height: 100dvh; }
+  body:not(.public-route) #stage { padding: 0 !important; height: 100vh !important; height: 100dvh !important; min-height: 0 !important; align-items: stretch; }
+  body:not(.public-route) #root { height: 100% !important; }
   body:not(.public-route) .app {
     max-width: 100% !important;
     margin: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
   }
   .device-label { display: none; }
 
@@ -117,9 +132,9 @@ body {
     padding-top: env(safe-area-inset-top, 12px) !important;
   }
 
-  /* Tabbar fijo al bottom del viewport en mobile */
+  /* Tabbar fijo dentro del .app (que ocupa todo el viewport) */
   body:not(.public-route) .tabbar {
-    position: fixed !important;
+    position: absolute !important;
     bottom: 0;
     left: 0; right: 0;
     padding-bottom: max(34px, env(safe-area-inset-bottom)) !important;

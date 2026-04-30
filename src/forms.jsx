@@ -241,11 +241,48 @@ function buildIgUrl(handle) {
   return `https://ig.me/m/${h}`;
 }
 
+// Instagram NO soporta texto pre-cargado en deep link (limitación de Meta).
+// Workaround: copiar el mensaje al clipboard ANTES de abrir IG, para que
+// Sofía pegue manualmente con un toque.
+async function copyAndOpenIg(handle, mensaje) {
+  const url = buildIgUrl(handle);
+  if (!url) return false;
+  try {
+    if (mensaje) {
+      await navigator.clipboard.writeText(mensaje);
+    }
+  } catch (e) {
+    // Fallback con textarea
+    if (mensaje) {
+      const ta = document.createElement('textarea');
+      ta.value = mensaje;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+  }
+  window.open(url, '_blank');
+  return true;
+}
+
 const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
   const [showPlantillas, setShowPlantillas] = React.useState(false);
+  const [igCopiado, setIgCopiado] = React.useState(false);
   const waUrl = buildWaUrl(tel);
   const igUrl = buildIgUrl(instagram);
   const firstName = (nombre || '').split(' ')[0] || '';
+
+  const onIgClick = async (e) => {
+    e.preventDefault();
+    // Mensaje genérico copiado para que Sofía solo pegue al abrir IG
+    const msg = firstName
+      ? `Hola ${firstName}! Te escribo de Yoga Sofía Lira 🌿`
+      : 'Hola! Te escribo de Yoga Sofía Lira 🌿';
+    await copyAndOpenIg(instagram, msg);
+    setIgCopiado(true);
+    setTimeout(() => setIgCopiado(false), 2500);
+  };
 
   // Personaliza la plantilla con el primer nombre si aplica
   const personalizar = (cuerpo) => {
@@ -287,6 +324,7 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
         {igUrl && (
           <a
             href={igUrl} target="_blank" rel="noopener noreferrer"
+            onClick={onIgClick}
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '12px 14px', borderRadius: 12,
@@ -294,12 +332,23 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
               color: '#fff',
               fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
               textDecoration: 'none',
+              position: 'relative',
             }}
           >
             <Icon name="instagram" size={16} stroke="#fff" />
             Instagram
           </a>
         )}
+      </div>
+      {igCopiado && (
+        <div style={{
+          padding: '8px 12px', borderRadius: 10, background: 'rgba(220, 39, 67, 0.1)',
+          border: '1px solid rgba(220, 39, 67, 0.25)', fontSize: 11, color: '#BC1888',
+          textAlign: 'center', lineHeight: 1.4,
+        }}>
+          📋 Mensaje copiado. Cuando se abra Instagram, pega con tocar y mantener.
+        </div>
+      )}
       </div>
 
       {waUrl && plantillas && plantillas.length > 0 && (
