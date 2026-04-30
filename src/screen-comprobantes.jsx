@@ -9,7 +9,7 @@ const { useState } = React;
 // estudiante y validar (lo cual registra el pago) o rechazar.
 // ─────────────────────────────────────────────────────────────────────
 
-const ComprobantesScreen = ({ store, onClose, asTab = false }) => {
+const ComprobantesScreen = ({ store, onClose, asTab = false, hideHeader = false }) => {
   const { items, loading, obtenerUrl, validar, rechazar, eliminar } = useComprobantes();
   const [filter, setFilter] = useState('pendiente');
   const [active, setActive] = useState(null);  // comprobante seleccionado para validar
@@ -38,10 +38,12 @@ const ComprobantesScreen = ({ store, onClose, asTab = false }) => {
       {Header}
 
       <div className={asTab ? '' : 'app-scroll'} style={asTab ? {} : { paddingTop: 0 }}>
-        <div className="page-header">
-          <div className="eyebrow">Banco · validar pagos</div>
-          <h1>Comprobantes</h1>
-        </div>
+        {!hideHeader && (
+          <div className="page-header">
+            <div className="eyebrow">Banco · validar pagos</div>
+            <h1>Comprobantes</h1>
+          </div>
+        )}
 
         <div style={{ padding: '0 22px 14px' }}>
           <div className="segmented">

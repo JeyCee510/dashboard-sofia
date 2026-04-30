@@ -313,7 +313,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
                 ? `Más reciente: ${comprobantePendienteLatest.nombre_cliente}${comprobantePendienteLatest.monto ? ` · $${comprobantePendienteLatest.monto}` : ''}`
                 : 'Revisa el banco y valida'
             }
-            onClick={() => onNavigate('comprobantes')}
+            onClick={() => onNavigate('pagos')}
           />
         )}
         <ActionRow

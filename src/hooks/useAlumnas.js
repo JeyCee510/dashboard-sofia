@@ -73,18 +73,25 @@ export function useAlumnas() {
     return () => { cancelled = true; };
   }, []);
 
-  // Realtime: si Sofía o Juan editan desde otra pestaña, se sincroniza
+  // Realtime: si Sofía o Juan editan desde otra pestaña, se sincroniza.
+  // Usamos upsert defensivo (INSERT y UPDATE comparten path) para que los
+  // restauraciones desde papelera (que vienen como INSERT/ON CONFLICT) no
+  // se pierdan si el evento llega como UPDATE.
   useEffect(() => {
     const ch = supabase
       .channel('alumnas-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'alumnas' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setAlumnas(prev => prev.some(a => a.id === payload.new.id) ? prev : [...prev, fromDb(payload.new)]);
-        } else if (payload.eventType === 'UPDATE') {
-          setAlumnas(prev => prev.map(a => a.id === payload.new.id ? fromDb(payload.new) : a));
-        } else if (payload.eventType === 'DELETE') {
+        if (payload.eventType === 'DELETE') {
           setAlumnas(prev => prev.filter(a => a.id !== payload.old.id));
+          return;
         }
+        const fila = fromDb(payload.new);
+        setAlumnas(prev => {
+          const exists = prev.some(a => a.id === fila.id);
+          return exists
+            ? prev.map(a => a.id === fila.id ? fila : a)
+            : [...prev, fila];
+        });
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };

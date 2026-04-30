@@ -5,8 +5,13 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 // Pagos screen
 // ──────────────────────────────────────────
 
-const PagosScreen = ({ tweaks, onOpenAlumna, onNewPago, onNavigate }) => {
+const PagosScreen = ({ tweaks, store, onOpenAlumna, onNewPago, onNavigate }) => {
   const [filter, setFilter] = React.useState('pendientes');
+  // Sub-vista: 'cobros' | 'comprobantes'. Auto-arranca en comprobantes
+  // cuando hay pendientes (más útil para Sofía); persiste mientras la
+  // pantalla esté montada.
+  const pendientes = store?.state?.comprobantesPendientes || 0;
+  const [subview, setSubview] = React.useState(pendientes > 0 ? 'comprobantes' : 'cobros');
 
   const totalCobrado = MOCK_ALUMNAS.reduce((s, a) => s + a.pagado, 0);
   const totalEsperado = MOCK_ALUMNAS.reduce((s, a) => s + a.total, 0);
@@ -25,9 +30,61 @@ const PagosScreen = ({ tweaks, onOpenAlumna, onNewPago, onNavigate }) => {
             <div className="eyebrow">Junio · USD</div>
             <h1>Pagos</h1>
           </div>
-          {/* Botón Comprobantes movido a tab dedicada (tabbar inferior) */}
         </div>
       </div>
+
+      {/* Segmented Cobros / Comprobantes */}
+      <div style={{ padding: '6px 22px 14px' }}>
+        <div className="segmented">
+          <button
+            className={subview === 'cobros' ? 'active' : ''}
+            onClick={() => setSubview('cobros')}
+          >
+            Cobros
+          </button>
+          <button
+            className={subview === 'comprobantes' ? 'active' : ''}
+            onClick={() => setSubview('comprobantes')}
+            style={{ position: 'relative' }}
+          >
+            Comprobantes
+            {pendientes > 0 && (
+              <span style={{
+                marginLeft: 6, padding: '1px 6px', borderRadius: 999,
+                background: 'var(--terracota)', color: '#fff',
+                fontSize: 10, fontWeight: 700, minWidth: 16, display: 'inline-block',
+              }}>
+                {pendientes > 9 ? '9+' : pendientes}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Render condicional de la sub-vista */}
+      {subview === 'comprobantes' && store ? (
+        <ComprobantesScreen store={store} asTab={true} hideHeader={true} />
+      ) : (
+        <CobrosView
+          tweaks={tweaks}
+          totalCobrado={totalCobrado}
+          totalEsperado={totalEsperado}
+          totalPendiente={totalPendiente}
+          alumnas={alumnas}
+          filter={filter}
+          setFilter={setFilter}
+          onOpenAlumna={onOpenAlumna}
+          onNewPago={onNewPago}
+        />
+      )}
+    </div>
+  );
+};
+
+// Vista "Cobros" (lo que era todo antes): KPIs + listado de alumnas con saldo
+const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumnas, filter, setFilter, onOpenAlumna, onNewPago }) => {
+  return (
+    <div>
 
       {/* Total card */}
       <div style={{ padding: '0 22px' }}>
@@ -111,3 +168,4 @@ const PagosScreen = ({ tweaks, onOpenAlumna, onNewPago, onNavigate }) => {
 };
 
 window.PagosScreen = PagosScreen;
+window.CobrosView = CobrosView;

@@ -134,16 +134,14 @@ const App = () => {
   let screen;
   if (tab === 'home') screen = <HomeScreen tweaks={screenTweaks} onNavigate={navigate} asistenciaHoy={asistenciaHoy} alumnas={store.state.alumnas} leads={store.state.leads} mensajes={store.state.mensajes} comprobantesPendientes={store.state.comprobantesPendientes} comprobantePendienteLatest={store.state.comprobantePendienteLatest} />;
   else if (tab === 'reservas') screen = <ReservasScreen tweaks={screenTweaks} onNavigate={navigate} onOpenAlumna={openAlumna} />;
-  else if (tab === 'pagos') screen = <PagosScreen tweaks={screenTweaks} onOpenAlumna={openAlumna} onNewPago={() => setSheet('new-pago')} onNavigate={navigate} />;
-  else if (tab === 'comprobantes') screen = <ComprobantesScreen store={store} asTab={true} />;
+  else if (tab === 'pagos') screen = <PagosScreen tweaks={screenTweaks} store={store} onOpenAlumna={openAlumna} onNewPago={() => setSheet('new-pago')} onNavigate={navigate} />;
   else if (tab === 'marketing') screen = <MarketingScreen onOpenLead={(id) => setSheet(id ? { type: 'edit-lead', id } : 'new-lead')} onNavigate={navigate} />;
   // Tab CRM eliminado: sin integración WA/IG no aporta. Plantillas viven en Ajustes y en el flujo de difusión.
 
   const tabs = [
     { id: 'home', label: 'Hoy', icon: 'home' },
     { id: 'reservas', label: 'Inscritos', icon: 'users' },
-    { id: 'pagos', label: 'Pagos', icon: 'cash' },
-    { id: 'comprobantes', label: 'Recibos', icon: 'note', badge: store.state.comprobantesPendientes },
+    { id: 'pagos', label: 'Pagos', icon: 'cash', badge: store.state.comprobantesPendientes },
     { id: 'marketing', label: 'Leads', icon: 'bullhorn' },
   ];
 
@@ -251,7 +249,7 @@ const App = () => {
           store={store}
           onEdit={() => setSheet({ type: 'edit-alumna', id: overlay.id })}
           onPagar={() => setSheet({ type: 'new-pago', id: overlay.id })}
-          onIrAComprobantes={() => { setOverlay(null); setTab('comprobantes'); }}
+          onIrAComprobantes={() => { setOverlay(null); setTab('pagos'); }}
           onValidarComprobante={(comprobantePreData) =>
             setSheet({ type: 'new-pago', id: overlay.id, comprobantePreData })
           }
