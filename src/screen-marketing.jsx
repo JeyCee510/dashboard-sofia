@@ -249,7 +249,9 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
                 </div>
                 <div className="body">
                   <div className="t1">{l.nombre}</div>
-                  <div className="t2" style={{ fontStyle: 'italic' }}>"{l.mensaje}"</div>
+                  {l.mensaje && l.mensaje.trim() && (
+                    <div className="t2" style={{ fontStyle: 'italic' }}>"{l.mensaje}"</div>
+                  )}
                   <PreBadge pre={pre} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
