@@ -1,15 +1,17 @@
 import React from 'react';
 import { ContactPanel, ComprobanteTokenAdminPanel } from './forms.jsx';
 import { useEventosAlumna } from './hooks/useEventosAlumna.js';
+import { useComprobantesAlumna } from './hooks/useComprobantesAlumna.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
 // Ficha de alumna (overlay) — usa store; con editar / borrar / pagar
 // ──────────────────────────────────────────
 
-const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
+const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComprobantes }) => {
   const a = store.state.alumnas.find(x => x.id === alumnaId);
   const { eventos, eliminarPago, eliminarEvento } = useEventosAlumna(alumnaId);
+  const { items: comprobantes, obtenerUrl } = useComprobantesAlumna(alumnaId);
   if (!a) return null;
   const dias = store.state.ajustes.diasFormacion;
   const restante = a.total - a.pagado;
@@ -188,6 +190,90 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
               <div style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4 }}>
                 <strong style={{ color: 'var(--rojo)' }}>Sin cupo de silla.</strong> Las 6 sillas ya están asignadas. Para dársela a esta alumna, primero renuncia una desde otra ficha.
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Comprobantes de esta alumna */}
+        <div className="section-title">
+          <h2>Comprobantes</h2>
+          <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>
+            {comprobantes.length} {comprobantes.length === 1 ? 'archivo' : 'archivos'}
+          </span>
+        </div>
+        <div style={{ padding: '0 22px' }}>
+          <div className="card flat" style={{ padding: 14 }}>
+            {comprobantes.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>
+                Aún no ha subido comprobantes.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {comprobantes.map(c => {
+                  const estadoMap = {
+                    pendiente: { bg: 'var(--terracota-tint)', fg: '#8A3D26', label: 'Pendiente' },
+                    validado: { bg: '#DDE0CC', fg: '#4D5230', label: 'Validado ✓' },
+                    rechazado: { bg: '#F0D5CE', fg: 'var(--rojo)', label: 'Rechazado' },
+                  };
+                  const ec = estadoMap[c.estado] || { bg: 'var(--bg-warm)', fg: 'var(--ink-mute)', label: c.estado };
+                  const esPdf = (c.archivo_tipo || '').includes('pdf') ||
+                                (c.archivo_nombre || '').toLowerCase().endsWith('.pdf');
+                  return (
+                    <div key={c.id} style={{
+                      display: 'flex', gap: 10, alignItems: 'center',
+                      padding: '10px 12px', borderRadius: 10,
+                      background: 'var(--bg-warm)',
+                    }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: 'var(--surface)', color: 'var(--ink-soft)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                        flexShrink: 0,
+                      }}>{esPdf ? 'PDF' : 'IMG'}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 500 }}>
+                          {c.monto ? `$${c.monto}` : 'Sin monto'}
+                          {c.fecha_pago ? ` · ${new Date(c.fecha_pago + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}` : ''}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--ink-mute)' }}>
+                          Subido {new Date(c.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}
+                          {c.notas ? ` · "${c.notas}"` : ''}
+                        </div>
+                      </div>
+                      <span className="pill" style={{
+                        background: ec.bg, color: ec.fg, border: 'none',
+                        fontSize: 10, padding: '2px 8px',
+                      }}>{ec.label}</span>
+                      <button
+                        onClick={async () => {
+                          const u = await obtenerUrl(c.storage_path);
+                          if (u) window.open(u, '_blank');
+                          else alert('No se pudo abrir el archivo.');
+                        }}
+                        style={{
+                          background: 'transparent', border: 'none', cursor: 'pointer',
+                          color: 'var(--terracota)', padding: 4,
+                          display: 'flex', alignItems: 'center',
+                        }}
+                        aria-label="Ver archivo"
+                        title="Ver archivo"
+                      >
+                        <Icon name="search" size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {onIrAComprobantes && comprobantes.some(c => c.estado === 'pendiente') && (
+              <button
+                onClick={onIrAComprobantes}
+                className="btn btn-ghost btn-sm"
+                style={{ marginTop: 10, width: '100%' }}
+              >
+                Ir a panel de validación →
+              </button>
             )}
           </div>
         </div>

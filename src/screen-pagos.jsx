@@ -25,24 +25,7 @@ const PagosScreen = ({ tweaks, onOpenAlumna, onNewPago, onNavigate }) => {
             <div className="eyebrow">Junio · USD</div>
             <h1>Pagos</h1>
           </div>
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('comprobantes')}
-              style={{
-                marginTop: 8,
-                padding: '8px 12px',
-                borderRadius: 999,
-                background: 'var(--bg-warm)',
-                border: '1px solid var(--line-soft)',
-                fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <Icon name="note" size={13} stroke="var(--terracota)" />
-              Comprobantes
-            </button>
-          )}
+          {/* Botón Comprobantes movido a tab dedicada (tabbar inferior) */}
         </div>
       </div>
 

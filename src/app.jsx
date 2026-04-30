@@ -91,7 +91,6 @@ const App = () => {
     else if (target === 'ajustes') setOverlay('ajustes');
     else if (target === 'difusion') setOverlay('difusion');
     else if (target === 'papelera-leads') setOverlay('papelera-leads');
-    else if (target === 'comprobantes') setOverlay('comprobantes');
     else { setTab(target); setOverlay(null); }
   };
 
@@ -136,6 +135,7 @@ const App = () => {
   if (tab === 'home') screen = <HomeScreen tweaks={screenTweaks} onNavigate={navigate} asistenciaHoy={asistenciaHoy} alumnas={store.state.alumnas} leads={store.state.leads} mensajes={store.state.mensajes} comprobantesPendientes={store.state.comprobantesPendientes} comprobantePendienteLatest={store.state.comprobantePendienteLatest} />;
   else if (tab === 'reservas') screen = <ReservasScreen tweaks={screenTweaks} onNavigate={navigate} onOpenAlumna={openAlumna} />;
   else if (tab === 'pagos') screen = <PagosScreen tweaks={screenTweaks} onOpenAlumna={openAlumna} onNewPago={() => setSheet('new-pago')} onNavigate={navigate} />;
+  else if (tab === 'comprobantes') screen = <ComprobantesScreen store={store} asTab={true} />;
   else if (tab === 'marketing') screen = <MarketingScreen onOpenLead={(id) => setSheet(id ? { type: 'edit-lead', id } : 'new-lead')} onNavigate={navigate} />;
   // Tab CRM eliminado: sin integración WA/IG no aporta. Plantillas viven en Ajustes y en el flujo de difusión.
 
@@ -143,6 +143,7 @@ const App = () => {
     { id: 'home', label: 'Hoy', icon: 'home' },
     { id: 'reservas', label: 'Inscritos', icon: 'users' },
     { id: 'pagos', label: 'Pagos', icon: 'cash' },
+    { id: 'comprobantes', label: 'Recibos', icon: 'note', badge: store.state.comprobantesPendientes },
     { id: 'marketing', label: 'Leads', icon: 'bullhorn' },
   ];
 
@@ -208,9 +209,22 @@ const App = () => {
               key={t.id}
               className={`tab ${tab === t.id ? 'active' : ''}`}
               onClick={() => { setTab(t.id); setOverlay(null); }}
+              style={{ position: 'relative' }}
             >
               <Icon name={t.icon} size={18} strokeWidth={tab === t.id ? 1.8 : 1.5} />
               <span>{t.label}</span>
+              {t.badge > 0 && (
+                <span style={{
+                  position: 'absolute', top: 4, right: '50%',
+                  transform: 'translateX(20px)',
+                  minWidth: 18, height: 18, padding: '0 5px',
+                  borderRadius: 9, background: 'var(--terracota)', color: '#fff',
+                  fontSize: 10, fontWeight: 600, lineHeight: '18px', textAlign: 'center',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                }}>
+                  {t.badge > 9 ? '9+' : t.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -230,9 +244,6 @@ const App = () => {
       {overlay === 'papelera-leads' && (
         <PapeleraLeadsScreen onClose={() => setOverlay(null)} />
       )}
-      {overlay === 'comprobantes' && (
-        <ComprobantesScreen store={store} onClose={() => setOverlay(null)} />
-      )}
       {overlay && overlay.type === 'alumna' && (
         <FichaAlumna
           alumnaId={overlay.id}
@@ -240,6 +251,7 @@ const App = () => {
           store={store}
           onEdit={() => setSheet({ type: 'edit-alumna', id: overlay.id })}
           onPagar={() => setSheet({ type: 'new-pago', id: overlay.id })}
+          onIrAComprobantes={() => { setOverlay(null); setTab('comprobantes'); }}
         />
       )}
 

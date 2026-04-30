@@ -9,7 +9,7 @@ const { useState } = React;
 // estudiante y validar (lo cual registra el pago) o rechazar.
 // ─────────────────────────────────────────────────────────────────────
 
-const ComprobantesScreen = ({ store, onClose }) => {
+const ComprobantesScreen = ({ store, onClose, asTab = false }) => {
   const { items, loading, obtenerUrl, validar, rechazar, eliminar } = useComprobantes();
   const [filter, setFilter] = useState('pendiente');
   const [active, setActive] = useState(null);  // comprobante seleccionado para validar
@@ -21,17 +21,23 @@ const ComprobantesScreen = ({ store, onClose }) => {
     rechazado: items.filter(c => c.estado === 'rechazado').length,
   };
 
-  return (
-    <div className="detail-screen" style={{ background: 'var(--bg)' }}>
-      <div className="detail-header">
-        <button className="back" onClick={onClose}>
-          <Icon name="chevronL" size={20} />
-          Volver
-        </button>
-        <div style={{ flex: 1 }} />
-      </div>
+  // Cuando se renderiza como tab, no hay overlay header con "Volver".
+  // Cuando se renderiza como overlay legacy (no debería pasar ya), mantiene back button.
+  const Header = asTab ? null : (
+    <div className="detail-header">
+      <button className="back" onClick={onClose}>
+        <Icon name="chevronL" size={20} />
+        Volver
+      </button>
+      <div style={{ flex: 1 }} />
+    </div>
+  );
 
-      <div className="app-scroll" style={{ paddingTop: 0 }}>
+  return (
+    <div className={asTab ? '' : 'detail-screen'} style={asTab ? {} : { background: 'var(--bg)' }}>
+      {Header}
+
+      <div className={asTab ? '' : 'app-scroll'} style={asTab ? {} : { paddingTop: 0 }}>
         <div className="page-header">
           <div className="eyebrow">Banco · validar pagos</div>
           <h1>Comprobantes</h1>
