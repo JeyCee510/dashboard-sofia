@@ -224,6 +224,21 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
     >
       {editing && (
         <>
+          {form.createdAt && (
+            <div style={{
+              marginBottom: 14, fontSize: 11, color: 'var(--ink-mute)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+            }}>
+              <span style={{ letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 500 }}>
+                Registrado
+              </span>
+              <span>
+                {new Date(form.createdAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' })}
+                {' · '}
+                {new Date(form.createdAt).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false })}
+              </span>
+            </div>
+          )}
           <div style={{ marginBottom: 14 }}>
             <ContactPanel
               tel={form.tel}

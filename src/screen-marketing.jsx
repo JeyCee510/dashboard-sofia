@@ -22,6 +22,25 @@ const estadoColor = {
   'frío': { bg: 'var(--bg-warm)', fg: 'var(--ink-mute)', label: 'Frío' },
 };
 
+// Tiempo relativo en español: "hace 5 min", "ayer", "hace 3 días", "12 abr".
+function fmtTiempoRelativo(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    const ahora = new Date();
+    const diffMs = ahora - d;
+    const min = Math.floor(diffMs / 60000);
+    const horas = Math.floor(min / 60);
+    const dias = Math.floor(horas / 24);
+    if (min < 1) return 'ahora';
+    if (min < 60) return `${min} min`;
+    if (horas < 24) return `${horas} h`;
+    if (dias === 1) return 'ayer';
+    if (dias < 7) return `${dias} días`;
+    return d.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
+  } catch { return '—'; }
+}
+
 const MarketingScreen = ({ onOpenLead, onNavigate }) => {
   const [filter, setFilter] = React.useState('todos');
   let leads = MOCK_LEADS;
@@ -126,7 +145,7 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                   <span className="pill" style={{ background: e.bg, color: e.fg, border: 'none' }}>{e.label}</span>
-                  <span style={{ fontSize: 10, color: 'var(--ink-mute)' }}>{l.tiempo}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ink-mute)' }}>{fmtTiempoRelativo(l.createdAt)}</span>
                 </div>
               </div>
             );

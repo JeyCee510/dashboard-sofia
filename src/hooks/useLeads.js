@@ -12,7 +12,8 @@ function fromDb(row) {
     fuente: row.fuente || 'otro',
     estado: row.estado || 'nuevo',
     mensaje: row.mensaje || '',
-    tiempo: row.tiempo || 'ahora',
+    tiempo: row.tiempo || 'ahora', // legacy, se va a deprecar
+    createdAt: row.created_at,     // ISO timestamp real
   };
 }
 
