@@ -823,7 +823,21 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
   };
 
   const firstName = (nombre || '').split(' ')[0];
-  const mensajeWa = `Hola ${firstName}! Te paso tu link personal para subir comprobantes de pago. Es seguro y solo Sofía ve tus datos. Puedes subir varios:\n\n${link}\n\n🌿`;
+  // Mensaje 2-en-1: datos de transferencia + link personal de comprobantes.
+  // Sofía manda esto y el cliente tiene todo lo que necesita para pagar y registrar el comprobante.
+  const mensajeWa =
+`Hola ${firstName}! Te paso los datos para tu pago:
+
+📌 Transferencia a:
+Sofía Lira
+Produbanco Ahorro #12054049429
+Cédula #1709369225
+sofilira@gmail.com
+
+📎 Cuando tengas el comprobante, súbelo en tu link personal:
+${link}
+
+Es seguro, sólo Sofía y yo lo vemos. Puedes subir varios si haces más de un pago 🌿`;
   const waUrl = tel && link ? buildWaUrl(tel, mensajeWa) : null;
 
   if (loading || (!token && generando)) {
