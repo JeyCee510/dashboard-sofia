@@ -237,6 +237,13 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
               plantillas={store.state.ajustes.plantillasWA}
             />
           </div>
+          <div style={{ marginBottom: 14 }}>
+            <ComprobanteTokenAdminPanel
+              leadId={leadId}
+              nombre={form.nombre}
+              tel={form.tel}
+            />
+          </div>
           <button className="btn btn-secondary btn-block" style={{ marginBottom: 14 }} onClick={convertir}>
             <Icon name="arrow" size={14} /> Convertir en estudiante
           </button>

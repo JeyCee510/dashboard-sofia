@@ -554,6 +554,113 @@ const PreinscripcionAdminPanel = ({ leadId, leadNombre, leadTel, plantillas }) =
   );
 };
 
+// ──────────────────────────────────────────
+// ComprobanteTokenAdminPanel — botón para generar el link único de
+// comprobantes para esta persona, copiarlo o mandarlo por WhatsApp.
+// ──────────────────────────────────────────
+const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
+  const useComprobanteToken = window.useComprobanteToken;
+  const { token, loading, generar } = useComprobanteToken({ leadId, alumnaId });
+  const [link, setLink] = React.useState('');
+  const [copiado, setCopiado] = React.useState(false);
+  const [generando, setGenerando] = React.useState(false);
+
+  React.useEffect(() => {
+    if (token) setLink(`${window.location.origin}/comprobante/${token}`);
+    else setLink('');
+  }, [token]);
+
+  const onGenerar = async () => {
+    setGenerando(true);
+    const t = await generar();
+    setGenerando(false);
+    if (t) setLink(`${window.location.origin}/comprobante/${t}`);
+  };
+
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(link); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = link;
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    setCopiado(true); setTimeout(() => setCopiado(false), 1800);
+  };
+
+  const firstName = (nombre || '').split(' ')[0];
+  const mensajeWa = `Hola ${firstName}! Te paso tu link personal para subir comprobantes de pago. Es seguro y solo Sofía ve tus datos. Puedes subir varios:\n\n${link}\n\n🌿`;
+  const waUrl = tel && link ? buildWaUrl(tel, mensajeWa) : null;
+
+  if (loading) {
+    return <div style={{ fontSize: 12, color: 'var(--ink-mute)', padding: 8 }}>Cargando…</div>;
+  }
+
+  if (!token) {
+    return (
+      <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
+        <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
+          Genera un link personal para que esta persona suba sus comprobantes (puede subir varios). El comprobante queda asociado a su ficha automáticamente.
+        </div>
+        <button
+          type="button" onClick={onGenerar} disabled={generando}
+          style={{
+            width: '100%', padding: '10px 14px', borderRadius: 10,
+            background: 'var(--terracota)', color: '#fff', border: 'none',
+            fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            opacity: generando ? 0.6 : 1,
+          }}
+        >
+          {generando ? 'Generando…' : 'Generar link de comprobantes'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 14, borderRadius: 12, background: '#F2E2C2', border: '1px solid transparent' }}>
+      <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: 600, marginBottom: 8 }}>
+        Link personal de comprobantes
+      </div>
+      <div style={{
+        background: 'var(--surface)', padding: '8px 12px', borderRadius: 8,
+        fontSize: 11, color: 'var(--ink)', wordBreak: 'break-all',
+        fontFamily: 'monospace',
+      }}>
+        {link}
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+        <button
+          type="button" onClick={copiar}
+          style={{
+            flex: 1, padding: '9px 12px', borderRadius: 10,
+            background: copiado ? 'var(--oliva)' : 'var(--surface)',
+            color: copiado ? '#fff' : 'var(--ink)',
+            border: '1px solid ' + (copiado ? 'transparent' : 'var(--line-soft)'),
+            fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+          }}
+        >
+          {copiado ? 'Copiado ✓' : 'Copiar link'}
+        </button>
+        {waUrl && (
+          <a
+            href={waUrl} target="_blank" rel="noopener noreferrer"
+            style={{
+              flex: 1, padding: '9px 12px', borderRadius: 10,
+              background: '#25D366', color: '#fff',
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+              textDecoration: 'none', textAlign: 'center',
+            }}
+          >
+            Enviar por WhatsApp
+          </a>
+        )}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
+        Reusable: la persona puede subir cuantos comprobantes necesite con el mismo link.
+      </div>
+    </div>
+  );
+};
+
 window.TextInput = TextInput;
 window.TextArea = TextArea;
 window.NumberInput = NumberInput;
@@ -561,6 +668,7 @@ window.SelectChips = SelectChips;
 window.SwitchToggle = SwitchToggle;
 window.ContactPanel = ContactPanel;
 window.PreinscripcionAdminPanel = PreinscripcionAdminPanel;
+window.ComprobanteTokenAdminPanel = ComprobanteTokenAdminPanel;
 window.cleanPhone = cleanPhone;
 window.cleanInstagram = cleanInstagram;
 window.buildWaUrl = buildWaUrl;

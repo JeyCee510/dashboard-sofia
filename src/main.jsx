@@ -7,6 +7,7 @@ import './styles.css';
 // Cualquier otra = la app normal con login.
 const path = window.location.pathname;
 const preinscripcionMatch = path.match(/^\/preinscripcion\/([\w-]+)\/?$/);
+const comprobanteTokenMatch = path.match(/^\/comprobante\/([\w-]+)\/?$/);
 const comprobanteMatch = path.match(/^\/comprobante\/?$/);
 
 if (preinscripcionMatch) {
@@ -17,6 +18,17 @@ if (preinscripcionMatch) {
     import('./preinscripcion-public.jsx').then(({ PreinscripcionPublic }) => {
       ReactDOM.createRoot(document.getElementById('root')).render(
         <PreinscripcionPublic token={token} />
+      );
+    })
+  );
+} else if (comprobanteTokenMatch) {
+  const token = comprobanteTokenMatch[1];
+  document.body.classList.add('public-route');
+  document.documentElement.classList.add('public-route');
+  import('./icons.jsx').then(() =>
+    import('./comprobante-public.jsx').then(({ ComprobantePublic }) => {
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <ComprobantePublic token={token} />
       );
     })
   );

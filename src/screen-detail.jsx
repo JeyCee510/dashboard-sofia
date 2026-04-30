@@ -59,6 +59,13 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
               nombre={a.nombre}
             />
           </div>
+          <div style={{ marginTop: 12, textAlign: 'left' }}>
+            <ComprobanteTokenAdminPanel
+              alumnaId={a.id}
+              nombre={a.nombre}
+              tel={a.tel}
+            />
+          </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
             <button className="btn btn-ghost btn-sm" onClick={onPagar}>
               <Icon name="cash" size={13} />

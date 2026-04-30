@@ -1,7 +1,7 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
 
-const { useState } = React;
+const { useState, useEffect } = React;
 
 // ─────────────────────────────────────────────────────────────────────
 // ComprobantePublic — link reusable accesible vía /comprobante (sin login).
@@ -22,7 +22,7 @@ function uuid() {
   });
 }
 
-export const ComprobantePublic = () => {
+export const ComprobantePublic = ({ token }) => {
   const [nombre, setNombre] = useState('');
   const [contacto, setContacto] = useState('');
   const [monto, setMonto] = useState('');
@@ -32,6 +32,23 @@ export const ComprobantePublic = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
+  // Si hay token, recuperamos los datos de la persona desde Supabase
+  const [tokenInfo, setTokenInfo] = useState(null);
+  const [tokenLoading, setTokenLoading] = useState(!!token);
+  const [tokenError, setTokenError] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      const { data, error } = await supabase.rpc('obtener_comprobante_token', { p_token: token });
+      if (error) { setTokenError(error.message); setTokenLoading(false); return; }
+      if (!data || !data.nombre) { setTokenError('Link inválido o expirado.'); setTokenLoading(false); return; }
+      setTokenInfo(data);
+      setNombre(data.nombre || '');
+      setContacto(data.contacto || '');
+      setTokenLoading(false);
+    })();
+  }, [token]);
 
   const onFile = (e) => {
     const f = e.target.files?.[0];
@@ -46,7 +63,7 @@ export const ComprobantePublic = () => {
   };
 
   const submit = async () => {
-    if (!nombre.trim()) { setError('Pon tu nombre.'); return; }
+    if (!token && !nombre.trim()) { setError('Pon tu nombre.'); return; }
     if (!file) { setError('Sube una foto o PDF del comprobante.'); return; }
 
     setSubmitting(true);
@@ -63,17 +80,31 @@ export const ComprobantePublic = () => {
         });
       if (upErr) throw upErr;
 
-      // 2. Crear registro vía RPC
-      const { data, error: rpcErr } = await supabase.rpc('subir_comprobante', {
-        p_nombre_cliente: nombre,
-        p_contacto: contacto,
-        p_monto: monto ? Number(monto) : null,
-        p_fecha_pago: fechaPago || null,
-        p_notas: notas,
-        p_storage_path: path,
-        p_archivo_nombre: file.name,
-        p_archivo_tipo: file.type,
-      });
+      // 2. Crear registro vía RPC apropiada según haya token o no
+      let rpcCall;
+      if (token) {
+        rpcCall = supabase.rpc('subir_comprobante_con_token', {
+          p_token: token,
+          p_monto: monto ? Number(monto) : null,
+          p_fecha_pago: fechaPago || null,
+          p_notas: notas,
+          p_storage_path: path,
+          p_archivo_nombre: file.name,
+          p_archivo_tipo: file.type,
+        });
+      } else {
+        rpcCall = supabase.rpc('subir_comprobante', {
+          p_nombre_cliente: nombre,
+          p_contacto: contacto,
+          p_monto: monto ? Number(monto) : null,
+          p_fecha_pago: fechaPago || null,
+          p_notas: notas,
+          p_storage_path: path,
+          p_archivo_nombre: file.name,
+          p_archivo_tipo: file.type,
+        });
+      }
+      const { data, error: rpcErr } = await rpcCall;
       if (rpcErr) throw rpcErr;
       if (data?.error) throw new Error(data.error);
 
@@ -87,9 +118,32 @@ export const ComprobantePublic = () => {
   };
 
   const reset = () => {
-    setNombre(''); setContacto(''); setMonto(''); setFechaPago(''); setNotas('');
+    if (!token) { setNombre(''); setContacto(''); }
+    setMonto(''); setFechaPago(''); setNotas('');
     setFile(null); setSubmitted(false); setError(null);
   };
+
+  // Estados de carga del token
+  if (tokenLoading) {
+    return (
+      <div style={containerStyle}>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--ink-soft)', fontFamily: 'Cormorant Garamond, serif', fontStyle: 'italic' }}>
+          Cargando…
+        </div>
+      </div>
+    );
+  }
+  if (tokenError) {
+    return (
+      <div style={containerStyle}>
+        <div style={{ padding: 40, textAlign: 'center', maxWidth: 500, margin: '0 auto' }}>
+          <div className="serif" style={{ fontSize: 32, color: 'var(--terracota)' }}>Hmm</div>
+          <p style={{ color: 'var(--ink-soft)', marginTop: 14 }}>{tokenError}</p>
+          <p style={{ color: 'var(--ink-mute)', fontSize: 13, marginTop: 8 }}>Pídele a Sofía un nuevo link.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -123,21 +177,26 @@ export const ComprobantePublic = () => {
             Yoga Sofía Lira
           </div>
           <h1 className="serif" style={{ fontSize: 30, marginTop: 18, fontWeight: 500, lineHeight: 1.15 }}>
-            Subir comprobante<br/>
-            <em style={{ color: 'var(--terracota-soft)' }}>de pago</em>
+            {tokenInfo ? <>Hola {(tokenInfo.nombre || '').split(' ')[0]},<br/><em style={{ color: 'var(--terracota-soft)' }}>sube tu comprobante</em></> : <>Subir comprobante<br/><em style={{ color: 'var(--terracota-soft)' }}>de pago</em></>}
           </h1>
           <p style={{ color: 'var(--ink-soft)', marginTop: 14, fontSize: 14, lineHeight: 1.55 }}>
-            Sube la foto o PDF de tu transferencia/depósito. Sofía lo revisará en el banco y confirmará tu pago.
+            {tokenInfo
+              ? 'Sube la foto o PDF de tu transferencia/depósito. Puedes subir varios desde este mismo link. Sofía los revisará en el banco y confirmará tu pago.'
+              : 'Sube la foto o PDF de tu transferencia/depósito. Sofía lo revisará en el banco y confirmará tu pago.'}
           </p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Field label="Tu nombre" required>
-            <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre completo" style={inputStyle} />
-          </Field>
-          <Field label="Tu WhatsApp o Instagram">
-            <input value={contacto} onChange={e => setContacto(e.target.value)} placeholder="+593 99... o @usuario" style={inputStyle} />
-          </Field>
+          {!token && (
+            <>
+              <Field label="Tu nombre" required>
+                <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre completo" style={inputStyle} />
+              </Field>
+              <Field label="Tu WhatsApp o Instagram">
+                <input value={contacto} onChange={e => setContacto(e.target.value)} placeholder="+593 99... o @usuario" style={inputStyle} />
+              </Field>
+            </>
+          )}
 
           <div style={{ display: 'flex', gap: 10 }}>
             <Field label="Monto (USD)" style={{ flex: 1 }}>

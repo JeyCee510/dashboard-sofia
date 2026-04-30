@@ -5,9 +5,11 @@ import { useAsistencia } from './hooks/useAsistencia.js';
 import { useAjustes, DEFAULT_AJUSTES } from './hooks/useAjustes.js';
 import { useMensajes } from './hooks/useMensajes.js';
 import { usePreinscripcion } from './hooks/usePreinscripcion.js';
+import { useComprobanteToken } from './hooks/useComprobanteToken.js';
 
 // Exponer hooks que necesitan acceder componentes que viven en window.X
 window.usePreinscripcion = usePreinscripcion;
+window.useComprobanteToken = useComprobanteToken;
 
 // ─────────────────────────────────────────────────────────────────────
 // Estado central — todo en Supabase: alumnas, leads, pagos, asistencia,
