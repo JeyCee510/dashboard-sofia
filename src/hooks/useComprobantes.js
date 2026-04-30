@@ -75,5 +75,24 @@ export function useComprobantes() {
     await cargar();
   }, [cargar]);
 
-  return { items, loading, cargar, obtenerUrl, validar, rechazar };
+  // ⚠ TEMPORAL pre-prod — para limpiar comprobantes de prueba.
+  // Borra el archivo del Storage y la fila de la DB. Si estaba validado,
+  // NO reverte el pago insertado (eso requiere paso manual desde el
+  // timeline de la alumna). El admin debería borrar primero el pago
+  // desde la ficha si quiere consistencia financiera.
+  const eliminar = useCallback(async (id) => {
+    // 1. Leer storage_path antes de borrar la fila
+    const { data: row } = await supabase
+      .from('comprobantes_pago').select('storage_path').eq('id', id).single();
+    // 2. Borrar archivo del Storage (si existe)
+    if (row?.storage_path) {
+      await supabase.storage.from('comprobantes').remove([row.storage_path]);
+    }
+    // 3. Borrar la fila
+    const { error } = await supabase.from('comprobantes_pago').delete().eq('id', id);
+    if (error) throw error;
+    await cargar();
+  }, [cargar]);
+
+  return { items, loading, cargar, obtenerUrl, validar, rechazar, eliminar };
 }

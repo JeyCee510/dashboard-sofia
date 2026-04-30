@@ -1,4 +1,5 @@
 import React from 'react';
+import { supabase } from './lib/supabase.js';
 import { useComprobanteToken } from './hooks/useComprobanteToken.js';
 import { usePreinscripcion } from './hooks/usePreinscripcion.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
@@ -740,6 +741,54 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
   const [generando, setGenerando] = React.useState(false);
   const triedRef = React.useRef(false);
 
+  // Subida manual por Sofía: caso cuando la persona manda el comprobante
+  // por WA/IG y no usa el link. Inserta directo a comprobantes_pago en
+  // estado 'pendiente' para que Sofía lo valide después como cualquier otro.
+  const fileRefManual = React.useRef(null);
+  const [subiendoManual, setSubiendoManual] = React.useState(false);
+  const [errorManual, setErrorManual] = React.useState('');
+  const [okManual, setOkManual] = React.useState(false);
+
+  const subirManual = async (file) => {
+    if (!file) return;
+    if (file.size > 12 * 1024 * 1024) {
+      setErrorManual('El archivo supera los 12 MB.');
+      return;
+    }
+    setSubiendoManual(true);
+    setErrorManual('');
+    setOkManual(false);
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      // path único — random + timestamp
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('comprobantes')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      // Insert directo (admin tiene RLS FOR ALL)
+      const insertRow = {
+        nombre_cliente: nombre || 'Sin nombre',
+        contacto: tel || '',
+        storage_path: path,
+        archivo_nombre: file.name,
+        archivo_tipo: file.type,
+        estado: 'pendiente',
+      };
+      if (alumnaId) insertRow.alumna_id = alumnaId;
+      if (leadId) insertRow.lead_id = leadId;
+      const { error: insErr } = await supabase.from('comprobantes_pago').insert(insertRow);
+      if (insErr) throw insErr;
+      setOkManual(true);
+      setTimeout(() => setOkManual(false), 3000);
+    } catch (e) {
+      console.error('[comprobante manual]', e);
+      setErrorManual(e.message || 'Error al subir el archivo.');
+    } finally {
+      setSubiendoManual(false);
+    }
+  };
+
   React.useEffect(() => {
     if (token) setLink(`${window.location.origin}/comprobante/${token}`);
     else setLink('');
@@ -847,6 +896,41 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
       </div>
       <div style={{ marginTop: 8, fontSize: 10, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
         Reusable: la persona puede subir cuantos comprobantes necesite con el mismo link.
+      </div>
+
+      {/* Subida manual: caso cuando mandan el comprobante por WA/IG */}
+      <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(212,138,110,0.3)' }}>
+        <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginBottom: 8, lineHeight: 1.4 }}>
+          ¿Te mandó el comprobante por otro canal? Súbelo aquí:
+        </div>
+        <button
+          type="button"
+          onClick={() => fileRefManual.current?.click()}
+          disabled={subiendoManual}
+          style={{
+            width: '100%', padding: '8px 12px', borderRadius: 10,
+            background: okManual ? 'var(--oliva)' : 'var(--surface)',
+            color: okManual ? '#fff' : 'var(--ink)',
+            border: '1px solid ' + (okManual ? 'transparent' : 'var(--line-soft)'),
+            fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+            cursor: subiendoManual ? 'not-allowed' : 'pointer',
+            opacity: subiendoManual ? 0.6 : 1,
+          }}
+        >
+          {subiendoManual ? 'Subiendo…' :
+           okManual ? 'Comprobante subido ✓ — pendiente de validar' :
+           'Subir comprobante manual'}
+        </button>
+        {errorManual && (
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{errorManual}</div>
+        )}
+        <input
+          ref={fileRefManual}
+          type="file"
+          accept="image/*,application/pdf,.pdf"
+          style={{ display: 'none' }}
+          onChange={(e) => { subirManual(e.target.files?.[0]); e.target.value = ''; }}
+        />
       </div>
     </div>
   );

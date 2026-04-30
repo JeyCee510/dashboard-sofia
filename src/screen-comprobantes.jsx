@@ -10,7 +10,7 @@ const { useState } = React;
 // ─────────────────────────────────────────────────────────────────────
 
 const ComprobantesScreen = ({ store, onClose }) => {
-  const { items, loading, obtenerUrl, validar, rechazar } = useComprobantes();
+  const { items, loading, obtenerUrl, validar, rechazar, eliminar } = useComprobantes();
   const [filter, setFilter] = useState('pendiente');
   const [active, setActive] = useState(null);  // comprobante seleccionado para validar
 
@@ -71,6 +71,11 @@ const ComprobantesScreen = ({ store, onClose }) => {
                     if (!confirm(`¿Rechazar el comprobante de ${c.nombre_cliente}?`)) return;
                     try { await rechazar(c.id, ''); } catch (e) { alert(e.message); }
                   }}
+                  onEliminar={async () => {
+                    const msg = `⚠ Eliminar comprobante de ${c.nombre_cliente}?\n\nEsto borra el archivo y el registro permanentemente.\n${c.estado === 'validado' ? '\nEste comprobante ESTÁ VALIDADO. Si tiene un pago asociado, debes borrarlo manualmente desde la ficha de la alumna ANTES de eliminar el comprobante para mantener consistencia.\n' : ''}\nEsta acción no se puede deshacer.`;
+                    if (!confirm(msg)) return;
+                    try { await eliminar(c.id); } catch (e) { alert(e.message); }
+                  }}
                 />
               ))}
             </div>
@@ -97,7 +102,7 @@ const ComprobantesScreen = ({ store, onClose }) => {
   );
 };
 
-const ComprobanteCard = ({ c, obtenerUrl, onValidar, onRechazar }) => {
+const ComprobanteCard = ({ c, obtenerUrl, onValidar, onRechazar, onEliminar }) => {
   const [url, setUrl] = useState(null);
 
   const verArchivo = async () => {
@@ -116,8 +121,26 @@ const ComprobanteCard = ({ c, obtenerUrl, onValidar, onRechazar }) => {
   }[c.estado] || { bg: 'var(--bg-warm)', fg: 'var(--ink-mute)', label: c.estado };
 
   return (
-    <div className="card flat" style={{ padding: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+    <div className="card flat" style={{ padding: 14, position: 'relative' }}>
+      {/* TEMP-PRE-PROD-DELETE: botón eliminar comprobante. Quitar antes
+          de producción real con alumnas reales (registrar antes en pagos). */}
+      {onEliminar && (
+        <button
+          onClick={onEliminar}
+          aria-label="Eliminar comprobante"
+          title="Eliminar comprobante (TEMPORAL pre-prod)"
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            width: 24, height: 24, borderRadius: 6,
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: 'var(--ink-mute)', fontSize: 16, lineHeight: 1,
+            opacity: 0.5,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--rojo)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'var(--ink-mute)'; }}
+        >×</button>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8, paddingRight: 22 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>{c.nombre_cliente}</div>
           {c.contacto && (
