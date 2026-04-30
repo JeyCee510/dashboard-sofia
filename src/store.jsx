@@ -26,11 +26,29 @@ function useStore() {
   const mensajesHook = useMensajes();
   const comprobantesPendientesHook = useComprobantesPendientes();
 
+  // Inyectar plantilla virtual "Programa PDF" si hay un PDF cargado.
+  // Las plantillas virtuales tienen id que empieza con '__' y NO se persisten
+  // ni se pueden editar desde Ajustes (filtradas en screen-ajustes).
+  const ajustesEnriquecidos = React.useMemo(() => {
+    const base = ajustesHook.ajustes;
+    const url = base.materialProgramaUrl;
+    const baseTpl = base.plantillasWA || [];
+    if (!url) return base;
+    const virtual = {
+      id: '__pdf_programa__',
+      titulo: 'Programa PDF',
+      cuerpo: `Te paso el PDF con el programa completo de la formación 🙏\n\n${url}`,
+    };
+    // Si ya existe (re-cómputo), reemplazar; si no, agregar al final.
+    const sinVirtual = baseTpl.filter(p => p.id !== '__pdf_programa__');
+    return { ...base, plantillasWA: [...sinVirtual, virtual] };
+  }, [ajustesHook.ajustes]);
+
   const state = {
     alumnas: alumnasHook.alumnas,
     leads: leadsHook.leads,
     asistencia: asistenciaHook.asistencia,
-    ajustes: ajustesHook.ajustes,
+    ajustes: ajustesEnriquecidos,
     mensajes: mensajesHook.mensajes,
     comprobantesPendientes: comprobantesPendientesHook.count,
     comprobantePendienteLatest: comprobantesPendientesHook.latest,
