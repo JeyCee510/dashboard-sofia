@@ -97,6 +97,14 @@ const App = () => {
 
   const openAlumna = (id) => setOverlay({ type: 'alumna', id });
 
+  // Pull-to-refresh debe ir antes de los early returns (regla de hooks)
+  const ptr = usePullToRefresh({
+    onRefresh: () => new Promise((resolve) => {
+      window.location.reload();
+      setTimeout(resolve, 1500);
+    }),
+  });
+
   // ── Loading & auth gates ──
   if (auth.loading) {
     return (
@@ -144,16 +152,6 @@ const App = () => {
     else if (tab === 'marketing') setSheet('new-lead');
     else setSheet('new-alumna');
   };
-
-  // Pull-to-refresh: jala desde el top del scroll para recargar.
-  // En lugar de window.location.reload(), forzamos un re-fetch suave.
-  const ptr = usePullToRefresh({
-    onRefresh: () => new Promise((resolve) => {
-      window.location.reload();
-      // resolve() nunca se llama porque la página recarga
-      setTimeout(resolve, 1500);
-    }),
-  });
 
   return (
     <div className="app">
