@@ -1,19 +1,7 @@
 import React from 'react';
 import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS } from './lib/precios.js';
+import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
-
-// Globals registrados en window por otros archivos (patrón híbrido — ver AGENTS.md)
-const Icon = window.Icon;
-const Sheet = window.Sheet;
-const Field = window.Field;
-const TextInput = window.TextInput;
-const TextArea = window.TextArea;
-const NumberInput = window.NumberInput;
-const SelectChips = window.SelectChips;
-const SwitchToggle = window.SwitchToggle;
-const ContactPanel = window.ContactPanel;
-const PreinscripcionAdminPanel = window.PreinscripcionAdminPanel;
-const ComprobanteTokenAdminPanel = window.ComprobanteTokenAdminPanel;
 
 // ──────────────────────────────────────────
 // Form sheets: alumna · lead · pago + Ajustes screen

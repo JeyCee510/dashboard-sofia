@@ -1,10 +1,6 @@
 import React from 'react';
+import { ContactPanel, ComprobanteTokenAdminPanel } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
-
-// Globals registrados en window por otros archivos (patrón híbrido — ver AGENTS.md)
-const Icon = window.Icon;
-const ContactPanel = window.ContactPanel;
-const ComprobanteTokenAdminPanel = window.ComprobanteTokenAdminPanel;
 
 // ──────────────────────────────────────────
 // Ficha de alumna (overlay) — usa store; con editar / borrar / pagar

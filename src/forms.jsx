@@ -1,4 +1,6 @@
 import React from 'react';
+import { useComprobanteToken } from './hooks/useComprobanteToken.js';
+import { usePreinscripcion } from './hooks/usePreinscripcion.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -456,7 +458,6 @@ const PREGUNTAS_LABELS = {
 };
 
 const PreinscripcionAdminPanel = ({ leadId, leadNombre, leadTel, plantillas }) => {
-  const usePreinscripcion = window.usePreinscripcion;
   const { pre, loading, generar } = usePreinscripcion(leadId, null);
   const [link, setLink] = React.useState('');
   const [copiado, setCopiado] = React.useState(false);
@@ -593,7 +594,6 @@ const PreinscripcionAdminPanel = ({ leadId, leadNombre, leadTel, plantillas }) =
 // comprobantes para esta persona, copiarlo o mandarlo por WhatsApp.
 // ──────────────────────────────────────────
 const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
-  const useComprobanteToken = window.useComprobanteToken;
   const { token, loading, generar } = useComprobanteToken({ leadId, alumnaId });
   const [link, setLink] = React.useState('');
   const [copiado, setCopiado] = React.useState(false);
@@ -723,3 +723,7 @@ window.ComprobanteTokenAdminPanel = ComprobanteTokenAdminPanel;
 window.cleanPhone = cleanPhone;
 window.cleanInstagram = cleanInstagram;
 window.buildWaUrl = buildWaUrl;
+
+// Exports reales para consumidores que necesitan referencia confiable
+// (en producción Vite minifica/optimiza y el patrón window.X puede no quedar registrado)
+export { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel };
