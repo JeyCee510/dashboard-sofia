@@ -133,7 +133,7 @@ const App = () => {
   const asistenciaHoy = store.state.asistencia[0] || {};
 
   let screen;
-  if (tab === 'home') screen = <HomeScreen tweaks={screenTweaks} onNavigate={navigate} asistenciaHoy={asistenciaHoy} alumnas={store.state.alumnas} leads={store.state.leads} mensajes={store.state.mensajes} />;
+  if (tab === 'home') screen = <HomeScreen tweaks={screenTweaks} onNavigate={navigate} asistenciaHoy={asistenciaHoy} alumnas={store.state.alumnas} leads={store.state.leads} mensajes={store.state.mensajes} comprobantesPendientes={store.state.comprobantesPendientes} comprobantePendienteLatest={store.state.comprobantePendienteLatest} />;
   else if (tab === 'reservas') screen = <ReservasScreen tweaks={screenTweaks} onNavigate={navigate} onOpenAlumna={openAlumna} />;
   else if (tab === 'pagos') screen = <PagosScreen tweaks={screenTweaks} onOpenAlumna={openAlumna} onNewPago={() => setSheet('new-pago')} onNavigate={navigate} />;
   else if (tab === 'marketing') screen = <MarketingScreen onOpenLead={(id) => setSheet(id ? { type: 'edit-lead', id } : 'new-lead')} onNavigate={navigate} />;

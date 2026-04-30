@@ -6,6 +6,7 @@ import { useAjustes, DEFAULT_AJUSTES } from './hooks/useAjustes.js';
 import { useMensajes } from './hooks/useMensajes.js';
 import { usePreinscripcion } from './hooks/usePreinscripcion.js';
 import { useComprobanteToken } from './hooks/useComprobanteToken.js';
+import { useComprobantesPendientes } from './hooks/useComprobantesPendientes.js';
 
 // Exponer hooks que necesitan acceder componentes que viven en window.X
 window.usePreinscripcion = usePreinscripcion;
@@ -22,6 +23,7 @@ function useStore() {
   const asistenciaHook = useAsistencia();
   const ajustesHook = useAjustes();
   const mensajesHook = useMensajes();
+  const comprobantesPendientesHook = useComprobantesPendientes();
 
   const state = {
     alumnas: alumnasHook.alumnas,
@@ -29,6 +31,8 @@ function useStore() {
     asistencia: asistenciaHook.asistencia,
     ajustes: ajustesHook.ajustes,
     mensajes: mensajesHook.mensajes,
+    comprobantesPendientes: comprobantesPendientesHook.count,
+    comprobantePendienteLatest: comprobantesPendientesHook.latest,
   };
 
   const loading =

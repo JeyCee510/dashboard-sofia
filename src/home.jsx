@@ -84,7 +84,7 @@ function formatTodayLong() {
   return `${dias[now.getDay()]} · ${now.getDate()} de ${meses[now.getMonth()]}`;
 }
 
-const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensajes }) => {
+const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensajes, comprobantesPendientes = 0, comprobantePendienteLatest = null }) => {
   // alumnas/leads/mensajes vienen del store via props (reactivos).
   // MOCK_ALUMNAS/MOCK_LEADS/MENSAJES_RECIENTES siguen sincronizados como fallback.
   const safeAlumnas = alumnas || MOCK_ALUMNAS || [];
@@ -265,6 +265,19 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         <h2>Para ti hoy</h2>
       </div>
       <div style={{ padding: '0 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {comprobantesPendientes > 0 && (
+          <ActionRow
+            icon="cash"
+            accent="rojo"
+            title={`${comprobantesPendientes} comprobante${comprobantesPendientes > 1 ? 's' : ''} por validar`}
+            subtitle={
+              comprobantePendienteLatest
+                ? `Más reciente: ${comprobantePendienteLatest.nombre_cliente}${comprobantePendienteLatest.monto ? ` · $${comprobantePendienteLatest.monto}` : ''}`
+                : 'Revisa el banco y valida'
+            }
+            onClick={() => onNavigate('comprobantes')}
+          />
+        )}
         <ActionRow
           icon="cash"
           accent="rojo"
