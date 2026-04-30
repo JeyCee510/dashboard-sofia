@@ -7,6 +7,7 @@ import { useMensajes } from './hooks/useMensajes.js';
 import { usePreinscripcion } from './hooks/usePreinscripcion.js';
 import { useComprobanteToken } from './hooks/useComprobanteToken.js';
 import { useComprobantesPendientes } from './hooks/useComprobantesPendientes.js';
+import { supabase } from './lib/supabase.js';
 
 // Exponer hooks que necesitan acceder componentes que viven en window.X
 window.usePreinscripcion = usePreinscripcion;
@@ -67,6 +68,13 @@ function useStore() {
     const descuento = esProntoPago ? 0 : DIFERENCIAL_SILLA;
     const nuevoTotal = Math.max(0, (a.total || 0) - descuento);
     await alumnasHook.updateAlumna(alumnaId, { bonoSilla: false, total: nuevoTotal });
+    await supabase.from('eventos_alumna').insert({
+      alumna_id: alumnaId,
+      tipo: 'silla_renunciada',
+      titulo: 'Renunció a silla',
+      subtitulo: descuento > 0 ? `Total bajó $${descuento}` : 'Pronto pago: precio fijo, no baja',
+      monto: descuento > 0 ? -descuento : null,
+    });
   };
 
   // Asignar silla manualmente (Sofía override)
@@ -77,6 +85,13 @@ function useStore() {
     const aumento = esProntoPago ? 0 : DIFERENCIAL_SILLA;
     const nuevoTotal = (a.total || 0) + aumento;
     await alumnasHook.updateAlumna(alumnaId, { bonoSilla: true, total: nuevoTotal });
+    await supabase.from('eventos_alumna').insert({
+      alumna_id: alumnaId,
+      tipo: 'silla_asignada_manual',
+      titulo: 'Silla asignada manualmente',
+      subtitulo: aumento > 0 ? `Total subió $${aumento}` : 'Pronto pago: total no cambia',
+      monto: aumento > 0 ? aumento : null,
+    });
   };
 
   // ── Leads ──
@@ -99,6 +114,7 @@ function useStore() {
       pago,
       total: state.ajustes.precioRegular,
       ...extra,
+      _desdeLead: true, // marca para que addAlumna registre el evento correcto
     });
     await deleteLead(leadId);
     return nuevaId;

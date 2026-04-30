@@ -124,6 +124,16 @@ export function useAlumnas() {
       alumnasRef.current = alumnasRef.current.some(a => a.id === inserted.id)
         ? alumnasRef.current
         : [...alumnasRef.current, fila];
+      // Evento de inscripción
+      const desdeLead = !!data._desdeLead;
+      await supabase.from('eventos_alumna').insert({
+        alumna_id: inserted.id,
+        tipo: desdeLead ? 'inscrita_desde_lead' : 'inscrita',
+        titulo: desdeLead ? 'Convertida desde lead' : 'Se inscribió',
+        subtitulo: data.tipo_inscripcion === 'completa' ? 'Formación completa' :
+                   data.tipo_inscripcion === 'dos_encuentros' ? '2 encuentros' :
+                   data.tipo_inscripcion === 'un_encuentro' ? '1 encuentro' : '',
+      });
     }
     return inserted.id;
   }, []);
@@ -232,6 +242,15 @@ export function useAlumnas() {
     }
     // 2. Actualizar acumulado + total + (eventualmente) silla en `alumnas`
     await supabase.from('alumnas').update(dbPatch).eq('id', alumnaId);
+    // 3. Si se asignó silla automáticamente, registrar evento
+    if (asignarSilla) {
+      await supabase.from('eventos_alumna').insert({
+        alumna_id: alumnaId,
+        tipo: 'silla_asignada_auto',
+        titulo: 'Silla asignada automáticamente',
+        subtitulo: `Por pagar reserva o más (formación completa)`,
+      });
+    }
 
     return { asignoSilla: asignarSilla, nuevoTotal, nuevoPagado, nuevoEstado };
   }, [alumnas]);

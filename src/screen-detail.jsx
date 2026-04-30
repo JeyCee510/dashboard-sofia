@@ -1,5 +1,6 @@
 import React from 'react';
 import { ContactPanel, ComprobanteTokenAdminPanel } from './forms.jsx';
+import { useEventosAlumna } from './hooks/useEventosAlumna.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -8,6 +9,7 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
   const a = store.state.alumnas.find(x => x.id === alumnaId);
+  const { eventos, eliminarPago, eliminarEvento } = useEventosAlumna(alumnaId);
   if (!a) return null;
   const dias = store.state.ajustes.diasFormacion;
   const restante = a.total - a.pagado;
@@ -241,14 +243,35 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
         {/* Línea de tiempo */}
         <div className="section-title">
           <h2>Línea de tiempo</h2>
+          <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>{eventos.length} {eventos.length === 1 ? 'movimiento' : 'movimientos'}</span>
         </div>
         <div style={{ padding: '0 22px 18px' }}>
           <div className="card flat" style={{ padding: '4px 16px' }}>
-            {a.pagado > 0 && <TimelineRow icon="cash" date={a.inscrita || '—'} title={`Pagó $${a.pagado}`} subtitle={a.pago} />}
-            {diasAsistidos.length > 0 && diasAsistidos.map(d => (
-              <TimelineRow key={d.idx} icon="check" date={d.fecha} title={`Asistió ${d.label}`} subtitle={`Encuentro ${d.encuentro}`} />
-            ))}
-            <TimelineRow icon="user" date={a.inscrita || '—'} title="Se inscribió" subtitle="" last />
+            {eventos.length === 0 ? (
+              <div style={{ padding: '20px 0', fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic', textAlign: 'center' }}>
+                Sin movimientos registrados aún.
+              </div>
+            ) : (
+              eventos.map((ev, i) => (
+                <TimelineRow
+                  key={ev.id}
+                  icon={iconForEvent(ev.tipo)}
+                  date={fmtFecha(ev.created_at)}
+                  title={ev.titulo}
+                  subtitle={ev.subtitulo}
+                  last={i === eventos.length - 1}
+                  onDelete={() => {
+                    const labelTipo = ev.source === 'pago' ? 'pago' : 'evento';
+                    const msg = ev.source === 'pago'
+                      ? `¿Eliminar este pago de $${ev.monto}?\n\nEsto va a:\n  • Borrar el pago del audit\n  • Restar $${ev.monto} al pagado de ${a.nombre}\n\nEsta acción no se puede deshacer.`
+                      : `¿Eliminar el evento "${ev.titulo}"?\n\nNo se reverten cambios automáticos (silla, total, etc.). Solo borra el registro del historial.\n\nEsta acción no se puede deshacer.`;
+                    if (!confirm(msg)) return;
+                    if (ev.source === 'pago') eliminarPago(ev.rawId);
+                    else eliminarEvento(ev.rawId);
+                  }}
+                />
+              ))
+            )}
           </div>
         </div>
 
@@ -268,7 +291,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
   );
 };
 
-const TimelineRow = ({ icon, date, title, subtitle, last }) => (
+const TimelineRow = ({ icon, date, title, subtitle, last, onDelete }) => (
   <div style={{
     display: 'flex', gap: 12, padding: '12px 0',
     borderBottom: last ? 'none' : '1px solid var(--line-soft)',
@@ -282,12 +305,49 @@ const TimelineRow = ({ icon, date, title, subtitle, last }) => (
     }}>
       <Icon name={icon} size={14} />
     </div>
-    <div style={{ flex: 1 }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{title}</div>
       {subtitle && <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 1 }}>{subtitle}</div>}
     </div>
-    <div style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{date}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+      <div style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{date}</div>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          aria-label="Eliminar movimiento"
+          title="Eliminar movimiento"
+          style={{
+            background: 'transparent', border: 'none', padding: 4,
+            cursor: 'pointer', color: 'var(--ink-mute)',
+            opacity: 0.5, fontSize: 14, lineHeight: 1,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--rojo)'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'var(--ink-mute)'; }}
+        >×</button>
+      )}
+    </div>
   </div>
 );
+
+// Mapeo tipo → ícono para la timeline
+function iconForEvent(tipo) {
+  if (tipo === 'pago') return 'cash';
+  if (tipo === 'silla_asignada_auto' || tipo === 'silla_asignada_manual') return 'check';
+  if (tipo === 'silla_renunciada') return 'x';
+  if (tipo === 'inscrita' || tipo === 'inscrita_desde_lead') return 'user';
+  if (tipo === 'tipo_cambiado') return 'edit';
+  return 'arrow';
+}
+
+// "29 abr · 14:32" estilo es-EC
+function fmtFecha(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    const fecha = d.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
+    const hora = d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${fecha} · ${hora}`;
+  } catch { return '—'; }
+}
 
 window.FichaAlumna = FichaAlumna;
