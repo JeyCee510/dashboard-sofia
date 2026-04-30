@@ -49,13 +49,21 @@ export function useLeads() {
   useEffect(() => {
     const ch = supabase.channel('leads-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setLeads(prev => prev.some(l => l.id === payload.new.id) ? prev : [fromDb(payload.new), ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setLeads(prev => prev.map(l => l.id === payload.new.id ? fromDb(payload.new) : l));
-        } else if (payload.eventType === 'DELETE') {
+        if (payload.eventType === 'DELETE') {
           setLeads(prev => prev.filter(l => l.id !== payload.old.id));
+          return;
         }
+        // INSERT o UPDATE → upsert defensivo. Necesario porque RPCs con
+        // INSERT ... ON CONFLICT DO UPDATE pueden emitir el evento como
+        // UPDATE; si la fila no estaba en el state local (caso restaurar
+        // desde papelera), un .map() puro no la agregaría.
+        const fila = fromDb(payload.new);
+        setLeads(prev => {
+          const exists = prev.some(l => l.id === fila.id);
+          return exists
+            ? prev.map(l => l.id === fila.id ? fila : l)
+            : [fila, ...prev];
+        });
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
