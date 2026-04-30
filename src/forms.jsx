@@ -837,7 +837,7 @@ sofilira@gmail.com
 📎 Cuando tengas el comprobante, súbelo en tu link personal:
 ${link}
 
-Es seguro, sólo Sofía y yo lo vemos. Puedes subir varios si haces más de un pago 🌿`;
+Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿`;
   const waUrl = tel && link ? buildWaUrl(tel, mensajeWa) : null;
 
   if (loading || (!token && generando)) {
