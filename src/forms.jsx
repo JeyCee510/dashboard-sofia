@@ -351,7 +351,6 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
           📋 Mensaje copiado. Cuando se abra Instagram, pega con tocar y mantener.
         </div>
       )}
-      </div>
 
       {(waUrl || igUrl) && plantillas && plantillas.length > 0 && (
         <>
