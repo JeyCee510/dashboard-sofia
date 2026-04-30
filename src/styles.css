@@ -114,8 +114,16 @@ body {
 
 /* ──────────── Mobile (< 700px): fullscreen sin frame ──────────── */
 @media (max-width: 699px) {
-  body:not(.public-route) { background: var(--bg) !important; overflow: hidden !important; height: 100vh; height: 100dvh; }
-  body:not(.public-route) #stage { padding: 0 !important; height: 100vh !important; height: 100dvh !important; min-height: 0 !important; align-items: stretch; }
+  /* OJO: usamos 100svh (small viewport) en lugar de 100dvh.
+     En iOS Safari, 100dvh es el viewport DINÁMICO que cambia cuando
+     aparece/desaparece la barra de URL — eso hace que el .app se
+     extienda "detrás" de la barra y la tabbar quede invisible o muy
+     arriba. 100svh es el viewport CON barras visibles (más chico,
+     conservador) y garantiza que la tabbar siempre se vea pegada al
+     bottom de lo que el usuario ve. Fallback a 100vh para browsers
+     que no soportan svh. */
+  body:not(.public-route) { background: var(--bg) !important; overflow: hidden !important; height: 100vh; height: 100svh; }
+  body:not(.public-route) #stage { padding: 0 !important; height: 100vh !important; height: 100svh !important; min-height: 0 !important; align-items: stretch; }
   body:not(.public-route) #root { height: 100% !important; }
   body:not(.public-route) .app {
     max-width: 100% !important;
@@ -123,7 +131,7 @@ body {
     border-radius: 0 !important;
     box-shadow: none !important;
     height: 100vh !important;
-    height: 100dvh !important;
+    height: 100svh !important;
     min-height: 0 !important;
   }
   .device-label { display: none; }
