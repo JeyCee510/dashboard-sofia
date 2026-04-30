@@ -3,21 +3,30 @@ import ReactDOM from 'react-dom/client';
 import './styles.css';
 
 // ─── Routing simple por pathname ───
-// Si es /preinscripcion/<token>, renderiza el form público sin auth ni IOSDevice ni hooks de store.
-// Cualquier otra ruta = la app normal con login.
+// /preinscripcion/<token> y /comprobante son rutas públicas (sin auth).
+// Cualquier otra = la app normal con login.
 const path = window.location.pathname;
 const preinscripcionMatch = path.match(/^\/preinscripcion\/([\w-]+)\/?$/);
+const comprobanteMatch = path.match(/^\/comprobante\/?$/);
 
 if (preinscripcionMatch) {
-  // Modo público — solo carga lo necesario para el form
   const token = preinscripcionMatch[1];
-  // Marcar body para que el CSS desactive las restricciones de scroll del modo app
   document.body.classList.add('public-route');
   document.documentElement.classList.add('public-route');
   import('./icons.jsx').then(() =>
     import('./preinscripcion-public.jsx').then(({ PreinscripcionPublic }) => {
       ReactDOM.createRoot(document.getElementById('root')).render(
         <PreinscripcionPublic token={token} />
+      );
+    })
+  );
+} else if (comprobanteMatch) {
+  document.body.classList.add('public-route');
+  document.documentElement.classList.add('public-route');
+  import('./icons.jsx').then(() =>
+    import('./comprobante-public.jsx').then(({ ComprobantePublic }) => {
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <ComprobantePublic />
       );
     })
   );
@@ -42,6 +51,7 @@ async function initApp() {
   await import('./screen-ajustes.jsx');
   await import('./screen-difusion.jsx');
   await import('./screen-papelera-leads.jsx');
+  await import('./screen-comprobantes.jsx');
   await import('./forms.jsx');
   await import('./forms-sheets.jsx');
   await import('./store.jsx');

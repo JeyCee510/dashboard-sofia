@@ -144,6 +144,11 @@ const AjustesScreen = ({ store, onClose }) => {
           </div>
         </Section>
 
+        {/* Link público de comprobantes */}
+        <Section title="Link público para comprobantes">
+          <ComprobanteLinkCard />
+        </Section>
+
         {/* Datos */}
         <Section title="Datos">
           <div style={{ padding: '0 22px 6px', fontSize: 12, color: 'var(--ink-mute)' }}>
@@ -256,6 +261,53 @@ const DiaSheet = ({ open, onClose, dia, onSave }) => {
       <Field label="Etiqueta (ej. 'Día 1')"><TextInput value={form?.label} onChange={v => setForm(f => ({ ...f, label: v }))} /></Field>
       <Field label="Encuentro"><NumberInput value={form?.encuentro} onChange={v => setForm(f => ({ ...f, encuentro: v }))} min={1} max={6} /></Field>
     </Sheet>
+  );
+};
+
+// Card que muestra el link público de comprobantes y permite copiarlo
+const ComprobanteLinkCard = () => {
+  const link = `${window.location.origin}/comprobante`;
+  const [copiado, setCopiado] = React.useState(false);
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(link); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = link;
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    setCopiado(true); setTimeout(() => setCopiado(false), 1800);
+  };
+  const compartirWa = () => {
+    const msg = `Hola! Te paso el link para subir tu comprobante de pago de la formación. Es seguro y solo Sofía verá tus datos:\n\n${link}\n\n🌿`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+  return (
+    <div style={{ padding: '0 22px' }}>
+      <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.45 }}>
+        Comparte este link con cualquier cliente que vaya a pagar. Sube su comprobante (foto o PDF) y lo verás en la sección Comprobantes de Pagos. Es reusable y no requiere que el cliente cree cuenta.
+      </div>
+      <div style={{
+        background: 'var(--surface)', padding: '8px 12px', borderRadius: 10,
+        border: '1px solid var(--line-soft)',
+        fontSize: 11, color: 'var(--ink)', wordBreak: 'break-all',
+        fontFamily: 'monospace',
+      }}>
+        {link}
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+        <button onClick={copiar} style={{
+          flex: 1, padding: '9px 12px', borderRadius: 10,
+          background: copiado ? 'var(--oliva)' : 'var(--surface)',
+          color: copiado ? '#fff' : 'var(--ink)',
+          border: '1px solid ' + (copiado ? 'transparent' : 'var(--line-soft)'),
+          fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+        }}>{copiado ? 'Copiado ✓' : 'Copiar link'}</button>
+        <button onClick={compartirWa} style={{
+          flex: 1, padding: '9px 12px', borderRadius: 10,
+          background: '#25D366', color: '#fff',
+          border: 'none', fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+        }}>Compartir por WhatsApp</button>
+      </div>
+    </div>
   );
 };
 

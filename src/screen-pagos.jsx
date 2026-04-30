@@ -5,7 +5,7 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 // Pagos screen
 // ──────────────────────────────────────────
 
-const PagosScreen = ({ tweaks, onOpenAlumna, onNewPago }) => {
+const PagosScreen = ({ tweaks, onOpenAlumna, onNewPago, onNavigate }) => {
   const [filter, setFilter] = React.useState('pendientes');
 
   const totalCobrado = MOCK_ALUMNAS.reduce((s, a) => s + a.pagado, 0);
@@ -20,8 +20,30 @@ const PagosScreen = ({ tweaks, onOpenAlumna, onNewPago }) => {
   return (
     <div>
       <div className="page-header">
-        <div className="eyebrow">Junio · USD</div>
-        <h1>Pagos</h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div className="eyebrow">Junio · USD</div>
+            <h1>Pagos</h1>
+          </div>
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('comprobantes')}
+              style={{
+                marginTop: 8,
+                padding: '8px 12px',
+                borderRadius: 999,
+                background: 'var(--bg-warm)',
+                border: '1px solid var(--line-soft)',
+                fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <Icon name="note" size={13} stroke="var(--terracota)" />
+              Comprobantes
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Total card */}
