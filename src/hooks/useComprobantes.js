@@ -43,16 +43,14 @@ export function useComprobantes() {
   }, []);
 
   const validar = useCallback(async (id, { alumna_id, monto, tipo, notas }) => {
-    // 1. Marcar comprobante como validado
-    const { error: e1 } = await supabase
-      .from('comprobantes_pago')
-      .update({ estado: 'validado', alumna_id, validado_at: new Date().toISOString(), validado_notas: notas || '' })
-      .eq('id', id);
-    if (e1) throw e1;
-
-    // 2. Si hay alumna asociada, registrar el pago en pagos + actualizar acumulado en alumnas
+    let pagoId = null;
+    // 1. Si hay alumna asociada, registrar el pago en pagos + actualizar acumulado
     if (alumna_id && monto) {
-      await supabase.from('pagos').insert({ alumna_id, monto, tipo: tipo || 'parcial' });
+      const { data: pagoInsertado, error: ePago } = await supabase
+        .from('pagos').insert({ alumna_id, monto, tipo: tipo || 'parcial' })
+        .select().single();
+      if (ePago) throw ePago;
+      pagoId = pagoInsertado?.id || null;
       // Actualizar el pagado de la alumna
       const { data: a } = await supabase.from('alumnas').select('pagado, total').eq('id', alumna_id).single();
       if (a) {
@@ -63,6 +61,20 @@ export function useComprobantes() {
         await supabase.from('alumnas').update({ pagado: nuevoPagado, pago: nuevoEstado }).eq('id', alumna_id);
       }
     }
+
+    // 2. Marcar comprobante como validado + guardar pago_id (vínculo formal)
+    const { error: e1 } = await supabase
+      .from('comprobantes_pago')
+      .update({
+        estado: 'validado',
+        alumna_id,
+        pago_id: pagoId,
+        validado_at: new Date().toISOString(),
+        validado_notas: notas || '',
+      })
+      .eq('id', id);
+    if (e1) throw e1;
+
     await cargar();
   }, [cargar]);
 
@@ -76,19 +88,48 @@ export function useComprobantes() {
   }, [cargar]);
 
   // ⚠ TEMPORAL pre-prod — para limpiar comprobantes de prueba.
-  // Borra el archivo del Storage y la fila de la DB. Si estaba validado,
-  // NO reverte el pago insertado (eso requiere paso manual desde el
-  // timeline de la alumna). El admin debería borrar primero el pago
-  // desde la ficha si quiere consistencia financiera.
+  // Si el comprobante estaba validado y tiene pago_id (vínculo formal),
+  // primero reverte el pago: borra la fila de `pagos` y descuenta el monto
+  // de `alumnas.pagado`. Después borra el archivo del Storage y la fila.
+  // Esto garantiza consistencia financiera sin doble paso manual.
   const eliminar = useCallback(async (id) => {
-    // 1. Leer storage_path antes de borrar la fila
+    // 1. Leer datos del comprobante antes de borrar
     const { data: row } = await supabase
-      .from('comprobantes_pago').select('storage_path').eq('id', id).single();
-    // 2. Borrar archivo del Storage (si existe)
+      .from('comprobantes_pago')
+      .select('storage_path, pago_id, alumna_id, monto, estado')
+      .eq('id', id).single();
+
+    // 2. Si está validado y tiene pago vinculado → reverso atómico
+    if (row?.estado === 'validado' && row.pago_id && row.alumna_id) {
+      // 2a. Leer el pago para conocer el monto exacto (defensivo)
+      const { data: pago } = await supabase
+        .from('pagos').select('monto').eq('id', row.pago_id).single();
+      const montoPago = Number(pago?.monto || row.monto || 0);
+      // 2b. Restar al pagado de la alumna y recalcular estado
+      if (montoPago > 0) {
+        const { data: a } = await supabase
+          .from('alumnas').select('pagado, total').eq('id', row.alumna_id).single();
+        if (a) {
+          const nuevoPagado = Math.max(0, Number(a.pagado || 0) - montoPago);
+          let nuevoEstado;
+          if (nuevoPagado === 0) nuevoEstado = 'pendiente';
+          else if (nuevoPagado >= Number(a.total || 0)) nuevoEstado = 'completo';
+          else nuevoEstado = 'parcial';
+          await supabase.from('alumnas').update({
+            pagado: nuevoPagado, pago: nuevoEstado,
+          }).eq('id', row.alumna_id);
+        }
+      }
+      // 2c. Borrar el pago. ON DELETE SET NULL deja comprobante.pago_id=null,
+      // pero ya estamos a punto de borrar el comprobante igualmente.
+      await supabase.from('pagos').delete().eq('id', row.pago_id);
+    }
+
+    // 3. Borrar archivo del Storage (si existe)
     if (row?.storage_path) {
       await supabase.storage.from('comprobantes').remove([row.storage_path]);
     }
-    // 3. Borrar la fila
+    // 4. Borrar la fila del comprobante
     const { error } = await supabase.from('comprobantes_pago').delete().eq('id', id);
     if (error) throw error;
     await cargar();

@@ -80,7 +80,8 @@ const ComprobantesScreen = ({ store, onClose, asTab = false, hideHeader = false 
                     try { await rechazar(c.id, ''); } catch (e) { alert(e.message); }
                   }}
                   onEliminar={async () => {
-                    const msg = `⚠ Eliminar comprobante de ${c.nombre_cliente}?\n\nEsto borra el archivo y el registro permanentemente.\n${c.estado === 'validado' ? '\nEste comprobante ESTÁ VALIDADO. Si tiene un pago asociado, debes borrarlo manualmente desde la ficha de la alumna ANTES de eliminar el comprobante para mantener consistencia.\n' : ''}\nEsta acción no se puede deshacer.`;
+                    const validadoConPago = c.estado === 'validado' && c.pago_id;
+                    const msg = `⚠ Eliminar comprobante de ${c.nombre_cliente}?\n\nEsto borra el archivo y el registro permanentemente.${validadoConPago ? `\n\nEste comprobante está validado: el pago vinculado de $${c.monto || '?'} también se reverterá automáticamente (se restará del total pagado de la alumna).` : ''}\n\nEsta acción no se puede deshacer.`;
                     if (!confirm(msg)) return;
                     try { await eliminar(c.id); } catch (e) { alert(e.message); }
                   }}

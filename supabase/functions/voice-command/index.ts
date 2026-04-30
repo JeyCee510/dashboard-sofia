@@ -151,9 +151,46 @@ const TOOLS = [
           "total_inscritos",
           "asistencia_hoy",
           "bono_silla_estado",
+          "comprobantes_pendientes",
+          "consolidado_financiero",
+          "preinscripciones_pendientes",
+          "papelera_total",
         ]},
       },
       required: ["pregunta"],
+    },
+  },
+  {
+    name: "asignar_silla",
+    description: "Asignar manualmente bono silla a una estudiante (override). Solo si hay cupos disponibles.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nombre_alumna: { type: "string", description: "Nombre de la estudiante" },
+      },
+      required: ["nombre_alumna"],
+    },
+  },
+  {
+    name: "renunciar_silla",
+    description: "Renunciar al bono silla de una estudiante. Descuenta $30 del total (excepto pronto-pago, que es precio fijo).",
+    input_schema: {
+      type: "object",
+      properties: {
+        nombre_alumna: { type: "string" },
+      },
+      required: ["nombre_alumna"],
+    },
+  },
+  {
+    name: "marcar_dia_completo",
+    description: "Marcar a todas las estudiantes como presentes en un día específico de la formación.",
+    input_schema: {
+      type: "object",
+      properties: {
+        dia: { type: "string", description: "Ej. 'día 1', 'día 3', 'hoy'" },
+      },
+      required: ["dia"],
     },
   },
   {

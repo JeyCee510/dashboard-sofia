@@ -26,6 +26,9 @@ function findByName(items, query) {
   return items.filter(p => (p.nombre || '').toLowerCase().includes(q));
 }
 
+// Algunas consultas son async porque consultan tablas que no están en state local
+import { supabase } from './supabase.js';
+
 const RESPUESTAS_CONSULTA = {
   cupos_disponibles: (state, ajustes) => {
     const total = state.alumnas.length;
@@ -53,6 +56,38 @@ const RESPUESTAS_CONSULTA = {
     const dados = state.alumnas.filter(a => a.bonoSilla).length;
     const max = ajustes.bonoSillaCupos || 6;
     return `${dados} bonos silla entregados de ${max}.`;
+  },
+  comprobantes_pendientes: (state) => {
+    const n = state.comprobantesPendientes || 0;
+    if (n === 0) return 'No hay comprobantes pendientes de validar.';
+    const latest = state.comprobantePendienteLatest;
+    return `${n} ${n === 1 ? 'comprobante pendiente' : 'comprobantes pendientes'}${latest ? `. Último: ${latest.nombre_cliente}${latest.monto ? ` por $${latest.monto}` : ''}` : ''}.`;
+  },
+  consolidado_financiero: (state) => {
+    const totalVendido = state.alumnas.reduce((s, a) => s + (Number(a.total) || 0), 0);
+    const totalRecibido = state.alumnas.reduce((s, a) => s + (Number(a.pagado) || 0), 0);
+    const cobrado = totalVendido > 0 ? Math.round((totalRecibido / totalVendido) * 100) : 0;
+    return `Recibido $${Math.round(totalRecibido)} de $${Math.round(totalVendido)} vendidos. ${cobrado}% cobrado.`;
+  },
+  preinscripciones_pendientes: async () => {
+    const { count, error } = await supabase
+      .from('preinscripcion')
+      .select('*', { count: 'exact', head: true })
+      .eq('estado', 'pendiente');
+    if (error) return 'No pude consultar preinscripciones.';
+    return (count || 0) === 0
+      ? 'No hay preinscripciones pendientes de respuesta.'
+      : `${count} ${count === 1 ? 'preinscripción enviada sin responder' : 'preinscripciones enviadas sin responder'}.`;
+  },
+  papelera_total: async () => {
+    const [leadsRes, alumnasRes] = await Promise.all([
+      supabase.from('leads_archive').select('*', { count: 'exact', head: true }),
+      supabase.from('alumnas_archive').select('*', { count: 'exact', head: true }),
+    ]);
+    const leads = leadsRes.count || 0;
+    const alumnas = alumnasRes.count || 0;
+    if (leads + alumnas === 0) return 'La papelera está vacía.';
+    return `Papelera: ${leads} ${leads === 1 ? 'lead' : 'leads'} y ${alumnas} ${alumnas === 1 ? 'estudiante' : 'estudiantes'} borrados.`;
   },
 };
 
@@ -201,7 +236,44 @@ export async function executeVoiceCommand(toolName, params, store, ui) {
     case 'consultar': {
       const fn = RESPUESTAS_CONSULTA[params.pregunta];
       if (!fn) return { ok: false, message: `No sé responder esa consulta.` };
-      return { ok: true, message: fn(state, ajustes) };
+      const res = fn(state, ajustes);
+      const message = res && typeof res.then === 'function' ? await res : res;
+      return { ok: true, message };
+    }
+
+    case 'asignar_silla': {
+      const matches = findByName(state.alumnas, params.nombre_alumna);
+      if (matches.length === 0) return { ok: false, message: `No encuentro estudiante "${params.nombre_alumna}".` };
+      if (matches.length > 1) return { ok: false, message: `Hay varios: ${matches.map(m => m.nombre).slice(0, 4).join(', ')}.` };
+      const a = matches[0];
+      if (a.bonoSilla) return { ok: false, message: `${a.nombre.split(' ')[0]} ya tiene silla.` };
+      const dados = state.alumnas.filter(x => x.bonoSilla).length;
+      const max = ajustes.bonoSillaCupos || 6;
+      if (dados >= max) {
+        return { ok: false, message: `No hay cupos. Las ${max} sillas ya están asignadas. Renuncia una desde otra ficha primero.` };
+      }
+      await store.asignarSilla(a.id);
+      return { ok: true, message: `Silla asignada a ${a.nombre.split(' ')[0]}.`, openAlumna: a.id };
+    }
+
+    case 'renunciar_silla': {
+      const matches = findByName(state.alumnas, params.nombre_alumna);
+      if (matches.length === 0) return { ok: false, message: `No encuentro estudiante "${params.nombre_alumna}".` };
+      if (matches.length > 1) return { ok: false, message: `Hay varios: ${matches.map(m => m.nombre).slice(0, 4).join(', ')}.` };
+      const a = matches[0];
+      if (!a.bonoSilla) return { ok: false, message: `${a.nombre.split(' ')[0]} no tiene silla.` };
+      await store.renunciarSilla(a.id);
+      return { ok: true, message: `${a.nombre.split(' ')[0]} renunció a silla.`, openAlumna: a.id };
+    }
+
+    case 'marcar_dia_completo': {
+      let diaIdx = 0;
+      const diaText = (params.dia || '').toLowerCase();
+      const m = diaText.match(/d[ií]a\s*(\d)/);
+      if (m) diaIdx = parseInt(m[1], 10) - 1;
+      diaIdx = Math.max(0, Math.min(5, diaIdx));
+      await store.marcarTodosDia(diaIdx);
+      return { ok: true, message: `Todos marcados presentes en día ${diaIdx + 1}.`, navigate: 'home' };
     }
 
     case 'preguntar_clarificacion': {
