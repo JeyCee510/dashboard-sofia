@@ -95,12 +95,28 @@ const ComprobantesScreen = ({ store, onClose, asTab = false }) => {
         <ValidarSheet
           comprobante={active}
           alumnas={store.state.alumnas}
+          leads={store.state.leads}
           onClose={() => setActive(null)}
-          onConfirm={async ({ alumna_id, monto, tipo, notas }) => {
+          onConfirm={async ({ alumna_id, lead_id, monto, tipo, notas }) => {
             try {
-              await validar(active.id, { alumna_id, monto, tipo, notas });
+              let finalAlumnaId = alumna_id;
+              // Si el comprobante apunta a un lead → convertir lead → alumna primero
+              if (lead_id && !alumna_id) {
+                const nuevaId = await store.convertLeadToAlumna(lead_id, {
+                  tipo_inscripcion: 'completa',
+                  encuentros_asistir: [1, 2, 3],
+                  total: store.state.ajustes.precioRegular || 640,
+                  pagado: 0,
+                  pago: 'pendiente',
+                });
+                if (!nuevaId) throw new Error('No se pudo convertir el lead');
+                finalAlumnaId = nuevaId;
+              }
+              await validar(active.id, { alumna_id: finalAlumnaId, monto, tipo, notas });
               setActive(null);
-            } catch (e) { alert(e.message); }
+            } catch (e) {
+              alert(e.message || 'Error al validar.');
+            }
           }}
         />
       )}
@@ -192,13 +208,53 @@ const ComprobanteCard = ({ c, obtenerUrl, onValidar, onRechazar, onEliminar }) =
   );
 };
 
-const ValidarSheet = ({ comprobante, alumnas, onClose, onConfirm }) => {
-  const [alumnaId, setAlumnaId] = useState('');
+const ValidarSheet = ({ comprobante, alumnas, leads = [], onClose, onConfirm }) => {
+  // Selector unificado: "alumna:<id>" o "lead:<id>". Preselecciona desde el comprobante.
+  const initialSelection = () => {
+    if (comprobante.alumna_id) return `alumna:${comprobante.alumna_id}`;
+    if (comprobante.lead_id) return `lead:${comprobante.lead_id}`;
+    return '';
+  };
+  const [selection, setSelection] = useState(initialSelection);
   const [monto, setMonto] = useState(comprobante.monto || '');
   const [tipo, setTipo] = useState('parcial');
   const [notas, setNotas] = useState('');
 
-  const ok = !!alumnaId && Number(monto) > 0;
+  const [tipoSel, idSel] = selection.split(':');
+  const idNum = idSel ? Number(idSel) : null;
+  const esLead = tipoSel === 'lead';
+  const lead = esLead ? leads.find(l => l.id === idNum) : null;
+
+  const ok = !!selection && Number(monto) > 0;
+
+  // Estado de pago se infiere del tipo (mismo mapeo que registrarPago)
+  const tipoChips = [
+    { value: 'reserva', label: 'Reserva' },
+    { value: 'parcial', label: 'Parcial' },
+    { value: 'pronto-pago', label: 'Pronto pago' },
+    { value: 'completo', label: 'Completo' },
+    { value: 'saldo', label: 'Saldo' },
+  ];
+
+  const submit = () => {
+    if (esLead) {
+      // ValidarSheet recibió un lead → caller hará convertLeadToAlumna primero
+      onConfirm({
+        lead_id: idNum,
+        monto: Number(monto),
+        tipo,
+        notas,
+        precioRegular: 640, // fallback; el caller usa precio del store si quiere
+      });
+    } else {
+      onConfirm({
+        alumna_id: idNum,
+        monto: Number(monto),
+        tipo,
+        notas,
+      });
+    }
+  };
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }}>
@@ -211,17 +267,46 @@ const ValidarSheet = ({ comprobante, alumnas, onClose, onConfirm }) => {
           Validar pago de <em style={{ color: 'var(--terracota)' }}>{comprobante.nombre_cliente}</em>
         </div>
         <div style={{ marginBottom: 14, fontSize: 12, color: 'var(--ink-mute)', lineHeight: 1.5 }}>
-          Asocia este comprobante a una estudiante inscrita y registra el pago. El monto se sumará a su total pagado.
+          Asocia este comprobante a una persona y registra el pago. El monto se sumará a su total pagado.
         </div>
 
-        <Field label="Estudiante" required>
-          <select value={alumnaId} onChange={e => setAlumnaId(Number(e.target.value))} style={inputStyle}>
+        <Field label="Persona" required>
+          <select value={selection} onChange={e => setSelection(e.target.value)} style={inputStyle}>
             <option value="">— Selecciona —</option>
-            {alumnas.map(a => (
-              <option key={a.id} value={a.id}>{a.nombre} · ${a.pagado}/${a.total}</option>
-            ))}
+            {alumnas.length > 0 && (
+              <optgroup label="Estudiantes inscritas">
+                {alumnas.map(a => (
+                  <option key={`a-${a.id}`} value={`alumna:${a.id}`}>
+                    {a.nombre} · ${a.pagado}/${a.total}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {leads.length > 0 && (
+              <optgroup label="Leads (al validar se inscriben como estudiante)">
+                {leads.map(l => (
+                  <option key={`l-${l.id}`} value={`lead:${l.id}`}>
+                    {l.nombre} · {l.tel || l.instagram || 'sin contacto'}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </Field>
+
+        {esLead && lead && (
+          <div className="card flat" style={{
+            padding: 12, marginTop: 10,
+            background: 'var(--terracota-tint)', borderColor: 'transparent',
+          }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 600, marginBottom: 4 }}>
+              Convirtiendo lead → estudiante
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink)', lineHeight: 1.4 }}>
+              Al validar, <strong>{lead.nombre}</strong> queda inscrita como estudiante (formación completa) y el lead se elimina del embudo.
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
           <Field label="Monto USD" style={{ flex: 1 }} required>
@@ -229,10 +314,7 @@ const ValidarSheet = ({ comprobante, alumnas, onClose, onConfirm }) => {
           </Field>
           <Field label="Tipo" style={{ flex: 1 }}>
             <select value={tipo} onChange={e => setTipo(e.target.value)} style={inputStyle}>
-              <option value="reserva">Reserva</option>
-              <option value="parcial">Parcial</option>
-              <option value="pronto-pago">Pronto pago</option>
-              <option value="saldo">Saldo</option>
+              {tipoChips.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </Field>
         </div>
@@ -247,7 +329,7 @@ const ValidarSheet = ({ comprobante, alumnas, onClose, onConfirm }) => {
             background: 'transparent', border: '1px solid var(--line-soft)',
             fontFamily: 'inherit', fontSize: 13, color: 'var(--ink)', cursor: 'pointer',
           }}>Cancelar</button>
-          <button onClick={() => onConfirm({ alumna_id: alumnaId, monto: Number(monto), tipo, notas })}
+          <button onClick={submit}
             disabled={!ok}
             style={{
               flex: 2, padding: '12px 16px', borderRadius: 999,
@@ -256,7 +338,7 @@ const ValidarSheet = ({ comprobante, alumnas, onClose, onConfirm }) => {
               cursor: ok ? 'pointer' : 'not-allowed',
               opacity: ok ? 1 : 0.5,
             }}>
-            Validar y registrar pago
+            {esLead ? 'Inscribir y validar pago' : 'Validar y registrar pago'}
           </button>
         </div>
       </div>
