@@ -8,7 +8,7 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 // Ficha de alumna (overlay) — usa store; con editar / borrar / pagar
 // ──────────────────────────────────────────
 
-const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComprobantes }) => {
+const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComprobantes, onValidarComprobante }) => {
   const a = store.state.alumnas.find(x => x.id === alumnaId);
   const { eventos, eliminarPago, eliminarEvento } = useEventosAlumna(alumnaId);
   const { items: comprobantes, obtenerUrl } = useComprobantesAlumna(alumnaId);
@@ -245,22 +245,42 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
                         background: ec.bg, color: ec.fg, border: 'none',
                         fontSize: 10, padding: '2px 8px',
                       }}>{ec.label}</span>
-                      <button
-                        onClick={async () => {
-                          const u = await obtenerUrl(c.storage_path);
-                          if (u) window.open(u, '_blank');
-                          else alert('No se pudo abrir el archivo.');
-                        }}
-                        style={{
-                          background: 'transparent', border: 'none', cursor: 'pointer',
-                          color: 'var(--terracota)', padding: 4,
-                          display: 'flex', alignItems: 'center',
-                        }}
-                        aria-label="Ver archivo"
-                        title="Ver archivo"
-                      >
-                        <Icon name="search" size={14} />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button
+                          onClick={async () => {
+                            const u = await obtenerUrl(c.storage_path);
+                            if (u) window.open(u, '_blank');
+                            else alert('No se pudo abrir el archivo.');
+                          }}
+                          style={{
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            color: 'var(--terracota)', padding: 4,
+                            display: 'flex', alignItems: 'center',
+                          }}
+                          aria-label="Ver archivo"
+                          title="Ver archivo"
+                        >
+                          <Icon name="search" size={14} />
+                        </button>
+                        {c.estado === 'pendiente' && onValidarComprobante && (
+                          <button
+                            onClick={() => onValidarComprobante({
+                              id: c.id,
+                              monto: Number(c.monto) || 0,
+                              archivo_nombre: c.archivo_nombre,
+                            })}
+                            style={{
+                              background: 'var(--oliva)', color: '#fff',
+                              border: 'none', cursor: 'pointer',
+                              borderRadius: 8, padding: '4px 8px',
+                              fontFamily: 'inherit', fontSize: 11, fontWeight: 500,
+                            }}
+                            title="Validar este comprobante (registra el pago)"
+                          >
+                            Validar →
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

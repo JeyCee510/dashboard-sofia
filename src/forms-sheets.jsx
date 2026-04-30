@@ -1,4 +1,5 @@
 import React from 'react';
+import { supabase } from './lib/supabase.js';
 import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS } from './lib/precios.js';
 import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
@@ -306,10 +307,13 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
   );
 };
 
-const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
+const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePreData = null }) => {
   // selection puede ser:
   //   "alumna:<id>" → estudiante existente
   //   "lead:<id>"   → lead que se convertirá a estudiante al registrar pago
+  // comprobantePreData: si se pasa, viene de "Validar →" en la ficha. Tiene
+  //   { id, monto, archivo_nombre } y se usa para asociar/validar un
+  //   comprobante existente en lugar de subir uno nuevo.
   const initialSel = () => {
     if (alumnaPreId) return `alumna:${alumnaPreId}`;
     if (leadPreId) return `lead:${leadPreId}`;
@@ -319,15 +323,22 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
   const [monto, setMonto] = React.useState(0);
   const [tipo, setTipo] = React.useState('parcial');
   const [convirtiendo, setConvirtiendo] = React.useState(false);
+  // Archivo opcional para subir al validar
+  const [archivo, setArchivo] = React.useState(null);
+  const [errorArchivo, setErrorArchivo] = React.useState('');
+  const fileInputRef = React.useRef(null);
 
   React.useEffect(() => {
     if (open) {
       setSelection(initialSel());
-      setMonto(0);
+      // Si viene un comprobante pre-validar, prepoblar monto
+      setMonto(comprobantePreData?.monto || 0);
       setTipo('parcial');
       setConvirtiendo(false);
+      setArchivo(null);
+      setErrorArchivo('');
     }
-  }, [open, alumnaPreId, leadPreId]);
+  }, [open, alumnaPreId, leadPreId, comprobantePreData]);
 
   const [tipoSel, idSel] = selection.split(':');
   const idNum = idSel ? Number(idSel) : null;
@@ -340,14 +351,65 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
   const precioProntoPago = store.state.ajustes.precioProntoPago || 484;
   const precioRegular = store.state.ajustes.precioRegular || 640;
 
+  // Sube archivo nuevo a Storage e inserta comprobante en estado validado.
+  // Devuelve el id insertado o null.
+  const subirComprobanteValidado = async (alumnaId, montoNum, file) => {
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('comprobantes').upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const a = store.state.alumnas.find(x => x.id === alumnaId);
+      const insertRow = {
+        nombre_cliente: a?.nombre || 'Sin nombre',
+        contacto: a?.tel || '',
+        storage_path: path,
+        archivo_nombre: file.name,
+        archivo_tipo: file.type,
+        alumna_id: alumnaId,
+        monto: montoNum,
+        estado: 'validado',
+        validado_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase
+        .from('comprobantes_pago').insert(insertRow).select().single();
+      if (error) throw error;
+      return data?.id || null;
+    } catch (e) {
+      console.error('[subir comprobante validado]', e);
+      return null;
+    }
+  };
+
+  // Marca un comprobante existente como validado y lo asocia a alumna_id.
+  const validarExistente = async (comprobanteId, alumnaId, montoNum) => {
+    await supabase.from('comprobantes_pago').update({
+      estado: 'validado',
+      alumna_id: alumnaId,
+      monto: montoNum,
+      validado_at: new Date().toISOString(),
+    }).eq('id', comprobanteId);
+  };
+
   const guardar = async () => {
     if (!selection) return;
     // Caso especial: convertir lead sin pago aún
     const sinPago = esLead && tipo === 'ninguno';
     if (!sinPago && !monto) return;
+    const montoNum = Number(monto) || 0;
 
     if (tipoSel === 'alumna') {
-      await store.registrarPago(idNum, monto, tipo);
+      // 1. Si hay archivo Y NO hay comprobante existente → subir comprobante validado
+      if (archivo && !comprobantePreData) {
+        await subirComprobanteValidado(idNum, montoNum, archivo);
+      }
+      // 2. Si vino un comprobante pre-existente → marcar como validado
+      if (comprobantePreData?.id) {
+        await validarExistente(comprobantePreData.id, idNum, montoNum);
+      }
+      // 3. Registrar el pago (esto crea fila en `pagos` + actualiza alumnas + auto-silla)
+      await store.registrarPago(idNum, montoNum, tipo);
       onClose();
       return;
     }
@@ -364,7 +426,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
             pago: 'pendiente',
           });
         } else {
-          // 1) Convertir lead → alumna con datos básicos y pagado=0
+          // 1) Convertir lead → alumna
           const nuevaId = await store.convertLeadToAlumna(idNum, {
             tipo_inscripcion: 'completa',
             encuentros_asistir: [1, 2, 3],
@@ -372,9 +434,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
             pagado: 0,
             pago: 'pendiente',
           });
-          // 2) Registrar el pago real (pasa por la nueva lógica con auto-silla)
           if (nuevaId) {
-            await store.registrarPago(nuevaId, monto, tipo);
+            // 2) Subir comprobante si lo hay
+            if (archivo) await subirComprobanteValidado(nuevaId, montoNum, archivo);
+            // 3) Registrar pago
+            await store.registrarPago(nuevaId, montoNum, tipo);
           }
         }
       } catch (e) {
@@ -384,6 +448,16 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
         onClose();
       }
     }
+  };
+
+  const onPickFile = (file) => {
+    if (!file) return;
+    if (file.size > 12 * 1024 * 1024) {
+      setErrorArchivo('Archivo supera 12 MB.');
+      return;
+    }
+    setErrorArchivo('');
+    setArchivo(file);
   };
 
   // Atajos: 4 botones para alumna y lead, + extra ("sin pago") solo en lead.
@@ -417,7 +491,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
     <Sheet
       open={open}
       onClose={onClose}
-      title="Registrar pago"
+      title={comprobantePreData ? 'Validar comprobante' : 'Registrar pago'}
       footer={
         <button
           className="btn btn-primary btn-block"
@@ -483,7 +557,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
         <NumberInput value={monto} onChange={setMonto} prefix="$" min={0} />
       </Field>
 
-      {(alumna || lead) && quickButtons.length > 0 && (
+      {(alumna || lead) && quickButtons.length > 0 && !comprobantePreData && (
         <Field label="Atajos">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {quickButtons.map(qb => {
@@ -517,6 +591,74 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
               { value: 'completo', label: 'Completo' },
               { value: 'saldo', label: 'Saldo' },
             ]}
+          />
+        </Field>
+      )}
+
+      {/* Comprobante: archivo opcional para nuevos pagos, info si validamos uno existente */}
+      {tipo !== 'ninguno' && (
+        <Field label="Comprobante (opcional)">
+          {comprobantePreData ? (
+            <div style={{
+              padding: 10, borderRadius: 10,
+              background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
+              fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4,
+            }}>
+              📎 <strong style={{ color: 'var(--ink)' }}>{comprobantePreData.archivo_nombre || 'Archivo existente'}</strong><br />
+              Al guardar, este comprobante quedará validado y vinculado al pago.
+            </div>
+          ) : archivo ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px', borderRadius: 10,
+              background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: 'var(--surface)', color: 'var(--ink-soft)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 700, flexShrink: 0,
+              }}>{archivo.type.includes('pdf') ? 'PDF' : 'IMG'}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {archivo.name}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--ink-mute)' }}>
+                  {(archivo.size / 1024).toFixed(0)} KB · queda validado al guardar
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setArchivo(null)}
+                style={{
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  color: 'var(--ink-mute)', padding: 4, fontSize: 16,
+                }}
+              >×</button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 10,
+                background: 'var(--surface)', border: '1px dashed var(--line-soft)',
+                fontFamily: 'inherit', fontSize: 12, color: 'var(--ink-soft)',
+                cursor: 'pointer', textAlign: 'center',
+              }}
+            >
+              📎 Adjuntar comprobante (foto o PDF)
+            </button>
+          )}
+          {errorArchivo && (
+            <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{errorArchivo}</div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf,.pdf"
+            style={{ display: 'none' }}
+            onChange={(e) => { onPickFile(e.target.files?.[0]); e.target.value = ''; }}
           />
         </Field>
       )}

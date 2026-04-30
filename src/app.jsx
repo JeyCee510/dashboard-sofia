@@ -252,6 +252,9 @@ const App = () => {
           onEdit={() => setSheet({ type: 'edit-alumna', id: overlay.id })}
           onPagar={() => setSheet({ type: 'new-pago', id: overlay.id })}
           onIrAComprobantes={() => { setOverlay(null); setTab('comprobantes'); }}
+          onValidarComprobante={(comprobantePreData) =>
+            setSheet({ type: 'new-pago', id: overlay.id, comprobantePreData })
+          }
         />
       )}
 
@@ -274,6 +277,7 @@ const App = () => {
         store={store}
         alumnaPreId={sheet && sheet.type === 'new-pago' ? sheet.id : null}
         leadPreId={sheet && sheet.type === 'new-pago-lead' ? sheet.id : null}
+        comprobantePreData={sheet && sheet.type === 'new-pago' ? sheet.comprobantePreData : null}
       />
 
       {/* Voice button (mic flotante) — encima del FAB */}
