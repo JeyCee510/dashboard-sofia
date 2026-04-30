@@ -23,9 +23,8 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
   const sillasLibres = Math.max(0, sillasMax - sillasOtorgadas);
   const esCompleta = (a.tipo_inscripcion || 'completa') === 'completa';
   const esProntoPago = a.pago === 'pronto-pago';
-  const descuentoRenunciar = esProntoPago
-    ? 0
-    : esCompleta ? 30 : 40;
+  // Descuento al renunciar = $30 en todos los tipos. Pronto-pago: $0 (precio fijo).
+  const descuentoRenunciar = esProntoPago ? 0 : 30;
 
   const borrar = () => {
     if (!confirm(`¿Borrar a ${a.nombre}? No se puede deshacer.`)) return;
@@ -46,7 +45,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
       alert(`Las 6 sillas ya están asignadas. Tienes que renunciar una existente antes de asignar a ${a.nombre.split(' ')[0]}.`);
       return;
     }
-    const nuevoTotal = esProntoPago ? a.total : a.total + (esCompleta ? 30 : 40);
+    const nuevoTotal = esProntoPago ? a.total : a.total + 30;
     if (!confirm(`¿Asignar bono silla a ${a.nombre}? El total subirá a $${nuevoTotal}.`)) return;
     store.asignarSilla(a.id);
   };

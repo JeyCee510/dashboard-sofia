@@ -3,11 +3,12 @@
 // Centralizado aquí para que la lógica viva en un solo lugar.
 // ─────────────────────────────────────────────────────────────────────
 
-// Defaults — pueden ser sobrescritos por ajustes.precios
+// Defaults — pueden ser sobrescritos por ajustes.precios.
+// Descuento por renunciar a silla = $30 en todos los tipos.
 export const PRECIOS_DEFAULT = {
   completa: { sin_silla: 610, con_silla: 640 },
-  dos_encuentros: { sin_silla: 370, con_silla: 410 },
-  un_encuentro: { sin_silla: 185, con_silla: 225 },
+  dos_encuentros: { sin_silla: 380, con_silla: 410 },
+  un_encuentro: { sin_silla: 195, con_silla: 225 },
   reserva: 200,
   pronto_pago_completa: 484, // descuento solo aplica a completa
 };

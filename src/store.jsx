@@ -54,20 +54,17 @@ function useStore() {
     { sillasMax: state.ajustes.bonoSillaCupos || 6 }
   );
 
-  // Renunciar a silla: descuenta del total según tipo de inscripción.
-  // Pronto-pago = precio fijo, NO baja al renunciar.
+  // Descuento al renunciar a silla = $30 en todos los tipos de inscripción.
+  // Pronto-pago es la única excepción: precio fijo, no baja al renunciar.
+  const DIFERENCIAL_SILLA = 30;
+
+  // Renunciar a silla: descuenta del total.
   // Sobrepago queda como crédito (pagado puede quedar > total).
   const renunciarSilla = async (alumnaId) => {
     const a = state.alumnas.find(x => x.id === alumnaId);
     if (!a || !a.bonoSilla) return;
-    const tipoIns = a.tipo_inscripcion || 'completa';
     const esProntoPago = a.pago === 'pronto-pago';
-    let descuento = 0;
-    if (!esProntoPago) {
-      if (tipoIns === 'completa') descuento = 30;
-      else if (tipoIns === 'dos_encuentros') descuento = 40;
-      else if (tipoIns === 'un_encuentro') descuento = 40;
-    }
+    const descuento = esProntoPago ? 0 : DIFERENCIAL_SILLA;
     const nuevoTotal = Math.max(0, (a.total || 0) - descuento);
     await alumnasHook.updateAlumna(alumnaId, { bonoSilla: false, total: nuevoTotal });
   };
@@ -76,14 +73,8 @@ function useStore() {
   const asignarSilla = async (alumnaId) => {
     const a = state.alumnas.find(x => x.id === alumnaId);
     if (!a || a.bonoSilla) return;
-    const tipoIns = a.tipo_inscripcion || 'completa';
     const esProntoPago = a.pago === 'pronto-pago';
-    let aumento = 0;
-    if (!esProntoPago) {
-      if (tipoIns === 'completa') aumento = 30;
-      else if (tipoIns === 'dos_encuentros') aumento = 40;
-      else if (tipoIns === 'un_encuentro') aumento = 40;
-    }
+    const aumento = esProntoPago ? 0 : DIFERENCIAL_SILLA;
     const nuevoTotal = (a.total || 0) + aumento;
     await alumnasHook.updateAlumna(alumnaId, { bonoSilla: true, total: nuevoTotal });
   };
