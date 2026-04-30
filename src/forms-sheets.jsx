@@ -1,6 +1,6 @@
 import React from 'react';
 import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS } from './lib/precios.js';
-import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel } from './forms.jsx';
+import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -92,10 +92,10 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
         <TextInput value={form.nombre} onChange={v => set('nombre', v)} placeholder="Ej. María Fernanda Castro" />
       </Field>
       <Field label="Teléfono / WhatsApp">
-        <TextInput value={form.tel} onChange={v => set('tel', v)} placeholder="+593 99 234 5678" />
+        <TelInput value={form.tel} onChange={v => set('tel', v)} />
       </Field>
       <Field label="Instagram (opcional)">
-        <TextInput value={form.instagram} onChange={v => set('instagram', v)} placeholder="@usuario" />
+        <InstaInput value={form.instagram} onChange={v => set('instagram', v)} />
       </Field>
       <Field label="Tipo de inscripción">
         <SelectChips
@@ -271,10 +271,10 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
         <TextInput value={form.nombre} onChange={v => set('nombre', v)} placeholder="Ej. Mónica Salinas" />
       </Field>
       <Field label="Teléfono / WhatsApp">
-        <TextInput value={form.tel} onChange={v => set('tel', v)} placeholder="+593 99 …" />
+        <TelInput value={form.tel} onChange={v => set('tel', v)} />
       </Field>
       <Field label="Instagram (opcional)">
-        <TextInput value={form.instagram} onChange={v => set('instagram', v)} placeholder="@usuario" />
+        <InstaInput value={form.instagram} onChange={v => set('instagram', v)} />
       </Field>
       <Field label="¿Cómo llegó?">
         <SelectChips

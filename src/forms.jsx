@@ -104,6 +104,147 @@ const TextInput = ({ value, onChange, placeholder, type = 'text' }) => (
   />
 );
 
+// ──────────────────────────────────────────
+// InstaInput — @ fijo a la izquierda. El user solo escribe el handle.
+// Sanitiza si pegan @usuario, https://instagram.com/usuario, espacios, etc.
+// El value persistido es SIN @.
+// ──────────────────────────────────────────
+const InstaInput = ({ value, onChange, placeholder = 'usuario' }) => {
+  // Limpia lo que el user pegue / escriba
+  const sanitize = (raw) => {
+    if (!raw) return '';
+    let s = String(raw).trim();
+    s = s.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '');
+    s = s.replace(/^@+/, '');           // remueve @s al inicio
+    s = s.split(/[/?#\s]/)[0];          // remueve path y espacios
+    return s;
+  };
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'stretch',
+        background: 'var(--surface)',
+        border: '1px solid var(--line-soft)',
+        borderRadius: 12, overflow: 'hidden',
+      }}
+    >
+      <span style={{
+        padding: '12px 0 12px 14px', color: 'var(--ink-mute)',
+        fontSize: 14, userSelect: 'none', fontFamily: 'inherit',
+      }}>@</span>
+      <input
+        type="text"
+        value={value || ''}
+        onChange={(e) => onChange(sanitize(e.target.value))}
+        onPaste={(e) => {
+          e.preventDefault();
+          const txt = e.clipboardData.getData('text');
+          onChange(sanitize(txt));
+        }}
+        placeholder={placeholder}
+        style={{
+          flex: 1, background: 'transparent', border: 'none',
+          padding: '12px 14px 12px 4px', fontFamily: 'inherit', fontSize: 14,
+          color: 'var(--ink)', outline: 'none',
+        }}
+      />
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────
+// TelInput — Default Ecuador (+593 9 _ _ _ _ _ _ _ _).
+// Toggle "otro país" → vacía y permite escribir libre con código internacional.
+// El value persistido es siempre con + y dígitos, ej "+593991234567".
+// ──────────────────────────────────────────
+const ECUADOR_PREFIX = '+593 9';
+
+const TelInput = ({ value, onChange, placeholder = '99 234 5678' }) => {
+  // Estado interno: ¿modo Ecuador o internacional?
+  // Inferimos por el value inicial: si está vacío o empieza con +593, modo Ecuador.
+  const inferEcuador = (v) => !v || /^\+?593/.test(v.replace(/\s/g, ''));
+  const [esEcuador, setEsEcuador] = React.useState(() => inferEcuador(value));
+
+  // Lo que mostramos en el input depende del modo.
+  // Modo Ecuador: muestra solo los 8 dígitos después de +593 9.
+  // Modo internacional: muestra el value completo tal cual.
+  const display = React.useMemo(() => {
+    if (!esEcuador) return value || '';
+    if (!value) return '';
+    const digits = value.replace(/[^\d]/g, '');
+    // Quitar el "5939" si aparece al inicio
+    if (digits.startsWith('5939')) return digits.slice(4);
+    return value;
+  }, [value, esEcuador]);
+
+  const onTyped = (raw) => {
+    if (esEcuador) {
+      // Solo dígitos, máx 8
+      const digits = raw.replace(/[^\d]/g, '').slice(0, 8);
+      onChange(digits ? `+593 9${digits}` : '');
+    } else {
+      onChange(raw);
+    }
+  };
+
+  const toggleInternacional = () => {
+    if (esEcuador) {
+      // pasar a internacional: vaciar
+      setEsEcuador(false);
+      onChange('');
+    } else {
+      // volver a Ecuador: prepoblar prefix
+      setEsEcuador(true);
+      onChange('');
+    }
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex', alignItems: 'stretch',
+          background: 'var(--surface)',
+          border: '1px solid var(--line-soft)',
+          borderRadius: 12, overflow: 'hidden',
+        }}
+      >
+        {esEcuador && (
+          <span style={{
+            padding: '12px 0 12px 14px', color: 'var(--ink-mute)',
+            fontSize: 14, userSelect: 'none', fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
+          }}>{ECUADOR_PREFIX}</span>
+        )}
+        <input
+          type="tel"
+          inputMode={esEcuador ? 'numeric' : 'tel'}
+          value={display}
+          onChange={(e) => onTyped(e.target.value)}
+          placeholder={esEcuador ? placeholder : '+1 555 123 4567'}
+          style={{
+            flex: 1, background: 'transparent', border: 'none',
+            padding: esEcuador ? '12px 14px 12px 6px' : '12px 14px',
+            fontFamily: 'inherit', fontSize: 14,
+            color: 'var(--ink)', outline: 'none',
+          }}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={toggleInternacional}
+        style={{
+          marginTop: 6, background: 'transparent', border: 'none',
+          padding: 0, fontFamily: 'inherit', fontSize: 11,
+          color: 'var(--terracota)', cursor: 'pointer',
+        }}
+      >
+        {esEcuador ? '¿Es de otro país? Cambia a internacional' : '← Volver a Ecuador (+593 9)'}
+      </button>
+    </div>
+  );
+};
+
 const TextArea = ({ value, onChange, placeholder, rows = 3 }) => (
   <textarea
     value={value || ''}
@@ -712,6 +853,8 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
 };
 
 window.TextInput = TextInput;
+window.InstaInput = InstaInput;
+window.TelInput = TelInput;
 window.TextArea = TextArea;
 window.NumberInput = NumberInput;
 window.SelectChips = SelectChips;
@@ -725,4 +868,4 @@ window.buildWaUrl = buildWaUrl;
 
 // Exports reales para consumidores que necesitan referencia confiable
 // (en producción Vite minifica/optimiza y el patrón window.X puede no quedar registrado)
-export { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel };
+export { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput };
