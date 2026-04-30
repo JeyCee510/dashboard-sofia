@@ -1,5 +1,34 @@
 import React from 'react';
+import { supabase } from './lib/supabase.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
+
+// Hook local: trae estado de preinscripción de cada lead.
+// Devuelve Map<lead_id, { estado, completed_at, created_at }>.
+function usePreinscripcionesPorLead() {
+  const [map, setMap] = useState(new Map());
+  const cargar = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('preinscripcion')
+      .select('lead_id, estado, completed_at, created_at')
+      .not('lead_id', 'is', null)
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[preinscripciones por lead]', error); return; }
+    // Por cada lead, dejar la más reciente
+    const m = new Map();
+    (data || []).forEach(row => {
+      if (!m.has(row.lead_id)) m.set(row.lead_id, row);
+    });
+    setMap(m);
+  }, []);
+  useEffect(() => {
+    cargar();
+    const ch = supabase.channel('preinscripcion-by-lead-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'preinscripcion' }, cargar)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [cargar]);
+  return map;
+}
 
 // ──────────────────────────────────────────
 // Marketing / Leads + CRM screens
@@ -41,16 +70,54 @@ function fmtTiempoRelativo(iso) {
   } catch { return '—'; }
 }
 
+// Badge compacto que muestra estado de preinscripción del lead.
+//   - Sin pre: nada (no contamina la fila)
+//   - Pendiente: "📋 Link enviado" terracota suave
+//   - Completada: "📋 Respondida ✓" oliva
+const PreBadge = ({ pre }) => {
+  if (!pre) return null;
+  const completada = pre.estado === 'completada' || !!pre.completed_at;
+  const bg = completada ? 'rgba(116, 142, 78, 0.14)' : 'rgba(212, 138, 110, 0.14)';
+  const fg = completada ? '#5C6F3C' : '#8A3D26';
+  const txt = completada ? 'Preinscripción ✓' : 'Link enviado';
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      marginTop: 4, padding: '2px 8px', borderRadius: 999,
+      background: bg, color: fg,
+      fontSize: 10, letterSpacing: '0.04em', fontWeight: 500,
+    }}>
+      {txt}
+    </div>
+  );
+};
+
 const MarketingScreen = ({ onOpenLead, onNavigate }) => {
   const [filter, setFilter] = React.useState('todos');
-  let leads = MOCK_LEADS;
-  if (filter !== 'todos') leads = leads.filter(l => l.estado === filter);
+  const [search, setSearch] = React.useState('');
+  const preMap = usePreinscripcionesPorLead();
 
   const counts = {
     nuevo: MOCK_LEADS.filter(l => l.estado === 'nuevo').length,
     interesado: MOCK_LEADS.filter(l => l.estado === 'interesado').length,
     reservado: MOCK_LEADS.filter(l => l.estado === 'reservado').length,
   };
+
+  // Pipeline: filtro por estado → búsqueda → orden alfabético
+  let leads = MOCK_LEADS;
+  if (filter !== 'todos') leads = leads.filter(l => l.estado === filter);
+  if (search.trim()) {
+    const q = search.trim().toLowerCase();
+    leads = leads.filter(l =>
+      (l.nombre || '').toLowerCase().includes(q) ||
+      (l.tel || '').toLowerCase().includes(q) ||
+      (l.instagram || '').toLowerCase().includes(q) ||
+      (l.mensaje || '').toLowerCase().includes(q)
+    );
+  }
+  leads = [...leads].sort((a, b) =>
+    (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' })
+  );
 
   return (
     <div>
@@ -125,10 +192,51 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
         </div>
       </div>
 
+      {/* Buscador */}
+      <div style={{ padding: '0 22px 10px' }}>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, IG, teléfono o mensaje…"
+            style={{
+              width: '100%', padding: '10px 14px 10px 36px',
+              background: 'var(--surface)',
+              border: '1px solid var(--line-soft)',
+              borderRadius: 12,
+              fontFamily: 'inherit', fontSize: 13,
+              color: 'var(--ink)', outline: 'none',
+            }}
+          />
+          <span style={{
+            position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+            color: 'var(--ink-mute)', pointerEvents: 'none',
+          }}>
+            <Icon name="search" size={14} />
+          </span>
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: 'var(--ink-mute)', padding: 4, fontSize: 16, lineHeight: 1,
+              }}
+            >×</button>
+          )}
+        </div>
+      </div>
+
       <div style={{ padding: '0 22px' }}>
         <div className="card flat" style={{ padding: '4px 16px' }}>
-          {leads.map(l => {
+          {leads.length === 0 ? (
+            <div style={{ padding: '20px 0', fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic', textAlign: 'center' }}>
+              {search ? `Sin resultados para "${search}".` : 'No hay leads aún.'}
+            </div>
+          ) : leads.map(l => {
             const e = estadoColor[l.estado];
+            const pre = preMap.get(l.id);
             return (
               <div key={l.id} className="row" onClick={() => onOpenLead && onOpenLead(l.id)} style={{ cursor: 'pointer' }}>
                 <div style={{
@@ -142,6 +250,7 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
                 <div className="body">
                   <div className="t1">{l.nombre}</div>
                   <div className="t2" style={{ fontStyle: 'italic' }}>"{l.mensaje}"</div>
+                  <PreBadge pre={pre} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                   <span className="pill" style={{ background: e.bg, color: e.fg, border: 'none' }}>{e.label}</span>
