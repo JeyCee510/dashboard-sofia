@@ -49,24 +49,68 @@ function useStore() {
   };
   const updateAlumna = (id, patch) => alumnasHook.updateAlumna(id, patch);
   const deleteAlumna = (id) => alumnasHook.deleteAlumna(id);
-  const registrarPago = (alumnaId, monto, tipo) => alumnasHook.registrarPago(alumnaId, monto, tipo);
+  const registrarPago = (alumnaId, monto, tipo) => alumnasHook.registrarPago(
+    alumnaId, monto, tipo,
+    { sillasMax: state.ajustes.bonoSillaCupos || 6 }
+  );
+
+  // Renunciar a silla: descuenta del total según tipo de inscripción.
+  // Pronto-pago = precio fijo, NO baja al renunciar.
+  // Sobrepago queda como crédito (pagado puede quedar > total).
+  const renunciarSilla = async (alumnaId) => {
+    const a = state.alumnas.find(x => x.id === alumnaId);
+    if (!a || !a.bonoSilla) return;
+    const tipoIns = a.tipo_inscripcion || 'completa';
+    const esProntoPago = a.pago === 'pronto-pago';
+    let descuento = 0;
+    if (!esProntoPago) {
+      if (tipoIns === 'completa') descuento = 30;
+      else if (tipoIns === 'dos_encuentros') descuento = 40;
+      else if (tipoIns === 'un_encuentro') descuento = 40;
+    }
+    const nuevoTotal = Math.max(0, (a.total || 0) - descuento);
+    await alumnasHook.updateAlumna(alumnaId, { bonoSilla: false, total: nuevoTotal });
+  };
+
+  // Asignar silla manualmente (Sofía override)
+  const asignarSilla = async (alumnaId) => {
+    const a = state.alumnas.find(x => x.id === alumnaId);
+    if (!a || a.bonoSilla) return;
+    const tipoIns = a.tipo_inscripcion || 'completa';
+    const esProntoPago = a.pago === 'pronto-pago';
+    let aumento = 0;
+    if (!esProntoPago) {
+      if (tipoIns === 'completa') aumento = 30;
+      else if (tipoIns === 'dos_encuentros') aumento = 40;
+      else if (tipoIns === 'un_encuentro') aumento = 40;
+    }
+    const nuevoTotal = (a.total || 0) + aumento;
+    await alumnasHook.updateAlumna(alumnaId, { bonoSilla: true, total: nuevoTotal });
+  };
 
   // ── Leads ──
   const addLead = (data) => leadsHook.addLead(data);
   const updateLead = (id, patch) => leadsHook.updateLead(id, patch);
   const deleteLead = (id) => leadsHook.deleteLead(id);
+  // Convertir lead → alumna SIN asumir pago. Caller debe pasar `pagado` en extra
+  // (puede ser 0 si "convertir sin pago aún"). El PagoForm es quien maneja
+  // los flujos con pago. Esta función queda como helper bajo nivel.
   const convertLeadToAlumna = async (leadId, extra = {}) => {
     const lead = state.leads.find(l => l.id === leadId);
     if (!lead) return;
-    await addAlumna({
+    const pagado = typeof extra.pagado === 'number' ? extra.pagado : 0;
+    const pago = extra.pago || (pagado > 0 ? 'parcial' : 'pendiente');
+    const nuevaId = await addAlumna({
       nombre: lead.nombre,
       tel: lead.tel,
-      pagado: state.ajustes.precioReserva,
-      pago: 'pendiente',
+      instagram: lead.instagram || '',
+      pagado,
+      pago,
       total: state.ajustes.precioRegular,
       ...extra,
     });
     await deleteLead(leadId);
+    return nuevaId;
   };
 
   // ── Asistencia ──
@@ -82,6 +126,7 @@ function useStore() {
     addAlumna, updateAlumna, deleteAlumna,
     addLead, updateLead, deleteLead, convertLeadToAlumna,
     registrarPago,
+    asignarSilla, renunciarSilla,
     toggleAsistencia, marcarTodosDia,
     updateAjustes,
   };

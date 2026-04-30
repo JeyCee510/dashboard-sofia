@@ -17,10 +17,38 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
 
   const wa = a.tel ? `https://wa.me/${a.tel.replace(/[^\d]/g, '')}` : '#';
 
+  // ── Silla: estado global y elegibilidad de esta alumna ──
+  const sillasMax = store.state.ajustes.bonoSillaCupos || 6;
+  const sillasOtorgadas = store.state.alumnas.filter(x => x.bonoSilla).length;
+  const sillasLibres = Math.max(0, sillasMax - sillasOtorgadas);
+  const esCompleta = (a.tipo_inscripcion || 'completa') === 'completa';
+  const esProntoPago = a.pago === 'pronto-pago';
+  const descuentoRenunciar = esProntoPago
+    ? 0
+    : esCompleta ? 30 : 40;
+
   const borrar = () => {
     if (!confirm(`¿Borrar a ${a.nombre}? No se puede deshacer.`)) return;
     store.deleteAlumna(a.id);
     onClose();
+  };
+
+  const renunciar = () => {
+    const msg = descuentoRenunciar > 0
+      ? `¿Renunciar al bono silla de ${a.nombre}? Su total bajará $${descuentoRenunciar} (de $${a.total} a $${a.total - descuentoRenunciar}).`
+      : `¿Renunciar al bono silla de ${a.nombre}? Como pagó pronto-pago, el total no cambia (sigue en $${a.total}).`;
+    if (!confirm(msg)) return;
+    store.renunciarSilla(a.id);
+  };
+
+  const asignar = () => {
+    if (sillasLibres <= 0) {
+      alert(`Las 6 sillas ya están asignadas. Tienes que renunciar una existente antes de asignar a ${a.nombre.split(' ')[0]}.`);
+      return;
+    }
+    const nuevoTotal = esProntoPago ? a.total : a.total + (esCompleta ? 30 : 40);
+    if (!confirm(`¿Asignar bono silla a ${a.nombre}? El total subirá a $${nuevoTotal}.`)) return;
+    store.asignarSilla(a.id);
   };
 
   return (
@@ -106,6 +134,60 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar }) => {
                 );
               })}
             </div>
+          </div>
+        </div>
+
+        {/* Bono silla */}
+        <div className="section-title">
+          <h2>Bono silla</h2>
+          <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>{sillasOtorgadas}/{sillasMax} asignadas</span>
+        </div>
+        <div style={{ padding: '0 22px' }}>
+          <div className="card flat" style={{ padding: 14 }}>
+            {a.bonoSilla ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{
+                    fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: 'var(--gold)', fontWeight: 600,
+                  }}>✓ Tiene silla</span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
+                  {esProntoPago
+                    ? 'Pronto pago incluye silla sin costo adicional. Renunciar no baja el total ($484 fijo).'
+                    : `Renunciar baja el total $${descuentoRenunciar} (a $${a.total - descuentoRenunciar}).`}
+                </div>
+                <button
+                  onClick={renunciar}
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--rojo)' }}
+                >
+                  Renunciar a silla
+                </button>
+              </div>
+            ) : !esCompleta ? (
+              <div style={{ fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic' }}>
+                Solo aplica a inscripción completa. Cambia el tipo desde Editar si corresponde.
+              </div>
+            ) : sillasLibres > 0 ? (
+              <div>
+                <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
+                  Quedan <strong>{sillasLibres}</strong> {sillasLibres === 1 ? 'cupo' : 'cupos'} de silla.
+                  {a.pagado >= 200
+                    ? ' Esta alumna califica — debería habérsele asignado al pagar.'
+                    : ' Se asignará automáticamente apenas registre reserva o más.'}
+                </div>
+                {a.pagado >= 200 && (
+                  <button onClick={asignar} className="btn btn-ghost btn-sm">
+                    Asignar silla manualmente
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4 }}>
+                <strong style={{ color: 'var(--rojo)' }}>Sin cupo de silla.</strong> Las 6 sillas ya están asignadas. Para dársela a esta alumna, primero renuncia una desde otra ficha.
+              </div>
+            )}
           </div>
         </div>
 

@@ -131,22 +131,82 @@ export function useAlumnas() {
     if (error) { console.error('[alumnas] delete', error); }
   }, []);
 
-  const registrarPago = useCallback(async (alumnaId, monto, tipo) => {
+  // ─────────────────────────────────────────────────────────────────
+  // registrarPago(alumnaId, monto, tipo)
+  //
+  // Lógica por tipo:
+  //   • 'pronto-pago' → precio FINAL fijo. Congela total = pagado ya + monto
+  //                     (en el form, monto = 484 - pagado_actual). Estado = 'pronto-pago'.
+  //   • 'completo'    → suma al pagado, estado = 'completo'. Total NO cambia
+  //                     (queda en regular con/sin silla).
+  //   • 'reserva' / 'parcial' / 'saldo' → acumulan. Estado se infiere.
+  //
+  // Bonus: asignación automática de silla
+  //   Si la alumna es tipo_inscripcion='completa' y aún no tiene silla
+  //   y hay cupos (< bonoSillaCupos), se le asigna automáticamente.
+  //   Esto pasa apenas se registra cualquier pago (incluso reserva $200).
+  // ─────────────────────────────────────────────────────────────────
+  const registrarPago = useCallback(async (alumnaId, monto, tipo, opts = {}) => {
     const a = alumnas.find(x => x.id === alumnaId);
     if (!a) return;
-    const nuevoPagado = (a.pagado || 0) + Number(monto);
-    let nuevoEstado = 'parcial';
-    if (nuevoPagado >= a.total) nuevoEstado = tipo === 'pronto-pago' ? 'pronto-pago' : 'completo';
-    else if (nuevoPagado === 0) nuevoEstado = 'pendiente';
+    const m = Number(monto) || 0;
+
+    let nuevoTotal = a.total;
+    let nuevoPagado = (a.pagado || 0) + m;
+    let nuevoEstado;
+
+    if (tipo === 'pronto-pago') {
+      // Pronto pago = precio final. Total se congela en lo que termina pagado.
+      nuevoTotal = nuevoPagado;
+      nuevoEstado = 'pronto-pago';
+    } else if (tipo === 'completo') {
+      // Pago completo regular. Total queda como esté (con/sin silla).
+      nuevoEstado = 'completo';
+    } else {
+      // Reserva, parcial, saldo
+      if (nuevoPagado >= a.total) nuevoEstado = 'completo';
+      else if (nuevoPagado === 0) nuevoEstado = 'pendiente';
+      else nuevoEstado = 'parcial';
+    }
+
+    // Asignación automática de silla:
+    //   - solo aplica a tipo_inscripcion='completa'
+    //   - solo si la alumna aún no tiene silla
+    //   - solo si quedan cupos (< sillasMax)
+    //   - se ejecuta apenas hay cualquier pago (incluso reserva)
+    let asignarSilla = false;
+    const sillasMax = Number(opts.sillasMax) || 6;
+    if (
+      a.tipo_inscripcion === 'completa' &&
+      !a.bonoSilla &&
+      nuevoPagado >= 200 // mínimo reserva
+    ) {
+      const sillasOtorgadas = alumnas.filter(x => x.bonoSilla).length;
+      if (sillasOtorgadas < sillasMax) asignarSilla = true;
+    }
+
+    const dbPatch = {
+      pagado: nuevoPagado,
+      pago: nuevoEstado,
+      total: nuevoTotal,
+    };
+    const localPatch = { ...dbPatch };
+    if (asignarSilla) {
+      dbPatch.bono_silla = true;
+      localPatch.bonoSilla = true;
+    }
 
     // Optimistic
-    setAlumnas(prev => prev.map(x => x.id === alumnaId ? { ...x, pagado: nuevoPagado, pago: nuevoEstado } : x));
+    setAlumnas(prev => prev.map(x => x.id === alumnaId ? { ...x, ...localPatch } : x));
 
-    // 1. Insertar registro en `pagos` (audit trail)
-    await supabase.from('pagos').insert({ alumna_id: alumnaId, monto, tipo });
-    // 2. Actualizar acumulado en `alumnas`
-    await supabase.from('alumnas').update({ pagado: nuevoPagado, pago: nuevoEstado }).eq('id', alumnaId);
-    // El state local ya se actualizó arriba (optimistic). Realtime confirmará la consistencia.
+    // 1. Insertar registro en `pagos` (audit trail) — solo si monto > 0
+    if (m > 0) {
+      await supabase.from('pagos').insert({ alumna_id: alumnaId, monto: m, tipo });
+    }
+    // 2. Actualizar acumulado + total + (eventualmente) silla en `alumnas`
+    await supabase.from('alumnas').update(dbPatch).eq('id', alumnaId);
+
+    return { asignoSilla: asignarSilla, nuevoTotal, nuevoPagado, nuevoEstado };
   }, [alumnas]);
 
   return { alumnas, loading, error, addAlumna, updateAlumna, deleteAlumna, registrarPago };

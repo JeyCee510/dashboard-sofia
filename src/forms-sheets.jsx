@@ -311,38 +311,50 @@ const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
   const idNum = idSel ? Number(idSel) : null;
   const alumna = tipoSel === 'alumna' ? store.state.alumnas.find(a => a.id === idNum) : null;
   const lead = tipoSel === 'lead' ? store.state.leads.find(l => l.id === idNum) : null;
-  const restante = alumna ? alumna.total - alumna.pagado : 0;
+  const restante = alumna ? Math.max(0, alumna.total - alumna.pagado) : 0;
   const esLead = !!lead;
 
+  const precioReserva = store.state.ajustes.precioReserva || 200;
+  const precioProntoPago = store.state.ajustes.precioProntoPago || 484;
+  const precioRegular = store.state.ajustes.precioRegular || 640;
+
   const guardar = async () => {
-    if (!selection || !monto) return;
+    if (!selection) return;
+    // Caso especial: convertir lead sin pago aún
+    const sinPago = esLead && tipo === 'ninguno';
+    if (!sinPago && !monto) return;
+
     if (tipoSel === 'alumna') {
-      store.registrarPago(idNum, monto, tipo);
+      await store.registrarPago(idNum, monto, tipo);
       onClose();
       return;
     }
     if (tipoSel === 'lead' && lead) {
-      // Convertir lead → estudiante con el monto ya pagado
       setConvirtiendo(true);
       try {
-        const total = store.state.ajustes.precioRegular || 640;
-        // addAlumna directo con datos del lead + monto inicial
-        const nuevaId = await store.addAlumna({
-          nombre: lead.nombre,
-          tel: lead.tel,
-          instagram: lead.instagram || '',
-          pago: monto >= total ? (tipo === 'pronto-pago' ? 'pronto-pago' : 'completo') : 'parcial',
-          pagado: monto,
-          total,
-          tipo_inscripcion: 'completa',
-          encuentros_asistir: [1, 2, 3],
-        });
-        // Registrar el pago en la tabla de pagos para mantener el audit trail
-        if (nuevaId) {
-          await store.registrarPago(nuevaId, 0, tipo); // dummy: el pagado ya está en el row
+        if (sinPago) {
+          // Convertir sin pago: sólo crea alumna con pagado=0 y borra lead
+          await store.convertLeadToAlumna(idNum, {
+            tipo_inscripcion: 'completa',
+            encuentros_asistir: [1, 2, 3],
+            total: precioRegular,
+            pagado: 0,
+            pago: 'pendiente',
+          });
+        } else {
+          // 1) Convertir lead → alumna con datos básicos y pagado=0
+          const nuevaId = await store.convertLeadToAlumna(idNum, {
+            tipo_inscripcion: 'completa',
+            encuentros_asistir: [1, 2, 3],
+            total: precioRegular,
+            pagado: 0,
+            pago: 'pendiente',
+          });
+          // 2) Registrar el pago real (pasa por la nueva lógica con auto-silla)
+          if (nuevaId) {
+            await store.registrarPago(nuevaId, monto, tipo);
+          }
         }
-        // Borrar el lead
-        await store.deleteLead(idNum);
       } catch (e) {
         console.error('[pago lead → alumna]', e);
       } finally {
@@ -352,14 +364,31 @@ const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
     }
   };
 
+  // Atajos: 4 botones para alumna y lead, + extra ("sin pago") solo en lead.
+  // Para alumna existente, el monto del pronto-pago/completo se ajusta a lo que falta.
   const quickButtons = alumna ? [
-    { label: 'Reserva $200', v: 200, t: 'reserva' },
-    { label: `Pronto pago $${store.state.ajustes.precioProntoPago}`, v: store.state.ajustes.precioProntoPago, t: 'pronto-pago' },
-    { label: `Saldo $${restante}`, v: restante, t: 'saldo' },
+    { label: `Reserva $${precioReserva}`, v: precioReserva, t: 'reserva' },
+    {
+      label: alumna.pagado > 0 && alumna.pagado < precioProntoPago
+        ? `Pronto pago (saldo $${precioProntoPago - alumna.pagado})`
+        : `Pronto pago $${precioProntoPago}`,
+      v: Math.max(0, precioProntoPago - (alumna.pagado || 0)),
+      t: 'pronto-pago',
+    },
+    {
+      label: alumna.pagado > 0 && alumna.pagado < alumna.total
+        ? `Pago completo (saldo $${alumna.total - alumna.pagado})`
+        : `Pago completo $${alumna.total}`,
+      v: Math.max(0, (alumna.total || precioRegular) - (alumna.pagado || 0)),
+      t: 'completo',
+    },
+    { label: 'Otro monto', v: 0, t: 'parcial' },
   ] : esLead ? [
-    { label: 'Reserva $200', v: 200, t: 'reserva' },
-    { label: `Pronto pago $${store.state.ajustes.precioProntoPago}`, v: store.state.ajustes.precioProntoPago, t: 'pronto-pago' },
-    { label: `Total $${store.state.ajustes.precioRegular}`, v: store.state.ajustes.precioRegular, t: 'completo' },
+    { label: `Reserva $${precioReserva}`, v: precioReserva, t: 'reserva' },
+    { label: `Pronto pago $${precioProntoPago}`, v: precioProntoPago, t: 'pronto-pago' },
+    { label: `Pago completo $${precioRegular}`, v: precioRegular, t: 'completo' },
+    { label: 'Otro monto', v: 0, t: 'parcial' },
+    { label: 'Convertir sin pago aún', v: 0, t: 'ninguno' },
   ] : [];
 
   return (
@@ -371,9 +400,10 @@ const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
         <button
           className="btn btn-primary btn-block"
           onClick={guardar}
-          disabled={!selection || !monto || convirtiendo}
+          disabled={!selection || (tipo !== 'ninguno' && !monto) || convirtiendo}
         >
           {convirtiendo ? 'Convirtiendo…' :
+           esLead && tipo === 'ninguno' ? 'Inscribir sin pago' :
            esLead ? `Inscribir y registrar $${monto || 0}` :
            `Registrar $${monto || 0}`}
         </button>
@@ -434,32 +464,40 @@ const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
       {(alumna || lead) && quickButtons.length > 0 && (
         <Field label="Atajos">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {quickButtons.map(qb => (
-              <button key={qb.t} type="button"
-                onClick={() => { setMonto(qb.v); setTipo(qb.t === 'pronto-pago' ? 'pronto-pago' : qb.t === 'reserva' ? 'reserva' : qb.t === 'completo' ? 'completo' : 'parcial'); }}
-                style={{
-                  background: 'var(--surface)', border: '1px solid var(--line-soft)',
-                  borderRadius: 10, padding: '10px 14px', fontFamily: 'inherit',
-                  fontSize: 13, color: 'var(--ink)', cursor: 'pointer', textAlign: 'left',
-                }}
-              >{qb.label}</button>
-            ))}
+            {quickButtons.map(qb => {
+              const seleccionado = tipo === qb.t && (qb.t === 'ninguno' || monto === qb.v);
+              return (
+                <button key={qb.t} type="button"
+                  onClick={() => { setMonto(qb.v); setTipo(qb.t); }}
+                  style={{
+                    background: seleccionado ? 'var(--terracota-tint)' : 'var(--surface)',
+                    border: `1px solid ${seleccionado ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                    borderRadius: 10, padding: '10px 14px', fontFamily: 'inherit',
+                    fontSize: 13, color: 'var(--ink)', cursor: 'pointer', textAlign: 'left',
+                    fontWeight: seleccionado ? 600 : 400,
+                  }}
+                >{qb.label}</button>
+              );
+            })}
           </div>
         </Field>
       )}
 
-      <Field label="Tipo">
-        <SelectChips
-          value={tipo}
-          onChange={setTipo}
-          options={[
-            { value: 'reserva', label: 'Reserva' },
-            { value: 'parcial', label: 'Parcial' },
-            { value: 'pronto-pago', label: 'Pronto pago' },
-            { value: 'saldo', label: 'Saldo' },
-          ]}
-        />
-      </Field>
+      {tipo !== 'ninguno' && (
+        <Field label="Tipo">
+          <SelectChips
+            value={tipo}
+            onChange={setTipo}
+            options={[
+              { value: 'reserva', label: 'Reserva' },
+              { value: 'parcial', label: 'Parcial' },
+              { value: 'pronto-pago', label: 'Pronto pago' },
+              { value: 'completo', label: 'Completo' },
+              { value: 'saldo', label: 'Saldo' },
+            ]}
+          />
+        </Field>
+      )}
     </Sheet>
   );
 };
