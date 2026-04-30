@@ -18,10 +18,13 @@ export function useEventosAlumna(alumnaId) {
 
   const cargar = useCallback(async () => {
     if (!alumnaId) return;
+    // OJO: tabla `pagos` usa columna `fecha`, no `created_at` (ver schema.sql).
     const [pagosRes, evsRes] = await Promise.all([
-      supabase.from('pagos').select('*').eq('alumna_id', alumnaId).order('created_at', { ascending: false }),
+      supabase.from('pagos').select('*').eq('alumna_id', alumnaId).order('fecha', { ascending: false }),
       supabase.from('eventos_alumna').select('*').eq('alumna_id', alumnaId).order('created_at', { ascending: false }),
     ]);
+    if (pagosRes.error) console.error('[eventos] pagos', pagosRes.error);
+    if (evsRes.error) console.error('[eventos] eventos_alumna', evsRes.error);
     const pagos = pagosRes.data || [];
     const evs = evsRes.data || [];
 
@@ -34,7 +37,7 @@ export function useEventosAlumna(alumnaId) {
         titulo: `Pagó $${Number(p.monto).toLocaleString('en-US')}`,
         subtitulo: p.tipo,
         monto: Number(p.monto) || 0,
-        created_at: p.created_at,
+        created_at: p.fecha,  // normalizar a created_at para el sort + render
       })),
       ...evs.map(e => ({
         id: `evt-${e.id}`,
