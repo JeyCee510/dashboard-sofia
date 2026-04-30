@@ -29,6 +29,7 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
 | `npm run dev` | Dev server con HMR en `:5173` |
 | `npm run build` | Bundle de producción a `dist/` |
 | `npm run preview` | Servir el bundle localmente |
+| `npm run deploy:voice` | Deploy edge function `voice-command` a Supabase (requiere `supabase login` 1× previo) |
 | `git push` | Auto-deploy a Vercel (rama `main`) en ~1 min |
 
 ## Stack
@@ -115,6 +116,12 @@ Migraciones aplicadas (en orden cronológico):
 - `migration-007-leads-archive.sql` — tabla `leads_archive` + trigger BEFORE DELETE + RPC `restaurar_lead`
 - `migration-008-comprobantes-pago.sql` — tabla `comprobantes_pago` + bucket Storage `comprobantes` + preserva preinscripciones al borrar
 - `migration-009-comprobante-tokens.sql` — tabla `comprobante_tokens` + RPCs anon
+- `migration-010-fix-storage-policy-public.sql` — fix policy storage para anon + authenticated
+- `migration-011-eventos-alumna.sql` — tabla `eventos_alumna` para timeline trazable (silla, conversiones, etc.)
+- `migration-012-bucket-material.sql` — bucket Storage `material` (público lectura) para PDFs compartibles
+- `migration-013-alumnas-archive.sql` — papelera de estudiantes + RPC `restaurar_alumna_como_lead`
+- `migration-014-comprobantes-pago-id.sql` — FK `comprobantes_pago.pago_id` → `pagos(id)` para auto-reverso
+- `migration-015-update-plantillas.sql` — actualización de plantillas WhatsApp (transferencia, maps, sin reserva)
 
 Tablas:
 
@@ -128,10 +135,14 @@ Tablas:
 | `ajustes` | Singleton (id=1). `data` jsonb con todo (precios, plantillas WA, días formación) |
 | `mensajes` | Feed de WhatsApp/IG. Por ahora se popula manualmente |
 | `preinscripcion` | Form público con token UUID. FK ON DELETE SET NULL + `lead_nombre_snapshot` para sobrevivir borrado |
-| `comprobantes_pago` | Comprobantes subidos vía link público. FK opcional a alumna/lead. Estado: pendiente/validado/rechazado |
+| `comprobantes_pago` | Comprobantes subidos vía link público. FK opcional a alumna/lead. Estado: pendiente/validado/rechazado. **`pago_id` (FK a pagos) permite auto-reverso al borrar** |
 | `comprobante_tokens` | Token único reusable por persona. RPCs anon: `crear_comprobante_token`, `obtener_comprobante_token`, `subir_comprobante_con_token` |
+| `eventos_alumna` | Timeline trazable. Eventos: inscrita, inscrita_desde_lead, silla_asignada_auto/manual, silla_renunciada. UI mergea con `pagos` ordenado por fecha |
+| `alumnas_archive` | Papelera de estudiantes borrados. Trigger BEFORE DELETE en `alumnas`. RPC `restaurar_alumna_como_lead` (vuelven como lead nuevo, no como alumna) |
 
-**Storage bucket** `comprobantes` (privado): anon INSERT permitido, SELECT/DELETE solo authorized.
+**Storage buckets**:
+- `comprobantes` (privado): anon INSERT permitido, SELECT/DELETE solo authorized.
+- `material` (público lectura): para PDFs compartibles (programa, contrato). Solo authenticated puede subir/actualizar.
 
 Triggers `updated_at` en alumnas/leads/ajustes. RLS habilitado en todas, política única por tabla con `is_authorized()`.
 
@@ -204,7 +215,9 @@ Botón de micrófono flotante junto al FAB. Sofía habla un comando, Claude Haik
 - Secret `ANTHROPIC_API_KEY` en Supabase Edge Functions secrets.
 - Costo: ~$0.0001 por comando (~$2-3/mes uso típico).
 
-**11 tools (acciones):** crear_lead, crear_estudiante, registrar_pago, cambiar_estado_lead, convertir_lead_a_estudiante, marcar_asistencia, eliminar_registro, generar_preinscripcion, abrir_ficha, consultar, preguntar_clarificacion.
+**14 tools (acciones):** crear_lead, crear_estudiante, registrar_pago, cambiar_estado_lead, convertir_lead_a_estudiante, marcar_asistencia, marcar_dia_completo, asignar_silla, renunciar_silla, eliminar_registro, generar_preinscripcion, abrir_ficha, consultar, preguntar_clarificacion.
+
+**10 consultas:** cupos_disponibles, pagos_pendientes, leads_nuevos, total_inscritos, asistencia_hoy, bono_silla_estado, comprobantes_pendientes, consolidado_financiero, preinscripciones_pendientes, papelera_total.
 
 **Multi-turn:** el frontend acumula history con tool_use blocks correctos. Cada turno user que sigue a un assistant turn con tool_use DEBE wrappear con `tool_result` block (Anthropic exige). Ver `useVoiceCommand.js` y `voice-button.jsx`.
 
@@ -212,7 +225,7 @@ Botón de micrófono flotante junto al FAB. Sofía habla un comando, Claude Haik
 - `src/hooks/useVoiceCommand.js` — captura voz + multi-turn
 - `src/voice-button.jsx` — UI con chips clickeables para clarificaciones
 - `src/lib/voice-executor.js` — traduce {tool, params} a llamadas al store
-- `supabase/functions/voice-command/index.ts` — Edge Function (re-deployar tras cambios desde dashboard Supabase)
+- `supabase/functions/voice-command/index.ts` — Edge Function. Re-deploy con `npm run deploy:voice` (script en `scripts/deploy-voice-command.sh`, requiere `supabase login` una vez).
 
 ## Rutas públicas (sin auth)
 
@@ -246,4 +259,20 @@ Las rutas públicas añaden `body.public-route` al DOM para que el CSS anule las
 
 ---
 
-<!-- Última revisión compound: 2026-04-29 -->
+<!-- Última revisión compound: 2026-04-30 -->
+<!--
+Sesión 2026-04-30 features añadidas:
+- Modal de pago unificado (4 atajos + opción sin pago) con regla pronto-pago = precio FIJO
+- Auto-asignación de bono silla a primeros 6 con tipo='completa' y pago>=$200
+- Timeline trazable por estudiante (eventos_alumna + pagos) con revertir
+- Sección Comprobantes en ficha + tab Pagos con segmented Cobros/Comprobantes (badge pendientes)
+- ValidarSheet soporta leads → convierte automáticamente al validar
+- PDF programa en Storage `material` + plantilla virtual auto-inyectada
+- Papelera unificada (leads + alumnas borradas) → restaurar SIEMPRE crea lead nuevo
+- InstaInput (@ fijo) + TelInput (+593 9 default + toggle internacional)
+- Leads: buscador, orden alfabético, badge de preinscripción
+- Auto-reverso pago al borrar comprobante validado (vía pago_id FK)
+- Voz: 14 tools y 10 consultas (3 + 4 añadidas en esta sesión)
+- Lenguaje UI genérico (estudiantes/inscritos/personas)
+-->
+

@@ -11,7 +11,17 @@ const PagosScreen = ({ tweaks, store, onOpenAlumna, onNewPago, onNavigate }) => 
   // cuando hay pendientes (más útil para Sofía); persiste mientras la
   // pantalla esté montada.
   const pendientes = store?.state?.comprobantesPendientes || 0;
-  const [subview, setSubview] = React.useState(pendientes > 0 ? 'comprobantes' : 'cobros');
+  const [subview, setSubview] = React.useState(null);
+  // Setear el valor inicial UNA VEZ cuando el realtime de pendientes haya
+  // cargado (puede llegar después del primer render). useState() inicial
+  // no se re-evalúa, por eso el useEffect.
+  React.useEffect(() => {
+    if (subview === null) {
+      setSubview(pendientes > 0 ? 'comprobantes' : 'cobros');
+    }
+  }, [pendientes, subview]);
+  // Evitar flash mientras determina vista inicial
+  if (subview === null) return null;
 
   const totalCobrado = MOCK_ALUMNAS.reduce((s, a) => s + a.pagado, 0);
   const totalEsperado = MOCK_ALUMNAS.reduce((s, a) => s + a.total, 0);
