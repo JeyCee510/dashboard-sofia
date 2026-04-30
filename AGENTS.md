@@ -62,10 +62,23 @@ src/
 ├── tweaks-panel.jsx        # Panel dev (toggle FAB, atajos)
 ├── login.jsx               # Pantalla de login Google
 ├── home.jsx                # Tab "Hoy" · saludo + fecha + cuenta regresiva dinámica
-├── screen-*.jsx            # Una por tab: reservas, pagos, marketing, crm, detail, asistencia, ajustes
-├── forms.jsx               # Inputs reutilizables
+├── screen-reservas.jsx     # Tab "Inscritos"
+├── screen-pagos.jsx        # Tab "Pagos" (con acceso a Comprobantes)
+├── screen-marketing.jsx    # Tab "Leads" (con acceso a Papelera)
+├── screen-detail.jsx       # FichaAlumna overlay
+├── screen-asistencia.jsx   # Asistencia overlay (respeta encuentros_asistir)
+├── screen-ajustes.jsx      # Ajustes overlay
+├── screen-difusion.jsx     # Flujo difusión 1×1 overlay
+├── screen-papelera-leads.jsx # Leads borrados overlay
+├── screen-comprobantes.jsx # Comprobantes pendientes (admin) overlay
+├── voice-button.jsx        # Mic flotante + modal multi-turn
+├── preinscripcion-public.jsx # Form público /preinscripcion/<token>
+├── comprobante-public.jsx  # Form público /comprobante y /comprobante/<token>
+├── forms.jsx               # Inputs + ContactPanel + PreinscripcionAdminPanel + ComprobanteTokenAdminPanel
 └── forms-sheets.jsx        # Sheets: AlumnaForm, LeadForm, PagoForm
 ```
+
+Hay 4 tabs en bottom bar: **Hoy, Inscritos, Pagos, Leads**. (Tab "Chat/CRM" fue eliminado — sin integración WA/IG no aportaba.)
 
 ### Patrón híbrido `window` + ES modules
 
@@ -92,16 +105,33 @@ Usuarios actuales:
 
 ## Schema Supabase
 
-`supabase/schema.sql` (base) y `supabase/migration-002-mensajes.sql` (incremental). Tablas:
+Migraciones aplicadas (en orden cronológico):
+- `schema.sql` — base inicial
+- `migration-002-mensajes.sql` — tabla mensajes
+- `migration-003-fix-rls-security-invoker.sql` — fix crítico is_authorized()
+- `migration-004-instagram-handle.sql` — campo `instagram` en alumnas/leads
+- `migration-005-preinscripcion.sql` — tabla preinscripción + RPCs públicas
+- `migration-006-inscripciones-parciales.sql` — `tipo_inscripcion` y `encuentros_asistir` en alumnas
+- `migration-007-leads-archive.sql` — tabla `leads_archive` + trigger BEFORE DELETE + RPC `restaurar_lead`
+- `migration-008-comprobantes-pago.sql` — tabla `comprobantes_pago` + bucket Storage `comprobantes` + preserva preinscripciones al borrar
+- `migration-009-comprobante-tokens.sql` — tabla `comprobante_tokens` + RPCs anon
+
+Tablas:
 
 | Tabla | Notas |
 |---|---|
-| `alumnas` | Inscritas. Snake_case en DB, camelCase en JS — el hook hace `fromDb()` / `toDb()`. |
-| `leads` | CRM básico. fuente: instagram \| whatsapp \| referido \| otro |
+| `alumnas` | Inscritas. Campos extra: `instagram`, `tipo_inscripcion` (completa/dos_encuentros/un_encuentro), `encuentros_asistir int[]` |
+| `leads` | CRM básico. fuente: instagram \| whatsapp \| referido \| otro. Campo `instagram`. |
+| `leads_archive` | Papelera. Trigger BEFORE DELETE en `leads` archiva auto. Restaurar via RPC `restaurar_lead`. |
 | `pagos` | Audit trail. Cada pago aplicado a alumna actualiza también `alumnas.pagado` y `alumnas.pago` |
 | `asistencia` | UNIQUE(alumna_id, dia_idx). Toggle ciclo: undefined → true → false → undefined |
 | `ajustes` | Singleton (id=1). `data` jsonb con todo (precios, plantillas WA, días formación) |
 | `mensajes` | Feed de WhatsApp/IG. Por ahora se popula manualmente |
+| `preinscripcion` | Form público con token UUID. FK ON DELETE SET NULL + `lead_nombre_snapshot` para sobrevivir borrado |
+| `comprobantes_pago` | Comprobantes subidos vía link público. FK opcional a alumna/lead. Estado: pendiente/validado/rechazado |
+| `comprobante_tokens` | Token único reusable por persona. RPCs anon: `crear_comprobante_token`, `obtener_comprobante_token`, `subir_comprobante_con_token` |
+
+**Storage bucket** `comprobantes` (privado): anon INSERT permitido, SELECT/DELETE solo authorized.
 
 Triggers `updated_at` en alumnas/leads/ajustes. RLS habilitado en todas, política única por tabla con `is_authorized()`.
 
@@ -118,10 +148,11 @@ Triggers `updated_at` en alumnas/leads/ajustes. RLS habilitado en todas, políti
 - **NO borrar archivos legacy**: `Dashboard Sofia.html`, `app.jsx`, `data.jsx`, etc. en la raíz del repo (NO en `src/`) son la versión Babel-inline original. Conservarlos como referencia.
 - **NO commitear `.env.local`**. Está en `.gitignore`.
 - **NO instalar Tailwind** ni reformatear el CSS a utilities. El estilo es deliberadamente serif/editorial con OKLCH.
-- **NO meter el frame IOSDevice en mobile**. Solo aplica para viewports >600px (mockup en desktop). En mobile real renderiza fullscreen.
 - **NO refactorizar `window.X` → imports puros** en las screens. Funciona, es estable, y romperlo gratis cuesta tiempo.
 - **NO confiar en `localStorage`** para datos persistentes — todo va a Supabase ahora. Solo el panel de Tweaks usa localStorage para preferencias de UI.
 - **NO usar `SECURITY DEFINER` en funciones SQL llamadas desde RLS policies** (como `is_authorized()`). Bajo SECURITY DEFINER, `auth.jwt()` no devuelve el JWT del caller real y la función retorna NULL → todos los inserts/updates fallan silenciosamente. Usar `SECURITY INVOKER` (default) + `STABLE`. Ver `migration-003-fix-rls-security-invoker.sql` para el incidente del 2026-04-29.
+- **NO llamar hooks de React después de un early return.** Todos los `use*` deben ir antes de cualquier `if (cond) return ...`. Una violación rompe el render entero (root vacío, sin error visible). Bug histórico: `usePullToRefresh` puesto después del auth gate, root quedó en blanco. Ver app.jsx líneas iniciales.
+- **Patrón `window.X` → cuando un componente A registrado en window es consumido por un archivo B**, hay que declararlo explícito al inicio de B con `const X = window.X` — NO funciona como variable global automática en módulos ES (strict mode). Si olvidas, ReferenceError silencioso al renderizar. Aplica también a hooks: `const useX = window.useX` antes de usar dentro de otro componente.
 
 ## Lógica de fechas (home.jsx)
 
@@ -136,20 +167,17 @@ Triggers `updated_at` en alumnas/leads/ajustes. RLS habilitado en todas, políti
 
 Las fechas están **duplicadas** en `home.jsx` (`DIAS_FECHAS`) y `useAjustes.js` (`DEFAULT_AJUSTES.diasFormacion`). Si cambian, actualizar ambas. **TODO**: unificar en un solo source.
 
-## Mobile vs desktop
+## Responsive web
 
-`src/main.jsx` decide en runtime:
+La app renderiza siempre como `<App />` directo (sin frame de iPhone). El layout se adapta vía CSS:
 
-```js
-const isMobile = () =>
-  window.matchMedia('(max-width: 600px)').matches ||
-  ('ontouchstart' in window && window.innerWidth < 800);
-```
+- **Mobile (<700px):** `.app` ocupa todo el viewport (`height: 100dvh`), tabbar `position: absolute` dentro. Body con `overflow: hidden`, scroll real ocurre en `.app-scroll`.
+- **Desktop (>=700px):** `.app` con `max-width: 720px` centrada con sombra y border-radius. Body scroll normal.
+- **Pantallas grandes (>=1024px):** `max-width: 880px` para más aire.
 
-- **Mobile real** → `<App />` directo, fullscreen
-- **Desktop** → `<IOSDevice><App /></IOSDevice>` (mockup de iPhone para demos)
+CSS específico para cada breakpoint en `styles.css`. Las rutas públicas (`/preinscripcion/*`, `/comprobante/*`) usan `body.public-route` para anular las restricciones de scroll del modo app.
 
-CSS específico para mobile en `styles.css` bajo `@media (max-width: 600px)`.
+El frame `<IOSDevice>` ya NO se usa en producción — el archivo `ios-frame.jsx` queda solo por compatibilidad con la versión Babel-inline legacy de la raíz.
 
 ## Deploy
 
@@ -165,6 +193,38 @@ CSS específico para mobile en `styles.css` bajo `@media (max-width: 600px)`.
 2. Correr en Supabase SQL Editor: https://supabase.com/dashboard/project/orceickorgdynlsbskvx/sql/new
 3. Verificar RLS habilitado y política con `is_authorized()`
 4. Crear/actualizar el hook correspondiente en `src/hooks/`
+
+## Control por voz (Web Speech + Claude Haiku 4.5)
+
+Botón de micrófono flotante junto al FAB. Sofía habla un comando, Claude Haiku interpreta con tool use, modal de confirmación antes de ejecutar.
+
+**Stack:**
+- Web Speech API (es-EC) en el browser → texto. Gratis, nativo. NO funciona en webviews de WhatsApp/Instagram (Apple bloqueo) — detectamos y mostramos guía para abrir en Safari.
+- Edge Function `voice-command` en Supabase llama a `claude-haiku-4-5-20251001` con tool use.
+- Secret `ANTHROPIC_API_KEY` en Supabase Edge Functions secrets.
+- Costo: ~$0.0001 por comando (~$2-3/mes uso típico).
+
+**11 tools (acciones):** crear_lead, crear_estudiante, registrar_pago, cambiar_estado_lead, convertir_lead_a_estudiante, marcar_asistencia, eliminar_registro, generar_preinscripcion, abrir_ficha, consultar, preguntar_clarificacion.
+
+**Multi-turn:** el frontend acumula history con tool_use blocks correctos. Cada turno user que sigue a un assistant turn con tool_use DEBE wrappear con `tool_result` block (Anthropic exige). Ver `useVoiceCommand.js` y `voice-button.jsx`.
+
+**Componentes clave:**
+- `src/hooks/useVoiceCommand.js` — captura voz + multi-turn
+- `src/voice-button.jsx` — UI con chips clickeables para clarificaciones
+- `src/lib/voice-executor.js` — traduce {tool, params} a llamadas al store
+- `supabase/functions/voice-command/index.ts` — Edge Function (re-deployar tras cambios desde dashboard Supabase)
+
+## Rutas públicas (sin auth)
+
+Detectadas por pathname en `main.jsx`:
+
+| Ruta | Función |
+|---|---|
+| `/preinscripcion/<token>` | Form público de preinscripción para lead específico |
+| `/comprobante` | Form público anónimo para subir comprobante (cualquiera) |
+| `/comprobante/<token>` | Form personalizado para persona específica (no pide nombre) |
+
+Las rutas públicas añaden `body.public-route` al DOM para que el CSS anule las restricciones de scroll del modo app. Suben archivos a Supabase Storage bucket `comprobantes` (privado, anon INSERT permitido por policy).
 
 ## Iteraciones probables (next up)
 
@@ -186,4 +246,4 @@ CSS específico para mobile en `styles.css` bajo `@media (max-width: 600px)`.
 
 ---
 
-<!-- Última revisión compound: 2026-04-28 -->
+<!-- Última revisión compound: 2026-04-29 -->
