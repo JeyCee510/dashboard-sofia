@@ -351,7 +351,7 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
       )}
       </div>
 
-      {waUrl && plantillas && plantillas.length > 0 && (
+      {(waUrl || igUrl) && plantillas && plantillas.length > 0 && (
         <>
           <button
             type="button"
@@ -365,31 +365,65 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Icon name="note" size={14} stroke="var(--terracota)" />
-              Enviar plantilla por WhatsApp
+              Enviar plantilla
             </span>
             <Icon name="chevronD" size={14} stroke="var(--ink-mute)" />
           </button>
           {showPlantillas && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 6 }}>
               {plantillas.map(p => {
-                const url = buildWaUrl(tel, personalizar(p.cuerpo));
+                const personalizado = personalizar(p.cuerpo);
+                const waPlantillaUrl = buildWaUrl(tel, personalizado);
                 return (
-                  <a
-                    key={p.id} href={url} target="_blank" rel="noopener noreferrer"
+                  <div
+                    key={p.id}
                     style={{
-                      padding: '10px 14px', borderRadius: 10,
+                      padding: '10px 12px', borderRadius: 10,
                       background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
-                      fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
-                      textDecoration: 'none', display: 'block',
                     }}
                   >
                     <div style={{ fontWeight: 500, fontSize: 12, color: 'var(--ink)' }}>{p.titulo}</div>
                     <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 2, lineHeight: 1.35,
                       overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box',
                       WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                      {personalizar(p.cuerpo)}
+                      {personalizado}
                     </div>
-                  </a>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      {waPlantillaUrl && (
+                        <a href={waPlantillaUrl} target="_blank" rel="noopener noreferrer"
+                          style={{
+                            flex: 1, padding: '7px 10px', borderRadius: 8,
+                            background: '#25D366', color: '#fff',
+                            fontFamily: 'inherit', fontSize: 11, fontWeight: 500,
+                            textDecoration: 'none', textAlign: 'center',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                          }}>
+                          <Icon name="whatsapp" size={11} stroke="#fff" />
+                          WhatsApp
+                        </a>
+                      )}
+                      {igUrl && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await copyAndOpenIg(instagram, personalizado);
+                            setIgCopiado(true);
+                            setTimeout(() => setIgCopiado(false), 2500);
+                          }}
+                          style={{
+                            flex: 1, padding: '7px 10px', borderRadius: 8,
+                            background: 'linear-gradient(45deg, #F09433, #E6683C, #DC2743, #CC2366, #BC1888)',
+                            color: '#fff', border: 'none',
+                            fontFamily: 'inherit', fontSize: 11, fontWeight: 500,
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                          }}>
+                          <Icon name="instagram" size={11} stroke="#fff" />
+                          Instagram
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -564,11 +598,24 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
   const [link, setLink] = React.useState('');
   const [copiado, setCopiado] = React.useState(false);
   const [generando, setGenerando] = React.useState(false);
+  const triedRef = React.useRef(false);
 
   React.useEffect(() => {
     if (token) setLink(`${window.location.origin}/comprobante/${token}`);
     else setLink('');
   }, [token]);
+
+  // Auto-generar el token la primera vez que se carga el panel sin uno existente
+  React.useEffect(() => {
+    if (loading || token || triedRef.current) return;
+    if (!leadId && !alumnaId) return;
+    triedRef.current = true;
+    setGenerando(true);
+    generar().then(t => {
+      if (t) setLink(`${window.location.origin}/comprobante/${t}`);
+      setGenerando(false);
+    }).catch(() => setGenerando(false));
+  }, [loading, token, leadId, alumnaId, generar]);
 
   const onGenerar = async () => {
     setGenerando(true);
@@ -590,15 +637,19 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
   const mensajeWa = `Hola ${firstName}! Te paso tu link personal para subir comprobantes de pago. Es seguro y solo Sofía ve tus datos. Puedes subir varios:\n\n${link}\n\n🌿`;
   const waUrl = tel && link ? buildWaUrl(tel, mensajeWa) : null;
 
-  if (loading) {
-    return <div style={{ fontSize: 12, color: 'var(--ink-mute)', padding: 8 }}>Cargando…</div>;
+  if (loading || (!token && generando)) {
+    return (
+      <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)', fontSize: 12, color: 'var(--ink-mute)', textAlign: 'center' }}>
+        Preparando link de comprobantes…
+      </div>
+    );
   }
 
   if (!token) {
     return (
       <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
         <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
-          Genera un link personal para que esta persona suba sus comprobantes (puede subir varios). El comprobante queda asociado a su ficha automáticamente.
+          Link personal para que esta persona suba sus comprobantes.
         </div>
         <button
           type="button" onClick={onGenerar} disabled={generando}
@@ -609,7 +660,7 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
             opacity: generando ? 0.6 : 1,
           }}
         >
-          {generando ? 'Generando…' : 'Generar link de comprobantes'}
+          {generando ? 'Generando…' : 'Reintentar'}
         </button>
       </div>
     );
