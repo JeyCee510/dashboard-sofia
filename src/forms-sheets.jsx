@@ -169,7 +169,7 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   );
 };
 
-const LeadForm = ({ open, onClose, store, leadId }) => {
+const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
   const editing = leadId && store.state.leads.find(l => l.id === leadId);
   const [form, setForm] = React.useState(() => editing || {
     nombre: '', tel: '', instagram: '', mensaje: '', fuente: 'instagram', estado: 'nuevo',
@@ -198,8 +198,10 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
 
   const convertir = () => {
     if (!editing) return;
-    store.convertLeadToAlumna(leadId);
+    // Cierra este sheet y delega al padre, que abre PagoForm con leadPreId.
+    // El PagoForm es donde Sofía elige tipo de pago (incluso "sin pago aún").
     onClose();
+    if (onConvertir) onConvertir(leadId);
   };
 
   return (
@@ -289,23 +291,28 @@ const LeadForm = ({ open, onClose, store, leadId }) => {
   );
 };
 
-const PagoForm = ({ open, onClose, store, alumnaPreId }) => {
+const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId }) => {
   // selection puede ser:
   //   "alumna:<id>" → estudiante existente
   //   "lead:<id>"   → lead que se convertirá a estudiante al registrar pago
-  const [selection, setSelection] = React.useState(alumnaPreId ? `alumna:${alumnaPreId}` : '');
+  const initialSel = () => {
+    if (alumnaPreId) return `alumna:${alumnaPreId}`;
+    if (leadPreId) return `lead:${leadPreId}`;
+    return '';
+  };
+  const [selection, setSelection] = React.useState(initialSel);
   const [monto, setMonto] = React.useState(0);
   const [tipo, setTipo] = React.useState('parcial');
   const [convirtiendo, setConvirtiendo] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
-      setSelection(alumnaPreId ? `alumna:${alumnaPreId}` : '');
+      setSelection(initialSel());
       setMonto(0);
       setTipo('parcial');
       setConvirtiendo(false);
     }
-  }, [open, alumnaPreId]);
+  }, [open, alumnaPreId, leadPreId]);
 
   const [tipoSel, idSel] = selection.split(':');
   const idNum = idSel ? Number(idSel) : null;

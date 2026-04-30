@@ -352,30 +352,45 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
       </div>
       <div style={{ padding: '0 22px' }}>
         <div className="card flat" style={{ padding: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 8, fontSize: 12 }}>
-            <div></div>
-            <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', textAlign: 'right', fontWeight: 500 }}>Sin silla</div>
-            <div style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gold)', textAlign: 'right', fontWeight: 500 }}>Con silla</div>
-
-            <div style={{ color: 'var(--ink)', fontWeight: 500, paddingTop: 6, borderTop: '1px solid var(--line-soft)' }}>Completa <span style={{ fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>· 50h</span></div>
-            <div className="serif" style={{ fontSize: 16, color: 'var(--ink)', textAlign: 'right', paddingTop: 6, borderTop: '1px solid var(--line-soft)' }}>${PRECIOS_DEFAULT.completa.sin_silla}</div>
-            <div className="serif" style={{ fontSize: 16, color: 'var(--ink)', textAlign: 'right', paddingTop: 6, borderTop: '1px solid var(--line-soft)' }}>${PRECIOS_DEFAULT.completa.con_silla}</div>
+          {/* Tarifa principal */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
+            <div style={{ color: 'var(--ink)', fontWeight: 500 }}>
+              Completa <span style={{ fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>· 50h · 3 encuentros</span>
+            </div>
+            <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.completa.con_silla}</div>
 
             <div style={{ color: 'var(--ink)', fontWeight: 500 }}>2 encuentros</div>
-            <div className="serif" style={{ fontSize: 16, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.dos_encuentros.sin_silla}</div>
-            <div className="serif" style={{ fontSize: 16, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.dos_encuentros.con_silla}</div>
+            <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.dos_encuentros.con_silla}</div>
 
             <div style={{ color: 'var(--ink)', fontWeight: 500 }}>1 encuentro</div>
-            <div className="serif" style={{ fontSize: 16, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.un_encuentro.sin_silla}</div>
-            <div className="serif" style={{ fontSize: 16, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.un_encuentro.con_silla}</div>
+            <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.un_encuentro.con_silla}</div>
           </div>
-          <div style={{ display: 'flex', gap: 12, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)', fontSize: 11, color: 'var(--ink-soft)', flexWrap: 'wrap' }}>
-            <span><strong style={{ color: 'var(--ink)' }}>Pronto pago</strong> (completa) · ${tweaks.precioProntoPago || 484} · hasta {tweaks.fechaProntoPago || '10 mayo'}</span>
-            <span>·</span>
-            <span><strong style={{ color: 'var(--ink)' }}>Reserva</strong> · ${tweaks.precioReserva || 200}</span>
+
+          {/* Pronto pago + reserva */}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)', display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
+            <div style={{ color: 'var(--terracota)', fontWeight: 500 }}>
+              Pronto pago <span style={{ fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>· hasta {tweaks.fechaProntoPago || '10 mayo'}</span>
+            </div>
+            <div className="serif" style={{ fontSize: 18, color: 'var(--terracota)', textAlign: 'right' }}>${tweaks.precioProntoPago || 484}</div>
+
+            <div style={{ color: 'var(--ink-soft)', fontWeight: 500 }}>Reserva (aparta cupo)</div>
+            <div className="serif" style={{ fontSize: 14, color: 'var(--ink-soft)', textAlign: 'right' }}>${tweaks.precioReserva || 200}</div>
           </div>
-          <div style={{ marginTop: 8, fontSize: 10, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
-            Bono silla: regalo automático para los primeros 6 inscritos a la formación completa. Si renuncian, el precio baja $30.
+
+          {/* Bono silla — estado en vivo */}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <span style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: 600 }}>Bono silla</span>
+              <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                <strong style={{ color: 'var(--ink)' }}>{sillasOtorgadas}</strong>/{sillasMax} asignadas
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.45 }}>
+              Las primeras {sillasMax} alumnas que pagan reserva o más de la formación completa reciben silla automáticamente. El precio ya la incluye.
+            </div>
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-mute)', lineHeight: 1.45 }}>
+              Si renuncian: completa <strong>−$30</strong> · 2 enc. <strong>−$40</strong> · 1 enc. <strong>−$40</strong> · pronto pago <strong>sin descuento</strong> (precio fijo).
+            </div>
           </div>
         </div>
       </div>

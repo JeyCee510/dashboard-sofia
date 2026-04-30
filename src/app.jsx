@@ -254,12 +254,14 @@ const App = () => {
         onClose={() => setSheet(null)}
         store={store}
         leadId={sheet && sheet.type === 'edit-lead' ? sheet.id : null}
+        onConvertir={(leadId) => setSheet({ type: 'new-pago-lead', id: leadId })}
       />
       <PagoForm
-        open={sheet === 'new-pago' || (sheet && sheet.type === 'new-pago')}
+        open={sheet === 'new-pago' || (sheet && (sheet.type === 'new-pago' || sheet.type === 'new-pago-lead'))}
         onClose={() => setSheet(null)}
         store={store}
         alumnaPreId={sheet && sheet.type === 'new-pago' ? sheet.id : null}
+        leadPreId={sheet && sheet.type === 'new-pago-lead' ? sheet.id : null}
       />
 
       {/* Voice button (mic flotante) — encima del FAB */}

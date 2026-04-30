@@ -115,8 +115,20 @@ export async function executeVoiceCommand(toolName, params, store, ui) {
       const matches = findByName(state.leads, params.nombre_lead);
       if (matches.length === 0) return { ok: false, message: `No encuentro lead "${params.nombre_lead}".` };
       if (matches.length > 1) return { ok: false, message: `Hay varios leads: ${matches.map(m => m.nombre).slice(0, 4).join(', ')}.` };
-      await store.convertLeadToAlumna(matches[0].id);
-      return { ok: true, message: `${matches[0].nombre.split(' ')[0]} convertido en estudiante.`, navigate: 'reservas' };
+      // Convierte SIN pago (consistente con la regla actual de no asumir reserva).
+      // Si querés registrar un pago, usar el comando "registrar pago" después
+      // o abrir la ficha del lead y usar "Convertir en estudiante" desde allí.
+      await store.convertLeadToAlumna(matches[0].id, {
+        tipo_inscripcion: 'completa',
+        encuentros_asistir: [1, 2, 3],
+        pagado: 0,
+        pago: 'pendiente',
+      });
+      return {
+        ok: true,
+        message: `${matches[0].nombre.split(' ')[0]} convertido en estudiante (sin pago aún). Abre su ficha para registrar pagos.`,
+        navigate: 'reservas',
+      };
     }
 
     case 'marcar_asistencia': {
