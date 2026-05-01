@@ -63,6 +63,7 @@ async function initApp() {
   await import('./screen-ajustes.jsx');
   await import('./screen-difusion.jsx');
   await import('./screen-papelera-leads.jsx');
+  await import('./screen-preinscripciones.jsx');
   await import('./screen-comprobantes.jsx');
   await import('./forms.jsx');
   await import('./forms-sheets.jsx');

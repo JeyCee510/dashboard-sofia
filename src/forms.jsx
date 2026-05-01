@@ -603,6 +603,9 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
   const [link, setLink] = React.useState('');
   const [copiado, setCopiado] = React.useState(false);
   const [generando, setGenerando] = React.useState(false);
+  // Default colapsado: el formulario completo es largo (14 preguntas).
+  // Click en el header expande/contrae.
+  const [expanded, setExpanded] = React.useState(false);
 
   React.useEffect(() => {
     if (pre?.token) setLink(`${window.location.origin}/preinscripcion/${pre.token}`);
@@ -666,28 +669,44 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
 
   if (pre.estado === 'completada') {
     const data = pre.data || {};
+    const respuestasCount = Object.entries(PREGUNTAS_LABELS).filter(([k]) => data[k]).length;
     return (
-      <div style={{ padding: 14, borderRadius: 12, background: '#DDE0CC', border: '1px solid transparent' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+      <div style={{ padding: expanded ? 14 : '12px 14px', borderRadius: 12, background: '#DDE0CC', border: '1px solid transparent' }}>
+        <button
+          type="button"
+          onClick={() => setExpanded(s => !s)}
+          style={{
+            width: '100%', background: 'transparent', border: 'none', padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+          }}
+        >
           <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4D5230', fontWeight: 600 }}>
-            Preinscripción completada
+            ✓ Preinscripción · {respuestasCount} {respuestasCount === 1 ? 'respuesta' : 'respuestas'}
           </div>
-          <div style={{ fontSize: 11, color: '#4D5230' }}>
-            {pre.completed_at ? new Date(pre.completed_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' }) : ''}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: '#4D5230' }}>
+              {pre.completed_at ? new Date(pre.completed_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' }) : ''}
+            </span>
+            <span style={{ fontSize: 11, color: '#4D5230', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+              ▾
+            </span>
           </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-          {Object.entries(PREGUNTAS_LABELS).map(([k, label]) => {
-            const v = data[k];
-            if (!v) return null;
-            return (
-              <div key={k} style={{ paddingTop: 8, borderTop: '1px solid rgba(77,82,48,0.15)' }}>
-                <div style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#4D5230', fontWeight: 500 }}>{label}</div>
-                <div style={{ fontSize: 13, color: 'var(--ink)', marginTop: 3, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{v}</div>
-              </div>
-            );
-          })}
-        </div>
+        </button>
+        {expanded && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+            {Object.entries(PREGUNTAS_LABELS).map(([k, label]) => {
+              const v = data[k];
+              if (!v) return null;
+              return (
+                <div key={k} style={{ paddingTop: 8, borderTop: '1px solid rgba(77,82,48,0.15)' }}>
+                  <div style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#4D5230', fontWeight: 500 }}>{label}</div>
+                  <div style={{ fontSize: 13, color: 'var(--ink)', marginTop: 3, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{v}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }

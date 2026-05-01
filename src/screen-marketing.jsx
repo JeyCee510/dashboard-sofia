@@ -128,22 +128,38 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
             <h1>Leads</h1>
           </div>
           {onNavigate && (
-            <button
-              onClick={() => onNavigate('papelera-leads')}
-              style={{
-                marginTop: 8,
-                padding: '8px 12px',
-                borderRadius: 999,
-                background: 'var(--bg-warm)',
-                border: '1px solid var(--line-soft)',
-                fontFamily: 'inherit', fontSize: 12, color: 'var(--ink-soft)',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <Icon name="x" size={12} stroke="var(--ink-mute)" />
-              Borrados
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+              <button
+                onClick={() => onNavigate('preinscripciones')}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  background: 'var(--bg-warm)',
+                  border: '1px solid var(--line-soft)',
+                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <Icon name="note" size={12} stroke="var(--terracota)" />
+                Preinscripciones
+              </button>
+              <button
+                onClick={() => onNavigate('papelera-leads')}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  background: 'var(--bg-warm)',
+                  border: '1px solid var(--line-soft)',
+                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink-soft)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <Icon name="x" size={12} stroke="var(--ink-mute)" />
+                Borrados
+              </button>
+            </div>
           )}
         </div>
       </div>
