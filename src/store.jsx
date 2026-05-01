@@ -134,6 +134,15 @@ function useStore() {
       ...extra,
       _desdeLead: true, // marca para que addAlumna registre el evento correcto
     });
+    // Transferir preinscripción del lead a la nueva alumna (si existe).
+    // Sin esto, la respuesta del cliente al formulario quedaba huérfana
+    // tras la conversión (lead borrado → preinscripcion.lead_id=NULL via FK).
+    if (nuevaId) {
+      await supabase
+        .from('preinscripcion')
+        .update({ alumna_id: nuevaId })
+        .eq('lead_id', leadId);
+    }
     await deleteLead(leadId);
     return nuevaId;
   };

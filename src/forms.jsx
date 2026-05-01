@@ -598,8 +598,8 @@ const PREGUNTAS_LABELS = {
   algo_mas: 'Algo más',
 };
 
-const PreinscripcionAdminPanel = ({ leadId, leadNombre, leadTel, plantillas }) => {
-  const { pre, loading, generar } = usePreinscripcion(leadId, null);
+const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plantillas }) => {
+  const { pre, loading, generar } = usePreinscripcion(leadId || null, alumnaId || null);
   const [link, setLink] = React.useState('');
   const [copiado, setCopiado] = React.useState(false);
   const [generando, setGenerando] = React.useState(false);
@@ -630,6 +630,17 @@ const PreinscripcionAdminPanel = ({ leadId, leadNombre, leadTel, plantillas }) =
 
   if (loading) {
     return <div style={{ fontSize: 12, color: 'var(--ink-mute)', padding: 8 }}>Cargando preinscripción…</div>;
+  }
+
+  // Caso: alumna ya inscrita pero sin preinscripción registrada → solo info
+  if (!pre && alumnaId && !leadId) {
+    return (
+      <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
+        <div style={{ fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
+          Sin preinscripción registrada para esta persona.
+        </div>
+      </div>
+    );
   }
 
   if (!pre) {
