@@ -99,19 +99,32 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
               Sin resultados
             </div>
           )}
-          {alumnas.map(a => (
-            <div key={a.id} className="row" onClick={() => onOpenAlumna(a.id)} style={{ cursor: 'pointer' }}>
-              <div className="avatar" style={{ background: a.avatar }}>{a.iniciales}</div>
-              <div className="body">
-                <div className="t1">{a.nombre}</div>
-                <div className="t2" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>Se inscribió {a.inscrita}</span>
-                  {a.bonoSilla && <span style={{ color: 'var(--gold)' }}>· silla</span>}
+          {alumnas.map(a => {
+            const restante = Math.max(0, (a.total || 0) - (a.pagado || 0));
+            const tipoLabel = {
+              'pronto-pago': 'Pronto pago',
+              'completo': 'Pago completo',
+              'parcial': 'Parcial',
+              'pendiente': 'Pendiente',
+            }[a.pago] || a.pago;
+            return (
+              <div key={a.id} className="row" onClick={() => onOpenAlumna(a.id)} style={{ cursor: 'pointer' }}>
+                <div className="avatar" style={{ background: a.avatar }}>{a.iniciales}</div>
+                <div className="body">
+                  <div className="t1">{a.nombre}</div>
+                  <div className="t2" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span>Se inscribió {a.inscrita}</span>
+                    {a.bonoSilla && <span style={{ color: 'var(--gold)' }}>· silla</span>}
+                    <span>· {tipoLabel}</span>
+                    {restante > 0 && (
+                      <span style={{ color: 'var(--rojo)' }}>· falta ${restante}</span>
+                    )}
+                  </div>
                 </div>
+                <PagoPill pago={a.pago} />
               </div>
-              <PagoPill pago={a.pago} />
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       <div style={{ height: 30 }} />

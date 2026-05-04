@@ -136,7 +136,17 @@ const AjustesScreen = ({ store, onClose }) => {
         <Section title="Plantillas WhatsApp">
           <div style={{ padding: '0 16px' }}>
             {a.plantillasWA.filter(p => !p.id.startsWith('__')).map(p => (
-              <div key={p.id} className="row" style={{ padding: '12px 0', alignItems: 'flex-start' }}>
+              <div key={p.id} className="row" style={{ padding: '12px 0', alignItems: 'flex-start', gap: 10 }}>
+                {p.imagen_url && (
+                  <img
+                    src={p.imagen_url}
+                    alt=""
+                    style={{
+                      width: 38, height: 38, borderRadius: 8, objectFit: 'cover',
+                      border: '1px solid var(--line-soft)', flexShrink: 0,
+                    }}
+                  />
+                )}
                 <div className="body">
                   <div className="t1">{p.titulo}</div>
                   <div className="t2" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.cuerpo}</div>
@@ -147,6 +157,16 @@ const AjustesScreen = ({ store, onClose }) => {
                 }}>Editar</button>
               </div>
             ))}
+          </div>
+          <div style={{ padding: '8px 16px 4px' }}>
+            <button
+              type="button"
+              onClick={() => setEditing('__nueva__')}
+              className="btn btn-ghost btn-block"
+              style={{ fontSize: 13 }}
+            >
+              + Nueva plantilla
+            </button>
           </div>
         </Section>
 
@@ -165,21 +185,41 @@ const AjustesScreen = ({ store, onClose }) => {
         <div style={{ height: 60 }} />
       </div>
 
-      {/* Sheet: editar plantilla */}
+      {/* Sheet: editar/crear plantilla */}
       <PlantillaSheet
         open={!!editing}
         onClose={() => setEditing(null)}
-        plantilla={a.plantillasWA.find(p => p.id === editing)}
+        plantilla={
+          editing === '__nueva__'
+            ? { id: `tpl_${Date.now()}`, titulo: '', cuerpo: '', imagen_url: '', _nueva: true }
+            : a.plantillasWA.find(p => p.id === editing)
+        }
         onSave={(np) => {
-          // Filtramos virtuales antes de persistir, para que Supabase nunca
-          // reciba la plantilla "Programa PDF" que se inyecta en runtime.
+          // Filtramos virtuales (las que se inyectan en runtime) antes de
+          // persistir. _nueva es flag interna del sheet, también la quitamos.
+          const limpia = { ...np };
+          delete limpia._nueva;
+          const sinVirtuales = a.plantillasWA.filter(p => !p.id.startsWith('__'));
+          const existe = sinVirtuales.some(p => p.id === limpia.id);
           updateAjustes({
-            plantillasWA: a.plantillasWA
-              .filter(p => !p.id.startsWith('__'))
-              .map(p => p.id === np.id ? np : p),
+            plantillasWA: existe
+              ? sinVirtuales.map(p => p.id === limpia.id ? limpia : p)
+              : [...sinVirtuales, limpia],
           });
           setEditing(null);
         }}
+        onDelete={
+          editing && editing !== '__nueva__'
+            ? () => {
+                if (!confirm('¿Borrar esta plantilla? No se puede recuperar.')) return;
+                updateAjustes({
+                  plantillasWA: a.plantillasWA
+                    .filter(p => !p.id.startsWith('__') && p.id !== editing),
+                });
+                setEditing(null);
+              }
+            : null
+        }
       />
 
       {/* Sheet: editar día */}
@@ -243,17 +283,132 @@ const RowEdit = ({ label, value, onChange, type = 'text', prefix }) => {
   );
 };
 
-const PlantillaSheet = ({ open, onClose, plantilla, onSave }) => {
+const PlantillaSheet = ({ open, onClose, plantilla, onSave, onDelete }) => {
   const [form, setForm] = React.useState(plantilla);
-  React.useEffect(() => setForm(plantilla), [plantilla, open]);
+  const [subiendo, setSubiendo] = React.useState(false);
+  const [errorImg, setErrorImg] = React.useState('');
+  const fileRef = React.useRef(null);
+
+  React.useEffect(() => {
+    setForm(plantilla);
+    setErrorImg('');
+  }, [plantilla, open]);
   if (!plantilla) return null;
+
+  // Subir imagen (JPG/PNG) al bucket `material/plantillas/<random>.<ext>` y
+  // guardar la URL pública en la plantilla. WhatsApp/IG mostrarán preview
+  // automáticamente cuando el cuerpo del mensaje incluye la URL.
+  const subirImagen = async (file) => {
+    if (!file) return;
+    const tipoOk = file.type.startsWith('image/');
+    if (!tipoOk) {
+      setErrorImg('Solo imágenes (JPG o PNG).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorImg('Imagen supera 5 MB.');
+      return;
+    }
+    setSubiendo(true);
+    setErrorImg('');
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `plantillas/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage
+        .from('material')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from('material').getPublicUrl(path);
+      setForm(f => ({ ...f, imagen_url: data.publicUrl }));
+    } catch (e) {
+      console.error('[plantilla img]', e);
+      setErrorImg(e.message || 'Error al subir.');
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const titulo = plantilla._nueva ? 'Nueva plantilla' : 'Editar plantilla';
+  const ok = (form?.titulo || '').trim() && (form?.cuerpo || '').trim();
+
   return (
-    <Sheet open={open} onClose={onClose} title="Editar plantilla"
-      footer={<button className="btn btn-primary btn-block" onClick={() => onSave(form)}>Guardar</button>}
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={titulo}
+      footer={
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onDelete && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ color: 'var(--rojo)', borderColor: '#E5C8C0' }}
+              onClick={onDelete}
+            >Borrar</button>
+          )}
+          <button
+            className="btn btn-primary"
+            style={{ flex: 1 }}
+            onClick={() => onSave(form)}
+            disabled={!ok}
+          >
+            {plantilla._nueva ? 'Crear plantilla' : 'Guardar'}
+          </button>
+        </div>
+      }
     >
-      <Field label="Título"><TextInput value={form?.titulo} onChange={v => setForm(f => ({ ...f, titulo: v }))} /></Field>
-      <Field label="Mensaje" hint="Esto se enviará por WhatsApp">
+      <Field label="Título"><TextInput value={form?.titulo} onChange={v => setForm(f => ({ ...f, titulo: v }))} placeholder="Ej. Bienvenida" /></Field>
+      <Field label="Mensaje" hint="Esto se enviará por WhatsApp/Instagram. Usa salto de línea con Enter.">
         <TextArea value={form?.cuerpo} onChange={v => setForm(f => ({ ...f, cuerpo: v }))} rows={6} />
+      </Field>
+      <Field label="Imagen adjunta (opcional)" hint="WhatsApp y Instagram muestran preview automático cuando el mensaje incluye una URL de imagen.">
+        {form?.imagen_url ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: 10, borderRadius: 10,
+            background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
+          }}>
+            <img
+              src={form.imagen_url}
+              alt=""
+              style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover' }}
+            />
+            <div style={{ flex: 1, fontSize: 11, color: 'var(--ink-mute)', lineHeight: 1.4 }}>
+              Imagen cargada. Aparecerá como preview en el chat al enviar.
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, imagen_url: '' }))}
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: 'var(--ink-mute)', padding: 4, fontSize: 18,
+              }}
+            >×</button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={subiendo}
+            style={{
+              width: '100%', padding: '10px 14px', borderRadius: 10,
+              background: 'var(--surface)', border: '1px dashed var(--line-soft)',
+              fontFamily: 'inherit', fontSize: 12, color: 'var(--ink-soft)',
+              cursor: 'pointer',
+            }}
+          >
+            {subiendo ? 'Subiendo…' : '📎 Adjuntar imagen'}
+          </button>
+        )}
+        {errorImg && (
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{errorImg}</div>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => { subirImagen(e.target.files?.[0]); e.target.value = ''; }}
+        />
       </Field>
     </Sheet>
   );

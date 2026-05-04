@@ -428,11 +428,18 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
     setTimeout(() => setIgCopiado(false), 2500);
   };
 
-  // Personaliza la plantilla con el primer nombre si aplica
-  const personalizar = (cuerpo) => {
-    if (!firstName) return cuerpo;
-    // Si la plantilla empieza con "Hola!" o "Hola," → reemplazar por "Hola <nombre>!"
-    return cuerpo.replace(/^Hola!?,?/i, `Hola ${firstName}!`);
+  // Personaliza la plantilla con el primer nombre si aplica.
+  // Si la plantilla tiene imagen_url, la anexa al final del cuerpo para
+  // que WhatsApp/Instagram muestren preview de la imagen automáticamente.
+  const personalizar = (plantilla) => {
+    const cuerpo = typeof plantilla === 'string' ? plantilla : plantilla?.cuerpo || '';
+    const imagenUrl = typeof plantilla === 'object' ? plantilla?.imagen_url : null;
+    let texto = cuerpo;
+    if (firstName) {
+      texto = texto.replace(/^Hola!?,?/i, `Hola ${firstName}!`);
+    }
+    if (imagenUrl) texto = `${texto}\n\n${imagenUrl}`;
+    return texto;
   };
 
   if (!tel && !instagram) {
@@ -515,7 +522,9 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
           {showPlantillas && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 6 }}>
               {plantillas.map(p => {
-                const personalizado = personalizar(p.cuerpo);
+                // Pasamos el objeto completo para que personalizar() pueda
+                // anexar la imagen_url si la plantilla la tiene.
+                const personalizado = personalizar(p);
                 const waPlantillaUrl = buildWaUrl(tel, personalizado);
                 return (
                   <div
