@@ -322,6 +322,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const [selection, setSelection] = React.useState(initialSel);
   const [monto, setMonto] = React.useState(0);
   const [tipo, setTipo] = React.useState('parcial');
+  const [forma, setForma] = React.useState('transferencia'); // método: transferencia/efectivo/payphone/canje
   const [convirtiendo, setConvirtiendo] = React.useState(false);
   // Archivo opcional para subir al validar
   const [archivo, setArchivo] = React.useState(null);
@@ -334,6 +335,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       // Si viene un comprobante pre-validar, prepoblar monto
       setMonto(comprobantePreData?.monto || 0);
       setTipo('parcial');
+      setForma('transferencia');
       setConvirtiendo(false);
       setArchivo(null);
       setErrorArchivo('');
@@ -409,7 +411,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         await validarExistente(comprobantePreData.id, idNum, montoNum);
       }
       // 3. Registrar el pago (esto crea fila en `pagos` + actualiza alumnas + auto-silla)
-      await store.registrarPago(idNum, montoNum, tipo);
+      await store.registrarPago(idNum, montoNum, tipo, forma);
       onClose();
       return;
     }
@@ -590,6 +592,21 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
               { value: 'pronto-pago', label: 'Pronto pago' },
               { value: 'completo', label: 'Completo' },
               { value: 'saldo', label: 'Saldo' },
+            ]}
+          />
+        </Field>
+      )}
+
+      {tipo !== 'ninguno' && (
+        <Field label="Forma de pago">
+          <SelectChips
+            value={forma}
+            onChange={setForma}
+            options={[
+              { value: 'transferencia', label: 'Transferencia' },
+              { value: 'efectivo', label: 'Efectivo' },
+              { value: 'payphone', label: 'Payphone' },
+              { value: 'canje', label: 'Canje' },
             ]}
           />
         </Field>

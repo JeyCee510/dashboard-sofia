@@ -68,9 +68,9 @@ function useStore() {
   };
   const updateAlumna = (id, patch) => alumnasHook.updateAlumna(id, patch);
   const deleteAlumna = (id) => alumnasHook.deleteAlumna(id);
-  const registrarPago = (alumnaId, monto, tipo) => alumnasHook.registrarPago(
+  const registrarPago = (alumnaId, monto, tipo, forma) => alumnasHook.registrarPago(
     alumnaId, monto, tipo,
-    { sillasMax: state.ajustes.bonoSillaCupos || 6 }
+    { sillasMax: state.ajustes.bonoSillaCupos || 6, forma: forma || 'transferencia' }
   );
 
   // Descuento al renunciar a silla = $30 en todos los tipos de inscripción.

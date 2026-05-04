@@ -42,12 +42,14 @@ export function useComprobantes() {
     return data?.signedUrl || null;
   }, []);
 
-  const validar = useCallback(async (id, { alumna_id, monto, tipo, notas }) => {
+  const validar = useCallback(async (id, { alumna_id, monto, tipo, notas, forma }) => {
     let pagoId = null;
     // 1. Si hay alumna asociada, registrar el pago en pagos + actualizar acumulado
     if (alumna_id && monto) {
+      // Default 'transferencia' porque comprobantes son típicamente transferencias bancarias
+      const formaFinal = forma || 'transferencia';
       const { data: pagoInsertado, error: ePago } = await supabase
-        .from('pagos').insert({ alumna_id, monto, tipo: tipo || 'parcial' })
+        .from('pagos').insert({ alumna_id, monto, tipo: tipo || 'parcial', forma: formaFinal })
         .select().single();
       if (ePago) throw ePago;
       pagoId = pagoInsertado?.id || null;

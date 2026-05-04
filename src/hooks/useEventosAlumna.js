@@ -29,16 +29,24 @@ export function useEventosAlumna(alumnaId) {
     const evs = evsRes.data || [];
 
     const merged = [
-      ...pagos.map(p => ({
-        id: `pago-${p.id}`,
-        source: 'pago',
-        rawId: p.id,
-        tipo: 'pago',
-        titulo: `Pagó $${Number(p.monto).toLocaleString('en-US')}`,
-        subtitulo: p.tipo,
-        monto: Number(p.monto) || 0,
-        created_at: p.fecha,  // normalizar a created_at para el sort + render
-      })),
+      ...pagos.map(p => {
+        const formaLabel = {
+          transferencia: 'Transferencia',
+          efectivo: 'Efectivo',
+          payphone: 'Payphone',
+          canje: 'Canje',
+        }[p.forma] || p.forma || '';
+        return {
+          id: `pago-${p.id}`,
+          source: 'pago',
+          rawId: p.id,
+          tipo: 'pago',
+          titulo: `Pagó $${Number(p.monto).toLocaleString('en-US')}`,
+          subtitulo: [p.tipo, formaLabel].filter(Boolean).join(' · '),
+          monto: Number(p.monto) || 0,
+          created_at: p.fecha,
+        };
+      }),
       ...evs.map(e => ({
         id: `evt-${e.id}`,
         source: 'evento',

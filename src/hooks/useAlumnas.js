@@ -245,7 +245,8 @@ export function useAlumnas() {
 
     // 1. Insertar registro en `pagos` (audit trail) — solo si monto > 0
     if (m > 0) {
-      await supabase.from('pagos').insert({ alumna_id: alumnaId, monto: m, tipo });
+      const forma = opts.forma || 'transferencia'; // default cuando el caller no especifica
+      await supabase.from('pagos').insert({ alumna_id: alumnaId, monto: m, tipo, forma });
     }
     // 2. Actualizar acumulado + total + (eventualmente) silla en `alumnas`
     await supabase.from('alumnas').update(dbPatch).eq('id', alumnaId);

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDesglosePagos } from './hooks/useDesglosePagos.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -93,6 +94,7 @@ const PagosScreen = ({ tweaks, store, onOpenAlumna, onNewPago, onNavigate }) => 
 
 // Vista "Cobros" (lo que era todo antes): KPIs + listado de alumnas con saldo
 const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumnas, filter, setFilter, onOpenAlumna, onNewPago }) => {
+  const { desglose } = useDesglosePagos();
   return (
     <div>
 
@@ -130,6 +132,55 @@ const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumn
           </div>
         </div>
       </div>
+
+      {/* Desglose por forma de pago */}
+      {desglose.count > 0 && (
+        <div style={{ padding: '14px 22px 0' }}>
+          <div className="card flat" style={{ padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+              <span style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontWeight: 500 }}>
+                Cobrado por forma
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>
+                {desglose.count} {desglose.count === 1 ? 'pago' : 'pagos'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { key: 'transferencia', label: 'Transferencia', color: 'var(--ink)' },
+                { key: 'efectivo', label: 'Efectivo', color: 'var(--oliva)' },
+                { key: 'payphone', label: 'Payphone', color: 'var(--terracota)' },
+                { key: 'canje', label: 'Canje', color: 'var(--gold)' },
+              ].map(f => {
+                const monto = desglose[f.key] || 0;
+                const pct = desglose.total > 0 ? (monto / desglose.total) * 100 : 0;
+                if (monto === 0 && pct === 0) return (
+                  <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12, color: 'var(--ink-mute)', opacity: 0.5 }}>
+                    <span>{f.label}</span>
+                    <span>—</span>
+                  </div>
+                );
+                return (
+                  <div key={f.key}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12, marginBottom: 4 }}>
+                      <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{f.label}</span>
+                      <span style={{ color: f.color, fontWeight: 500 }}>
+                        ${Math.round(monto).toLocaleString('en-US')}
+                        <span style={{ fontSize: 10, color: 'var(--ink-mute)', marginLeft: 6, fontWeight: 400 }}>
+                          {Math.round(pct)}%
+                        </span>
+                      </span>
+                    </div>
+                    <div style={{ height: 4, background: 'var(--bg-warm)', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: f.color, transition: 'width 0.3s' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ padding: '14px 22px 0' }}>
         <div className="segmented">
