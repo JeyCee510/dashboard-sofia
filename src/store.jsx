@@ -7,6 +7,14 @@ import { useMensajes } from './hooks/useMensajes.js';
 import { usePreinscripcion } from './hooks/usePreinscripcion.js';
 import { useComprobanteToken } from './hooks/useComprobanteToken.js';
 import { useComprobantesPendientes } from './hooks/useComprobantesPendientes.js';
+// Módulo Estudio (paralelo al de formación, sin acoplamiento)
+import { usePlanes } from './hooks/usePlanes.js';
+import { useEstudiantesEstudio } from './hooks/useEstudiantesEstudio.js';
+import { useMembresias } from './hooks/useMembresias.js';
+import { usePagosEstudio } from './hooks/usePagosEstudio.js';
+import { useComprobantesEstudio } from './hooks/useComprobantesEstudio.js';
+import { useClasesEstudio } from './hooks/useClasesEstudio.js';
+import { useAsistenciaEstudio } from './hooks/useAsistenciaEstudio.js';
 import { supabase } from './lib/supabase.js';
 
 // Exponer hooks que necesitan acceder componentes que viven en window.X
@@ -25,6 +33,15 @@ function useStore() {
   const ajustesHook = useAjustes();
   const mensajesHook = useMensajes();
   const comprobantesPendientesHook = useComprobantesPendientes();
+
+  // ── Módulo Estudio ──
+  const planesHook = usePlanes();
+  const estudiantesEstudioHook = useEstudiantesEstudio();
+  const membresiasHook = useMembresias();
+  const pagosEstudioHook = usePagosEstudio();
+  const comprobantesEstudioHook = useComprobantesEstudio();
+  const clasesEstudioHook = useClasesEstudio();
+  const asistenciaEstudioHook = useAsistenciaEstudio();
 
   // Inyectar plantilla virtual "Programa PDF" si hay un PDF cargado.
   // Las plantillas virtuales tienen id que empieza con '__' y NO se persisten
@@ -154,6 +171,91 @@ function useStore() {
   // ── Ajustes ──
   const updateAjustes = (patch) => ajustesHook.updateAjustes(patch);
 
+  // ─────────────────────────────────────────────────────────────────
+  // Módulo Estudio — datos y acciones agrupadas en `estudio`.
+  // Mantiene el módulo de formación intacto. Todo lo nuevo queda bajo
+  // store.estudio.* para que sea fácil aislar.
+  // ─────────────────────────────────────────────────────────────────
+  const estudio = {
+    // Datos
+    estudiantes: estudiantesEstudioHook.estudiantes,
+    estudiantesActivas: estudiantesEstudioHook.estudiantesActivas,
+    planes: planesHook.planes,
+    planesActivos: planesHook.planesActivos,
+    membresias: membresiasHook.membresias,
+    congelaciones: membresiasHook.congelaciones,
+    pagos: pagosEstudioHook.pagos,
+    comprobantes: comprobantesEstudioHook.comprobantes,
+    comprobantesPendientes: comprobantesEstudioHook.pendientes,
+    countComprobantesPendientes: comprobantesEstudioHook.countPendientes,
+    clases: clasesEstudioHook.clases,
+    asistencia: asistenciaEstudioHook.asistencia,
+    loading:
+      planesHook.loading ||
+      estudiantesEstudioHook.loading ||
+      membresiasHook.loading ||
+      pagosEstudioHook.loading ||
+      comprobantesEstudioHook.loading ||
+      clasesEstudioHook.loading ||
+      asistenciaEstudioHook.loading,
+
+    // Selectores derivados
+    getMembresiaActiva: membresiasHook.getMembresiaActiva,
+    estaVencida: membresiasHook.estaVencida,
+    estaCongelada: membresiasHook.estaCongelada,
+    diasParaVencer: membresiasHook.diasParaVencer,
+    clasesRestantes: membresiasHook.clasesRestantes,
+    congelacionesDeMembresia: membresiasHook.congelacionesDeMembresia,
+    pagosPorEstudiante: pagosEstudioHook.porEstudiante,
+    sumarPagosPorForma: pagosEstudioHook.sumarPorForma,
+    asistenciaPorClase: asistenciaEstudioHook.porClase,
+    asistenciaPorEstudiante: asistenciaEstudioHook.porEstudiante,
+
+    // Acciones — Estudiantes
+    addEstudiante: estudiantesEstudioHook.addEstudiante,
+    crearEstudianteConMembresia: estudiantesEstudioHook.crearEstudianteConMembresia,
+    updateEstudiante: estudiantesEstudioHook.updateEstudiante,
+    archivarEstudiante: estudiantesEstudioHook.archivarEstudiante,
+    restaurarEstudiante: estudiantesEstudioHook.restaurarEstudiante,
+    deleteEstudiante: estudiantesEstudioHook.deleteEstudiante,
+
+    // Acciones — Planes
+    addPlan: planesHook.addPlan,
+    updatePlan: planesHook.updatePlan,
+    archivarPlan: planesHook.archivarPlan,
+    reactivarPlan: planesHook.reactivarPlan,
+    deletePlan: planesHook.deletePlan,
+
+    // Acciones — Membresías
+    addMembresia: membresiasHook.addMembresia,
+    renovarMembresia: membresiasHook.renovarMembresia,
+    updateMembresia: membresiasHook.updateMembresia,
+    registrarClaseUsada: membresiasHook.registrarClaseUsada,
+    cancelarMembresia: membresiasHook.cancelarMembresia,
+    deleteMembresia: membresiasHook.deleteMembresia,
+    congelarMembresia: membresiasHook.congelarMembresia,
+    descongelarMembresia: membresiasHook.descongelarMembresia,
+
+    // Acciones — Pagos del estudio (4 formas: transferencia/efectivo/payphone/canje)
+    registrarPagoEstudio: pagosEstudioHook.registrarPago,
+    updatePagoEstudio: pagosEstudioHook.updatePago,
+    deletePagoEstudio: pagosEstudioHook.deletePago,
+
+    // Acciones — Comprobantes del estudio
+    subirComprobanteEstudioAdmin: comprobantesEstudioHook.subirComprobanteAdmin,
+    validarComprobanteEstudio: comprobantesEstudioHook.validarComprobante,
+    rechazarComprobanteEstudio: comprobantesEstudioHook.rechazarComprobante,
+    deleteComprobanteEstudio: comprobantesEstudioHook.deleteComprobante,
+    firmarUrlComprobanteEstudio: comprobantesEstudioHook.firmarUrl,
+
+    // Acciones — Clases y asistencia
+    addClase: clasesEstudioHook.addClase,
+    updateClase: clasesEstudioHook.updateClase,
+    deleteClase: clasesEstudioHook.deleteClase,
+    marcarAsistencia: asistenciaEstudioHook.marcar,
+    borrarAsistencia: asistenciaEstudioHook.borrarAsistencia,
+  };
+
   return {
     state,
     loading,
@@ -163,6 +265,8 @@ function useStore() {
     asignarSilla, renunciarSilla,
     toggleAsistencia, marcarTodosDia,
     updateAjustes,
+    // Módulo Estudio (datos + acciones)
+    estudio,
   };
 }
 

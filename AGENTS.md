@@ -253,7 +253,7 @@ Las rutas públicas añaden `body.public-route` al DOM para que el CSS anule las
 |---|---|
 | Repo GitHub (público) | https://github.com/JeyCee510/dashboard-sofia |
 | Vercel project | https://vercel.com/jclira-6860s-projects/dashboard-sofia |
-| Supabase project | https://supabase.com/dashboard/project/orceickorgdynlsbskvx |
+| Supabase project | https://supabase.com/dashboard/project/orceickorgdynlsbskvx (org `pukgsagqllaezjeaiyzu`, cuenta `jotacelira@gmail.com` vía GitHub) |
 | Google OAuth client | https://console.cloud.google.com/auth/clients?project=jclira-lab |
 | SQL Editor (correr migrations) | https://supabase.com/dashboard/project/orceickorgdynlsbskvx/sql/new |
 
