@@ -266,6 +266,39 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
           <button className="btn btn-secondary btn-block" style={{ marginBottom: 14 }} onClick={convertir}>
             <Icon name="arrow" size={14} /> Convertir en estudiante
           </button>
+          {form.estado !== 'no_interesado' && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!confirm(`¿Marcar a ${form.nombre} como NO interesado?\n\nSale del embudo activo pero queda guardado en "Descartados" (puedes restaurarlo después).`)) return;
+                store.updateLead(leadId, { estado: 'no_interesado' });
+                onClose();
+              }}
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 12,
+                background: 'transparent', border: '1px solid var(--line-soft)',
+                color: 'var(--ink-soft)', fontFamily: 'inherit', fontSize: 12,
+                cursor: 'pointer', marginBottom: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              <Icon name="x" size={13} stroke="var(--ink-mute)" />
+              Marcar como no interesado
+            </button>
+          )}
+          {form.estado === 'no_interesado' && (
+            <button
+              type="button"
+              onClick={() => {
+                store.updateLead(leadId, { estado: 'nuevo' });
+                onClose();
+              }}
+              className="btn btn-ghost btn-block"
+              style={{ marginBottom: 14, color: 'var(--oliva)' }}
+            >
+              ↺ Restaurar al embudo (estado: nuevo)
+            </button>
+          )}
         </>
       )}
       <Field label="Nombre">

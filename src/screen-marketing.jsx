@@ -97,14 +97,18 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
   const [search, setSearch] = React.useState('');
   const preMap = usePreinscripcionesPorLead();
 
+  // Excluir descartados del embudo activo (siguen en DB, accesibles desde "Descartados")
+  const leadsActivos = MOCK_LEADS.filter(l => l.estado !== 'no_interesado');
+  const descartadosCount = MOCK_LEADS.filter(l => l.estado === 'no_interesado').length;
+
   const counts = {
-    nuevo: MOCK_LEADS.filter(l => l.estado === 'nuevo').length,
-    interesado: MOCK_LEADS.filter(l => l.estado === 'interesado').length,
-    reservado: MOCK_LEADS.filter(l => l.estado === 'reservado').length,
+    nuevo: leadsActivos.filter(l => l.estado === 'nuevo').length,
+    interesado: leadsActivos.filter(l => l.estado === 'interesado').length,
+    reservado: leadsActivos.filter(l => l.estado === 'reservado').length,
   };
 
   // Pipeline: filtro por estado → búsqueda → orden alfabético
-  let leads = MOCK_LEADS;
+  let leads = leadsActivos;
   if (filter !== 'todos') leads = leads.filter(l => l.estado === filter);
   if (search.trim()) {
     const q = search.trim().toLowerCase();
@@ -143,6 +147,21 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
               >
                 <Icon name="note" size={12} stroke="var(--terracota)" />
                 Preinscripciones
+              </button>
+              <button
+                onClick={() => onNavigate('leads-descartados')}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  background: 'var(--bg-warm)',
+                  border: '1px solid var(--line-soft)',
+                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink-soft)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <Icon name="x" size={12} stroke="var(--ink-mute)" />
+                Descartados {descartadosCount > 0 ? `· ${descartadosCount}` : ''}
               </button>
               <button
                 onClick={() => onNavigate('papelera-leads')}

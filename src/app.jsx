@@ -28,6 +28,7 @@ const App = () => {
   const DifusionScreen = window.DifusionScreen;
   const PapeleraLeadsScreen = window.PapeleraLeadsScreen;
   const PreinscripcionesScreen = window.PreinscripcionesScreen;
+  const LeadsDescartadosScreen = window.LeadsDescartadosScreen;
   const ComprobantesScreen = window.ComprobantesScreen;
   const AlumnaForm = window.AlumnaForm;
   const LeadForm = window.LeadForm;
@@ -114,6 +115,7 @@ const App = () => {
     else if (target === 'difusion') setOverlay('difusion');
     else if (target === 'papelera-leads') setOverlay('papelera-leads');
     else if (target === 'preinscripciones') setOverlay('preinscripciones');
+    else if (target === 'leads-descartados') setOverlay('leads-descartados');
     else { setTab(target); setOverlay(null); }
   };
 
@@ -365,6 +367,12 @@ const App = () => {
           onClose={() => setOverlay(null)}
           onOpenLead={(id) => { setOverlay(null); setSheet({ type: 'edit-lead', id }); }}
           onOpenAlumna={(id) => setOverlay({ type: 'alumna', id })}
+        />
+      )}
+      {overlay === 'leads-descartados' && (
+        <LeadsDescartadosScreen
+          onClose={() => setOverlay(null)}
+          onOpenLead={(id) => { setOverlay(null); setSheet({ type: 'edit-lead', id }); }}
         />
       )}
       {overlay && overlay.type === 'alumna' && (

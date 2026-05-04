@@ -64,6 +64,7 @@ async function initApp() {
   await import('./screen-difusion.jsx');
   await import('./screen-papelera-leads.jsx');
   await import('./screen-preinscripciones.jsx');
+  await import('./screen-leads-descartados.jsx');
   await import('./screen-comprobantes.jsx');
   await import('./screen-estudio-placeholder.jsx'); // Módulo Estudio — placeholder (legacy, ya no se usa)
   await import('./screen-estudio.jsx');             // Módulo Estudio — pantalla principal
