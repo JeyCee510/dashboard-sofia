@@ -43,6 +43,27 @@ export function useComprobantes() {
   }, []);
 
   const validar = useCallback(async (id, { alumna_id, monto, tipo, notas, forma }) => {
+    // Idempotencia: si el comprobante YA está validado con pago_id vinculado,
+    // no duplicamos el pago. Solo actualizamos los campos que cambien
+    // (notas, forma, etc.). Esto previene duplicados cuando Sofía aprieta
+    // "Validar" dos veces o cuando la app reabre el modal por error.
+    const { data: existing } = await supabase
+      .from('comprobantes_pago')
+      .select('estado, pago_id')
+      .eq('id', id)
+      .single();
+    if (existing?.estado === 'validado' && existing.pago_id) {
+      console.warn('[validar] comprobante ya estaba validado con pago_id', existing.pago_id, '— no duplico pago');
+      // Solo actualizar notas si cambian
+      if (notas) {
+        await supabase.from('comprobantes_pago')
+          .update({ validado_notas: notas })
+          .eq('id', id);
+      }
+      await cargar();
+      return;
+    }
+
     let pagoId = null;
     // 1. Si hay alumna asociada, registrar el pago en pagos + actualizar acumulado
     if (alumna_id && monto) {

@@ -227,6 +227,12 @@ const ValidarSheet = ({ comprobante, alumnas, leads = [], onClose, onConfirm }) 
   const idNum = idSel ? Number(idSel) : null;
   const esLead = tipoSel === 'lead';
   const lead = esLead ? leads.find(l => l.id === idNum) : null;
+  const alumna = !esLead && idNum ? alumnas.find(a => a.id === idNum) : null;
+
+  // Si el comprobante YA viene con alumna_id o lead_id (caso típico de
+  // subida manual desde ficha o link con token), la persona está fija:
+  // bloqueamos el selector para evitar errores de re-asociación.
+  const personaPreLocked = !!(comprobante.alumna_id || comprobante.lead_id);
 
   const ok = !!selection && Number(monto) > 0;
 
@@ -274,6 +280,19 @@ const ValidarSheet = ({ comprobante, alumnas, leads = [], onClose, onConfirm }) 
         </div>
 
         <Field label="Persona" required>
+          {personaPreLocked ? (
+            <div style={{
+              padding: '12px 14px', borderRadius: 12,
+              background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
+              fontSize: 13, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontWeight: 500 }}>
+                {esLead ? 'Lead' : 'Estudiante'}:
+              </span>
+              <strong style={{ flex: 1 }}>{alumna?.nombre || lead?.nombre || comprobante.nombre_cliente}</strong>
+              <span style={{ fontSize: 10, color: 'var(--ink-mute)' }}>vinculado</span>
+            </div>
+          ) : (
           <select value={selection} onChange={e => setSelection(e.target.value)} style={inputStyle}>
             <option value="">— Selecciona —</option>
             {alumnas.length > 0 && (
@@ -295,6 +314,7 @@ const ValidarSheet = ({ comprobante, alumnas, leads = [], onClose, onConfirm }) 
               </optgroup>
             )}
           </select>
+          )}
         </Field>
 
         {esLead && lead && (
