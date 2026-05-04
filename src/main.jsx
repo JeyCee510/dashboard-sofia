@@ -2,6 +2,17 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles.css';
 
+// PWA: registrar service worker mínimo para que Chrome/Edge marquen la app
+// como instalable y muestre el banner "Add to Home Screen". El SW no cachea
+// nada (la app depende de Supabase realtime).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => {
+      console.warn('[PWA] sw register fail', err);
+    });
+  });
+}
+
 // ─── Routing simple por pathname ───
 // /preinscripcion/<token> y /comprobante son rutas públicas (sin auth).
 // Cualquier otra = la app normal con login.
