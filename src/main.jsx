@@ -69,6 +69,9 @@ async function initApp() {
   await import('./screen-estudio.jsx');             // Módulo Estudio — pantalla principal
   await import('./screen-estudio-onboarding.jsx');  // Wizard de alta de estudiante
   await import('./screen-estudio-ficha.jsx');       // Ficha individual + sub-sheets
+  await import('./screen-estudio-asistencia.jsx');  // Tomar asistencia a clases
+  await import('./screen-estudio-config.jsx');      // Pantalla de Ajustes del estudio
+  await import('./screen-estudio-comprobantes.jsx');// Validar/rechazar comprobantes
   await import('./forms.jsx');
   await import('./forms-sheets.jsx');
   await import('./store.jsx');

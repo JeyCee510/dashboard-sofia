@@ -58,12 +58,15 @@ const App = () => {
     try { localStorage.setItem('moduloActivo', m); } catch {}
   };
   // Estado del módulo Estudio (overlays/sheets propios)
-  const [estudioOverlay, setEstudioOverlay] = useState(null);   // null | { type:'ficha', id }
+  const [estudioOverlay, setEstudioOverlay] = useState(null);   // null | { type:'ficha', id } | 'asistencia' | 'config' | 'comprobantes'
   const [estudioSheet, setEstudioSheet] = useState(null);       // null | 'onboarding'
 
   const EstudioScreen = window.EstudioScreen;
   const EstudioFicha = window.EstudioFicha;
   const EstudioOnboarding = window.EstudioOnboarding;
+  const EstudioAsistencia = window.EstudioAsistencia;
+  const EstudioConfig = window.EstudioConfig;
+  const EstudioComprobantes = window.EstudioComprobantes;
 
   // Ejecutor de comandos de voz: traduce {tool, params} a llamadas al store + UI
   const handleVoiceExecute = async (toolName, params, transcript) => {
@@ -157,12 +160,42 @@ const App = () => {
           onSwitch={() => setModuloActivo('formacion')}
           onOpenEstudiante={(id) => setEstudioOverlay({ type: 'ficha', id })}
           onNewEstudiante={() => setEstudioSheet('onboarding')}
+          onTomarAsistencia={() => setEstudioOverlay('asistencia')}
+          onAbrirConfig={() => setEstudioOverlay('config')}
+          onAbrirComprobantes={() => setEstudioOverlay('comprobantes')}
         />
 
         {/* Ficha de estudiante */}
         {estudioOverlay && estudioOverlay.type === 'ficha' && EstudioFicha && (
           <EstudioFicha
             estudianteId={estudioOverlay.id}
+            store={store}
+            onClose={() => setEstudioOverlay(null)}
+          />
+        )}
+
+        {/* Asistencia */}
+        {EstudioAsistencia && (
+          <EstudioAsistencia
+            open={estudioOverlay === 'asistencia'}
+            store={store}
+            onClose={() => setEstudioOverlay(null)}
+          />
+        )}
+
+        {/* Config del estudio */}
+        {EstudioConfig && (
+          <EstudioConfig
+            open={estudioOverlay === 'config'}
+            store={store}
+            onClose={() => setEstudioOverlay(null)}
+          />
+        )}
+
+        {/* Comprobantes */}
+        {EstudioComprobantes && (
+          <EstudioComprobantes
+            open={estudioOverlay === 'comprobantes'}
             store={store}
             onClose={() => setEstudioOverlay(null)}
           />

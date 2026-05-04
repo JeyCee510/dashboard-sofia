@@ -14,7 +14,7 @@ const { useState, useMemo } = React;
 //   - FAB "+" para abrir wizard de onboarding
 // ─────────────────────────────────────────────────────────────────
 
-function EstudioScreen({ store, onSwitch, onOpenEstudiante, onNewEstudiante, onMarcarAsistencia }) {
+function EstudioScreen({ store, onSwitch, onOpenEstudiante, onNewEstudiante, onTomarAsistencia, onAbrirConfig, onAbrirComprobantes }) {
   const e = store.estudio || {};
   const Icon = window.Icon;
   const [filtro, setFiltro] = useState('todas'); // todas | activas | porVencer | vencidas
@@ -94,18 +94,40 @@ function EstudioScreen({ store, onSwitch, onOpenEstudiante, onNewEstudiante, onM
             {store.state.ajustes.studioName || 'Estudio'}
           </h1>
         </div>
-        <button
-          onClick={onSwitch}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '6px 12px', borderRadius: 999,
-            background: 'var(--bg-soft)', border: '1px solid var(--line)',
-            fontSize: 11, color: 'var(--ink)', cursor: 'pointer',
-          }}
-          aria-label="Ir a Formación"
-        >
-          Formación →
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button
+            onClick={onAbrirConfig}
+            aria-label="Ajustes del estudio"
+            title="Ajustes"
+            style={iconBtn}
+          >
+            ⚙
+          </button>
+          <button
+            onClick={onSwitch}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '6px 12px', borderRadius: 999,
+              background: 'var(--bg-soft)', border: '1px solid var(--line)',
+              fontSize: 11, color: 'var(--ink)', cursor: 'pointer',
+            }}
+            aria-label="Ir a Formación"
+          >
+            Formación →
+          </button>
+        </div>
+      </div>
+
+      {/* Acciones primarias */}
+      <div style={{ padding: '0 18px 14px', display: 'flex', gap: 8 }}>
+        <button onClick={onTomarAsistencia} style={primaryActionBtn}>
+          ✓ Tomar asistencia
         </button>
+        {(e.countComprobantesPendientes || 0) > 0 && (
+          <button onClick={onAbrirComprobantes} style={{ ...primaryActionBtn, background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }}>
+            {e.countComprobantesPendientes} comprobante{e.countComprobantesPendientes === 1 ? '' : 's'} →
+          </button>
+        )}
       </div>
 
       {/* KPIs */}
@@ -267,14 +289,24 @@ function EstudioScreen({ store, onSwitch, onOpenEstudiante, onNewEstudiante, onM
         )}
       </div>
 
-      {/* FAB onboarding */}
+      {/* FAB onboarding — posicionado ENCIMA del mic para que no choquen.
+          En el módulo formación el mic está sobre la tabbar; aquí no hay
+          tabbar, así que el FAB sube a 175px y el mic queda a 100px. */}
       <button
         onClick={onNewEstudiante}
-        className="fab"
         aria-label="Nueva estudiante"
-        style={{ background: 'var(--terracota)' }}
+        style={{
+          position: 'absolute',
+          bottom: 175, right: 18,
+          width: 52, height: 52, borderRadius: '50%',
+          background: 'var(--terracota)', border: 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+          zIndex: 31,
+        }}
       >
-        <Icon name="plus" size={20} stroke="#fff" strokeWidth={2.2} />
+        <Icon name="plus" size={22} stroke="#fff" strokeWidth={2.2} />
       </button>
     </div>
   );
@@ -391,6 +423,27 @@ function DonutPagos({ sumas }) {
 function nombreMes(d) {
   return ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()];
 }
+
+const iconBtn = {
+  width: 32, height: 32, borderRadius: '50%',
+  background: 'var(--bg-soft)', border: '1px solid var(--line)',
+  fontSize: 16, cursor: 'pointer', color: 'var(--ink)',
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  lineHeight: 1,
+};
+
+const primaryActionBtn = {
+  flex: 1,
+  padding: '12px',
+  borderRadius: 12,
+  background: 'var(--ink)',
+  color: '#fff',
+  border: 'none',
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: 'pointer',
+  textAlign: 'center',
+};
 
 window.EstudioScreen = EstudioScreen;
 export { EstudioScreen };

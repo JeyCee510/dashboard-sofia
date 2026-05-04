@@ -15,7 +15,8 @@ const { useState, useMemo } = React;
 function EstudioFicha({ estudianteId, onClose, store }) {
   const e = store.estudio || {};
   const est = (e.estudiantes || []).find(x => x.id === estudianteId);
-  const [accion, setAccion] = useState(null); // 'renovar' | 'pago' | 'congelar' | 'editar'
+  const [accion, setAccion] = useState(null); // 'renovar' | 'pago' | 'editar'
+  const [menu, setMenu] = useState(false);
 
   const historialMembresias = useMemo(() =>
     (e.membresias || []).filter(m => m.estudianteId === estudianteId)
@@ -75,8 +76,24 @@ function EstudioFicha({ estudianteId, onClose, store }) {
   return (
     <div style={overlay} onClick={onClose}>
       <div style={panel} onClick={ev => ev.stopPropagation()}>
-        {/* Header con cerrar */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 14px 0' }}>
+        {/* Header con menú + cerrar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px 0', position: 'relative' }}>
+          <button onClick={() => setMenu(!menu)} aria-label="Más opciones" style={btnClose}>⋯</button>
+          {menu && (
+            <div style={{
+              position: 'absolute', top: 46, left: 14,
+              background: '#fff', borderRadius: 10, border: '1px solid var(--line)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.12)', overflow: 'hidden', zIndex: 90,
+              minWidth: 180,
+            }}>
+              <button onClick={() => { setMenu(false); setAccion('editar'); }} style={menuItem}>Editar datos</button>
+              <button onClick={async () => {
+                setMenu(false);
+                const ok = window.confirm(`¿Archivar a ${est.nombre}? Se oculta de la lista pero los datos se preservan.`);
+                if (ok) { await e.archivarEstudiante(estudianteId); onClose(); }
+              }} style={{ ...menuItem, borderTop: '1px solid var(--line)' }}>Archivar</button>
+            </div>
+          )}
           <button onClick={onClose} aria-label="Cerrar" style={btnClose}>×</button>
         </div>
 
@@ -177,6 +194,9 @@ function EstudioFicha({ estudianteId, onClose, store }) {
         )}
         {accion === 'pago' && (
           <PagoSheet store={store} estudianteId={estudianteId} membresiaActual={m} onClose={() => setAccion(null)} />
+        )}
+        {accion === 'editar' && (
+          <EditarSheet store={store} estudiante={est} onClose={() => setAccion(null)} />
         )}
       </div>
     </div>
@@ -309,6 +329,70 @@ function PagoSheet({ store, estudianteId, membresiaActual, onClose }) {
   );
 }
 
+// ─── Sub-sheet: Editar datos personales ───
+function EditarSheet({ store, estudiante, onClose }) {
+  const [nombre, setNombre] = useState(estudiante.nombre || '');
+  const [tel, setTel] = useState(estudiante.tel || '');
+  const [instagram, setInstagram] = useState((estudiante.instagram || '').replace(/^@/, ''));
+  const [email, setEmail] = useState(estudiante.email || '');
+  const [notas, setNotas] = useState(estudiante.notas || '');
+  const [enviando, setEnviando] = useState(false);
+
+  const guardar = async () => {
+    if (!nombre.trim()) return;
+    setEnviando(true);
+    try {
+      await store.estudio.updateEstudiante(estudiante.id, {
+        nombre: nombre.trim(),
+        tel: tel || '',
+        instagram: instagram ? '@' + instagram : '',
+        email: email || '',
+        notas: notas || '',
+      });
+      onClose();
+    } catch (err) {
+      alert('Error: ' + err.message);
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div style={subSheetBackdrop} onClick={onClose}>
+      <div style={subSheet} onClick={ev => ev.stopPropagation()}>
+        <h3 style={{ margin: '0 0 14px', fontSize: 17, fontFamily: 'Cormorant Garamond, serif' }}>Editar estudiante</h3>
+        <Field label="Nombre">
+          <input type="text" value={nombre} onChange={ev => setNombre(ev.target.value)} style={input} autoFocus />
+        </Field>
+        <Field label="WhatsApp">
+          <input type="tel" value={tel} onChange={ev => setTel(ev.target.value)} placeholder="+593 9 1234 5678" style={input} />
+        </Field>
+        <Field label="Instagram">
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--ink-soft)', pointerEvents: 'none' }}>@</span>
+            <input type="text" value={instagram} onChange={ev => setInstagram(ev.target.value.replace(/^@/, ''))}
+              placeholder="usuario" style={{ ...input, paddingLeft: 28 }} />
+          </div>
+        </Field>
+        <Field label="Email">
+          <input type="email" value={email} onChange={ev => setEmail(ev.target.value)} style={input} />
+        </Field>
+        <Field label="Notas">
+          <textarea value={notas} onChange={ev => setNotas(ev.target.value)} rows={3}
+            style={{ ...input, fontFamily: 'inherit', resize: 'vertical' }} />
+        </Field>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{ ...btn, flex: 1, background: 'var(--bg-soft)', color: 'var(--ink)' }}>Cancelar</button>
+          <button onClick={guardar} disabled={!nombre.trim() || enviando} style={{
+            ...btn, flex: 2,
+            background: nombre.trim() && !enviando ? 'var(--terracota)' : 'var(--bg-soft)',
+            color: nombre.trim() && !enviando ? '#fff' : 'var(--ink-soft)',
+          }}>{enviando ? 'Guardando…' : 'Guardar cambios'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Helpers UI ───
 function ChipBtn({ label, onClick, color, primary }) {
   const colores = {
@@ -416,8 +500,14 @@ const btn = {
 const btnClose = {
   width: 32, height: 32, borderRadius: '50%',
   background: 'var(--bg-soft)', border: 'none',
-  fontSize: 22, cursor: 'pointer', color: 'var(--ink-soft)',
+  fontSize: 18, cursor: 'pointer', color: 'var(--ink-soft)',
   lineHeight: 1,
+};
+const menuItem = {
+  width: '100%', padding: '12px 16px',
+  background: '#fff', border: 'none',
+  textAlign: 'left', fontSize: 13, cursor: 'pointer',
+  color: 'var(--ink)',
 };
 
 window.EstudioFicha = EstudioFicha;

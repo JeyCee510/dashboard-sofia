@@ -27,6 +27,34 @@ const DEFAULT_AJUSTES = {
     { id: 'ub', titulo: 'Ubicación', cuerpo: 'Domo Soulspace, calle Alfredo Donoso, La Morita, Tumbaco.\nUbicación en Maps: https://maps.app.goo.gl/WrauzvKJot5NbNZF7' },
     { id: 'crn', titulo: 'Cronograma', cuerpo: 'Cronograma del día:\n7:30-11:30 práctica y teoría\n11:30-14:00 almuerzo\n14:00-16:30 laboratorio técnico\n16:30-18:00 yogasana' },
   ],
+  // ── Módulo Estudio (namespace separado) ──
+  estudio: {
+    info: {
+      direccion: 'Domo Soulspace · Tumbaco',
+      mapsUrl: 'https://maps.app.goo.gl/WrauzvKJot5NbNZF7',
+      bio: '',
+    },
+    vencimientos: {
+      ventanaDias: 7,
+      alertaPaqueteCerca: true,
+      mensajeBanner: 'A {nombre} le quedan {dias} días',
+    },
+    plantillasWA: [
+      { id: 'bienv', titulo: 'Bienvenida', cuerpo: 'Hola {nombre} 🌿 Te doy la bienvenida al estudio. Tu plan {plan} está activo hasta el {vence}. Cualquier duda me escribes. Sofía.' },
+      { id: 'venc_pronto', titulo: 'Vence pronto', cuerpo: 'Hola {nombre} 🌿 Te recuerdo que tu plan {plan} vence en {dias} días (el {vence}). Avísame si quieres renovar y te paso datos. Un abrazo.' },
+      { id: 'vencido', titulo: 'Plan vencido', cuerpo: 'Hola {nombre} 🌿 Tu plan {plan} venció el {vence}. ¿Renovamos? Cuando quieras te paso los datos.' },
+      { id: 'pago_ok', titulo: 'Confirmación de pago', cuerpo: 'Recibí tu pago de ${monto} 🙏 Tu plan está activo hasta el {vence}. ¡Nos vemos en clase!' },
+    ],
+  },
+  // Datos de transferencia compartidos con formación
+  transferencia: {
+    banco: 'Produbanco',
+    tipoCuenta: 'Ahorro',
+    cuenta: '12054049429',
+    cedula: '1709369225',
+    email: 'sofilira@gmail.com',
+    titular: 'Sofía Lira',
+  },
 };
 
 // Pequeño debounce para no spamear writes mientras se edita
@@ -36,6 +64,25 @@ function useDebounced(fn, delay = 700) {
     if (tref.current) clearTimeout(tref.current);
     tref.current = setTimeout(() => fn(...args), delay);
   }, [fn, delay]);
+}
+
+// Deep merge: mezcla patches anidados sin perder campos existentes.
+// Necesario para editar `estudio.info.direccion` sin borrar el resto de `estudio.*`.
+function deepMerge(target, source) {
+  if (source == null) return target;
+  if (Array.isArray(source)) return source; // arrays se reemplazan completos
+  if (typeof source !== 'object') return source;
+  const out = { ...target };
+  for (const k of Object.keys(source)) {
+    const sv = source[k];
+    const tv = target?.[k];
+    if (sv && typeof sv === 'object' && !Array.isArray(sv) && tv && typeof tv === 'object' && !Array.isArray(tv)) {
+      out[k] = deepMerge(tv, sv);
+    } else {
+      out[k] = sv;
+    }
+  }
+  return out;
 }
 
 export function useAjustes() {
@@ -50,7 +97,8 @@ export function useAjustes() {
       if (error) {
         console.error('[ajustes] load', error);
       } else if (data?.data) {
-        setAjustes({ ...DEFAULT_AJUSTES, ...data.data });
+        // Deep merge para preservar defaults nuevos (ej: estudio.*) si la fila vieja no los tiene
+        setAjustes(deepMerge(DEFAULT_AJUSTES, data.data));
       }
       setLoading(false);
     })();
@@ -61,7 +109,7 @@ export function useAjustes() {
   useEffect(() => {
     const ch = supabase.channel('ajustes-changes')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ajustes' }, (payload) => {
-        if (payload.new?.data) setAjustes(prev => ({ ...DEFAULT_AJUSTES, ...payload.new.data }));
+        if (payload.new?.data) setAjustes(deepMerge(DEFAULT_AJUSTES, payload.new.data));
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -76,7 +124,8 @@ export function useAjustes() {
 
   const updateAjustes = useCallback((patch) => {
     setAjustes(prev => {
-      const next = { ...prev, ...patch };
+      // Deep merge para que editar `estudio.info.direccion` no borre el resto de `estudio.*`
+      const next = deepMerge(prev, patch);
       persistDebounced(next);
       return next;
     });
