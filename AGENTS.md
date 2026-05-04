@@ -122,6 +122,10 @@ Migraciones aplicadas (en orden cronológico):
 - `migration-013-alumnas-archive.sql` — papelera de estudiantes + RPC `restaurar_alumna_como_lead`
 - `migration-014-comprobantes-pago-id.sql` — FK `comprobantes_pago.pago_id` → `pagos(id)` para auto-reverso
 - `migration-015-update-plantillas.sql` — actualización de plantillas WhatsApp (transferencia, maps, sin reserva)
+- `migration-016-pagos-forma.sql` — columna `forma` en `pagos` (transferencia/efectivo/payphone/canje)
+- `migration-017-modulo-estudio.sql` — **nuevo módulo Estudio**: `planes_catalogo`, `estudiantes_estudio`, `membresias`, `pagos_estudio` + RPCs `crear_estudiante_con_membresia`, `renovar_membresia` + seed de 8 planes típicos
+- `migration-018-comprobantes-pago-estudio.sql` — comprobantes del estudio: tabla `comprobantes_pago_estudio` + RPCs `subir_comprobante_estudio` (anon), `validar_comprobante_estudio`, `rechazar_comprobante_estudio` + trigger BEFORE DELETE para auto-reverso del pago. Reusa bucket Storage `comprobantes`.
+- `migration-019-asistencia-congelaciones.sql` — asistencia ad-hoc (`clases_realizadas`, `asistencia_estudio` con UNIQUE estudiante×clase + triggers que descuentan/restauran `clases_usadas`) y congelación de membresías (`congelaciones_membresia` + RPCs `congelar_membresia`, `descongelar_membresia`, `marcar_asistencia_estudio`)
 
 Tablas:
 
@@ -139,6 +143,14 @@ Tablas:
 | `comprobante_tokens` | Token único reusable por persona. RPCs anon: `crear_comprobante_token`, `obtener_comprobante_token`, `subir_comprobante_con_token` |
 | `eventos_alumna` | Timeline trazable. Eventos: inscrita, inscrita_desde_lead, silla_asignada_auto/manual, silla_renunciada. UI mergea con `pagos` ordenado por fecha |
 | `alumnas_archive` | Papelera de estudiantes borrados. Trigger BEFORE DELETE en `alumnas`. RPC `restaurar_alumna_como_lead` (vuelven como lead nuevo, no como alumna) |
+| `planes_catalogo` | **(Estudio)** Catálogo editable de planes (mensualidad/paquete/drop_in/trimestral/semestral). `activo=false` = soft-delete (preserva membresías históricas vía snapshot) |
+| `estudiantes_estudio` | **(Estudio)** Estudiantes del estudio (separadas de `alumnas`). `archivada` = soft-archive |
+| `membresias` | **(Estudio)** Instancia de plan asignado a estudiante. `plan_snapshot` jsonb preserva snapshot al momento de la compra. Renovar = nueva fila. La "actual" es la más reciente por `fecha_inicio`. Estado: `activa \| cancelada` (vencida se DERIVA en frontend) |
+| `pagos_estudio` | **(Estudio)** Audit trail de pagos. Mismo `forma` que formación (transferencia/efectivo/payphone/canje) |
+| `comprobantes_pago_estudio` | **(Estudio)** Comprobantes del estudio. Reusa bucket Storage `comprobantes`. `pago_id` permite auto-reverso al borrar. RPCs `validar`/`rechazar` |
+| `clases_realizadas` | **(Estudio)** Instancia ad-hoc de clase puntual (fecha + hora + nombre). MVP sin horarios recurrentes |
+| `asistencia_estudio` | **(Estudio)** UNIQUE(estudiante, clase_realizada). Triggers AFTER INSERT/DELETE descuentan/restauran `clases_usadas` en la membresía si es paquete |
+| `congelaciones_membresia` | **(Estudio)** Historial de pausas. `hasta=NULL` = activamente congelada (UNIQUE INDEX parcial). Al descongelar, RPC calcula días y extiende `fecha_fin` |
 
 **Storage buckets**:
 - `comprobantes` (privado): anon INSERT permitido, SELECT/DELETE solo authorized.

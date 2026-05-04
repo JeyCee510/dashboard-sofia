@@ -47,6 +47,24 @@ const App = () => {
   const [voiceToast, setVoiceToast] = useState(null);
   const [voiceExecResult, setVoiceExecResult] = useState(null);
 
+  // ── Switch de módulos: Formación (lo actual) | Estudio (nuevo) ──
+  // Persiste en localStorage para recordar el último módulo usado.
+  const [moduloActivo, setModuloActivoState] = useState(() => {
+    try { return localStorage.getItem('moduloActivo') || 'formacion'; }
+    catch { return 'formacion'; }
+  });
+  const setModuloActivo = (m) => {
+    setModuloActivoState(m);
+    try { localStorage.setItem('moduloActivo', m); } catch {}
+  };
+  // Estado del módulo Estudio (overlays/sheets propios)
+  const [estudioOverlay, setEstudioOverlay] = useState(null);   // null | { type:'ficha', id }
+  const [estudioSheet, setEstudioSheet] = useState(null);       // null | 'onboarding'
+
+  const EstudioScreen = window.EstudioScreen;
+  const EstudioFicha = window.EstudioFicha;
+  const EstudioOnboarding = window.EstudioOnboarding;
+
   // Ejecutor de comandos de voz: traduce {tool, params} a llamadas al store + UI
   const handleVoiceExecute = async (toolName, params, transcript) => {
     setVoiceExecResult(null);
@@ -130,7 +148,45 @@ const App = () => {
     );
   }
 
-  // ── App autenticada ──
+  // ── App autenticada — Módulo Estudio ──
+  if (moduloActivo === 'estudio' && EstudioScreen) {
+    return (
+      <div className="app">
+        <EstudioScreen
+          store={store}
+          onSwitch={() => setModuloActivo('formacion')}
+          onOpenEstudiante={(id) => setEstudioOverlay({ type: 'ficha', id })}
+          onNewEstudiante={() => setEstudioSheet('onboarding')}
+        />
+
+        {/* Ficha de estudiante */}
+        {estudioOverlay && estudioOverlay.type === 'ficha' && EstudioFicha && (
+          <EstudioFicha
+            estudianteId={estudioOverlay.id}
+            store={store}
+            onClose={() => setEstudioOverlay(null)}
+          />
+        )}
+
+        {/* Wizard de onboarding */}
+        {EstudioOnboarding && (
+          <EstudioOnboarding
+            open={estudioSheet === 'onboarding'}
+            store={store}
+            onClose={() => setEstudioSheet(null)}
+            onCreado={(id) => {
+              setEstudioSheet(null);
+              setEstudioOverlay({ type: 'ficha', id });
+            }}
+          />
+        )}
+
+        {/* Voice button (los comandos por ahora caen en el módulo formación) */}
+        <VoiceButton onExecute={handleVoiceExecute} executingResult={voiceExecResult} />
+      </div>
+    );
+  }
+
   const asistenciaHoy = store.state.asistencia[0] || {};
 
   let screen;
@@ -156,6 +212,33 @@ const App = () => {
 
   return (
     <div className="app">
+      {/* Flecha al módulo Estudio (top-right, flotante sobre el header de cada screen).
+          Cuando construyamos las pantallas reales del estudio, esta flecha cambia
+          de comportamiento desde dentro del Estudio (vuelve a Formación). */}
+      <button
+        onClick={() => setModuloActivo('estudio')}
+        title="Ir al Estudio"
+        aria-label="Ir al módulo Estudio"
+        style={{
+          position: 'absolute',
+          top: 12, right: 12,
+          zIndex: 70,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '6px 10px',
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(6px)',
+          border: '1px solid var(--line)',
+          fontSize: 11,
+          color: 'var(--ink)',
+          letterSpacing: '0.04em',
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        }}
+      >
+        Estudio →
+      </button>
+
       <div
         ref={ptr.ref}
         className="app-scroll"
