@@ -85,6 +85,11 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
           <button className={filter === 'pendientes' ? 'active' : ''} onClick={() => setFilter('pendientes')}>Pendientes · {MOCK_ALUMNAS.filter(a => a.pago === 'pendiente' || a.pago === 'parcial').length}</button>
           <button className={filter === 'silla' ? 'active' : ''} onClick={() => setFilter('silla')}>Silla · {sillas}</button>
         </div>
+        <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
+          {filter === 'todas' && 'Todos los inscritos, sin importar estado de pago.'}
+          {filter === 'pendientes' && 'Solo quienes aún deben algo (estado parcial o pendiente).'}
+          {filter === 'silla' && 'Solo quienes recibieron bono silla (auto a los primeros 6 con tarifa completa).'}
+        </div>
       </div>
 
       <div style={{ padding: '14px 22px' }}>
