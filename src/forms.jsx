@@ -1047,7 +1047,7 @@ const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel }) => {
   const fechaFmt = activa.fecha
     ? new Date(activa.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'long' })
     : '';
-  const mensaje = `Hola ${firstName}! 🌿 Voy a ofrecer una clase de yoga abierta y gratuita el ${fechaFmt}, ${activa.hora_inicio?.slice(0,5)}–${activa.hora_fin?.slice(0,5)}. Te la regalo, espero te animes! Inscríbete en este link y queda tu cupo guardado:\n\n${link}`;
+  const mensaje = `Hola ${firstName}! 🌿 Voy a ofrecer una clase gratuita de prueba para quienes están interesados en la formación de junio. Es el ${fechaFmt}, ${activa.hora_inicio?.slice(0,5)}–${activa.hora_fin?.slice(0,5)}. Es para que nos conozcamos un poco antes de empezar — espero te animes! Inscríbete en este link y queda tu cupo guardado:\n\n${link}`;
   const waUrl = leadTel ? buildWaUrl(leadTel, mensaje) : null;
 
   const marcarEnviado = async () => {
