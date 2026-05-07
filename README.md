@@ -1,4 +1,4 @@
-# Dashboard · Yoga Sofía Lira
+# Dashboard · Sofía Lira Yoga
 
 Panel privado para gestionar la formación "El Arte de Enseñar Yoga" (50 horas, junio 2026).
 

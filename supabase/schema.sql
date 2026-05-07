@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────────────────
--- Schema · Dashboard Yoga Sofía Lira
+-- Schema · Dashboard Sofía Lira Yoga
 -- Single-tenant: una sola "instancia" de datos, accesible por una whitelist
 -- de emails (Sofía + Juan Cristóbal admin).
 -- ─────────────────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ VALUES (1, jsonb_build_object(
   'precioReserva', 200,
   'fechaProntoPago', '10 mayo',
   'ownerName', 'Sofía Lira',
-  'studioName', 'Yoga Sofía Lira',
+  'studioName', 'Sofía Lira Yoga',
   'lugar', 'Domo Soulspace · Tumbaco',
   'bonoSillaCupos', 6
 ))

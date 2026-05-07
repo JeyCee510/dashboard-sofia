@@ -50,7 +50,7 @@ Vista en pestaña/secciones colapsables (mobile-first). Una columna sola, scroll
 ### 1. Información del estudio
 
 **Qué edita Sofía:**
-- Nombre del estudio (ej: "Yoga Sofía Lira")
+- Nombre del estudio (ej: "Sofía Lira Yoga")
 - Lugar / dirección
 - Maps URL (texto pegable)
 - Bio corta (para futuras integraciones públicas)
@@ -207,7 +207,7 @@ Hoy `DEFAULT_AJUSTES` solo tiene cosas de formación. Cuando construyamos la Con
 const DEFAULT_AJUSTES_ESTUDIO = {
   estudio: {
     info: {
-      nombre: 'Yoga Sofía Lira',
+      nombre: 'Sofía Lira Yoga',
       direccion: '',
       mapsUrl: '',
       bio: '',
@@ -255,7 +255,7 @@ La Config se accede desde el header (icono engranaje), no es un tab. Mismo patr�
 │  ▼ INFORMACIÓN DEL ESTUDIO                          │
 │  ┌─────────────────────────────────────────────┐    │
 │  │ Nombre del estudio                          │    │
-│  │ [Yoga Sofía Lira          ]                 │    │
+│  │ [Sofía Lira Yoga          ]                 │    │
 │  │                                             │    │
 │  │ Dirección                                   │    │
 │  │ [Domo Soulspace · Tumbaco ]                 │    │

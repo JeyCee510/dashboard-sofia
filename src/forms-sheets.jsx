@@ -261,6 +261,7 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
               leadId={leadId}
               leadNombre={form.nombre}
               leadTel={form.tel}
+              fechaProntoPago={store.state.ajustes.fechaProntoPago}
             />
           </div>
           <div style={{ marginBottom: 14 }}>

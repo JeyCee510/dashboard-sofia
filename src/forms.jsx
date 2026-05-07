@@ -969,7 +969,7 @@ Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿
 // generar mensaje WA con plantilla. Tras enviar, marca clase_link_enviada_at.
 // Si el lead se inscribió a la clase (match por nombre fuzzy), lo refleja.
 // ──────────────────────────────────────────
-const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel }) => {
+const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel, fechaProntoPago }) => {
   const [activa, setActiva] = React.useState(null);
   const [inscrito, setInscrito] = React.useState(false);
   const [linkEnviadoAt, setLinkEnviadoAt] = React.useState(null);
@@ -1021,7 +1021,8 @@ const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel }) => {
   const fechaFmt = activa.fecha
     ? new Date(activa.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'long' })
     : '';
-  const mensaje = `Hola querida(o) ${firstName}! 🌿 Vamos a tener una clase (gratuita) para quienes están interesados / inscritos en el entrenamiento de junio.\nEs el ${fechaFmt}, ${activa.hora_inicio?.slice(0,5)}–${activa.hora_fin?.slice(0,5)}. Es para que nos conozcamos un poco antes de empezar — espero nos acompañes! Inscríbete en este link y queda tu cupo guardado:\n\n${link}\n\nPS · Recuerda por favor que la fecha máxima para reservar tu cupo con descuento PRONTO PAGO es el domingo 10 de mayo. Quedan sillas para los próximos 2 inscritos ;)\nNos vemos en el mat!`;
+  const fechaPP = fechaProntoPago || '10 mayo';
+  const mensaje = `Hola querida(o) ${firstName}! 🌿 Vamos a tener una clase (gratuita) para quienes están interesados / inscritos en el entrenamiento de junio.\nEs el ${fechaFmt}, ${activa.hora_inicio?.slice(0,5)}–${activa.hora_fin?.slice(0,5)}. Es para que nos conozcamos un poco antes de empezar — espero nos acompañes! Inscríbete en este link y queda tu cupo guardado:\n\n${link}\n\nPS · Recuerda por favor que la fecha máxima para reservar tu cupo con descuento PRONTO PAGO es el ${fechaPP}. Quedan sillas para los próximos 2 inscritos ;)\nNos vemos en el mat!`;
   const waUrl = leadTel ? buildWaUrl(leadTel, mensaje) : null;
 
   const marcarEnviado = async () => {

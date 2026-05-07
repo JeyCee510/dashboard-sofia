@@ -2,7 +2,7 @@ import React from 'react';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ────────────────────────────────────────────────────────────────────────
-// Mock data + helpers — Yoga Sofía Lira
+// Mock data + helpers — Sofía Lira Yoga
 // Formación 50 horas · Junio 6-21 2026 · Domo Soulspace, Tumbaco
 // ────────────────────────────────────────────────────────────────────────
 

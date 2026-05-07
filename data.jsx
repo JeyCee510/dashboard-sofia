@@ -1,5 +1,5 @@
 // ────────────────────────────────────────────────────────────────────────
-// Mock data + helpers — Yoga Sofía Lira
+// Mock data + helpers — Sofía Lira Yoga
 // Formación 50 horas · Junio 6-21 2026 · Domo Soulspace, Tumbaco
 // ────────────────────────────────────────────────────────────────────────
 

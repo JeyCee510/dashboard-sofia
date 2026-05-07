@@ -1,4 +1,4 @@
-# AGENTS.md — Dashboard Yoga Sofía Lira
+# AGENTS.md — Dashboard Sofía Lira Yoga
 
 > Contexto operativo para agentes de IA (Claude Code, Codex, Cursor, Copilot, etc.) que trabajen en este repo. Mantén este archivo actualizado cuando cambien comandos, arquitectura o convenciones.
 
