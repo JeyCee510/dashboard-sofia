@@ -49,7 +49,9 @@ src/
 ├── store.jsx               # Orquestador: junta todos los hooks Supabase en un solo objeto
 ├── styles.css              # CSS global, OKLCH tokens
 ├── lib/
-│   └── supabase.js         # Cliente + ALLOWED_EMAILS whitelist
+│   ├── supabase.js         # Cliente + ALLOWED_EMAILS whitelist
+│   ├── wa.js               # Helpers cleanPhone/cleanInstagram/buildWaUrl/buildIgUrl (DRY)
+│   └── voice-executor.js   # Traduce {tool, params} de Haiku → llamadas al store
 ├── hooks/
 │   ├── useAuth.js          # Sesión Google OAuth + rechazo de emails fuera de whitelist
 │   ├── useAlumnas.js       # CRUD alumnas + realtime
@@ -72,6 +74,16 @@ src/
 ├── screen-difusion.jsx     # Flujo difusión 1×1 overlay
 ├── screen-papelera-leads.jsx # Leads borrados overlay
 ├── screen-comprobantes.jsx # Comprobantes pendientes (admin) overlay
+├── screen-preinscripciones.jsx # Listado global de preinscripciones (overlay)
+├── screen-leads-descartados.jsx # Históricos de leads marcados no interesados
+├── screen-clase-inscripciones.jsx # Admin de la clase abierta activa (cupos + lista)
+├── screen-estudio.jsx        # Módulo Estudio: pantalla principal
+├── screen-estudio-onboarding.jsx # Wizard alta de estudiante
+├── screen-estudio-ficha.jsx  # Ficha individual + sub-sheets
+├── screen-estudio-asistencia.jsx # Tomar asistencia a clases del estudio
+├── screen-estudio-config.jsx # Ajustes del estudio
+├── screen-estudio-comprobantes.jsx # Validar/rechazar comprobantes del estudio
+├── clase-publica.jsx       # Form público /clase/<slug> con contador de cupos en vivo
 ├── voice-button.jsx        # Mic flotante + modal multi-turn
 ├── preinscripcion-public.jsx # Form público /preinscripcion/<token>
 ├── comprobante-public.jsx  # Form público /comprobante y /comprobante/<token>
@@ -85,7 +97,7 @@ Hay 4 tabs en bottom bar: **Hoy, Inscritos, Pagos, Leads**. (Tab "Chat/CRM" fue 
 
 Cada `.jsx` registra su componente en `window.X` al final (legado de la versión Babel-inline). `app.jsx` lee `window.X` en lugar de hacer imports porque mantiene compatibilidad con la arquitectura original. **No refactorices a imports puros sin razón** — funciona y es estable.
 
-`main.jsx` SÍ usa `import` para forzar el orden de carga (los archivos se ejecutan en cadena y registran sus globals).
+`main.jsx` carga TODOS los módulos en paralelo con `Promise.all` (28+ imports). Antes era secuencial → bloqueaba first paint ~1-2s. Funciona porque cada módulo solo registra globals en `window.X` sin dependencias de orden entre sí. App.jsx se carga al final por separado (su export es lo que se renderiza).
 
 ### Realtime
 
@@ -126,6 +138,9 @@ Migraciones aplicadas (en orden cronológico):
 - `migration-017-modulo-estudio.sql` — **nuevo módulo Estudio**: `planes_catalogo`, `estudiantes_estudio`, `membresias`, `pagos_estudio` + RPCs `crear_estudiante_con_membresia`, `renovar_membresia` + seed de 8 planes típicos
 - `migration-018-comprobantes-pago-estudio.sql` — comprobantes del estudio: tabla `comprobantes_pago_estudio` + RPCs `subir_comprobante_estudio` (anon), `validar_comprobante_estudio`, `rechazar_comprobante_estudio` + trigger BEFORE DELETE para auto-reverso del pago. Reusa bucket Storage `comprobantes`.
 - `migration-019-asistencia-congelaciones.sql` — asistencia ad-hoc (`clases_realizadas`, `asistencia_estudio` con UNIQUE estudiante×clase + triggers que descuentan/restauran `clases_usadas`) y congelación de membresías (`congelaciones_membresia` + RPCs `congelar_membresia`, `descongelar_membresia`, `marcar_asistencia_estudio`)
+- `migration-020-emilia-pronto-pago.sql` — fix puntual (alumna Emilia: regla pronto-pago)
+- `migration-021-plantilla-casita.sql` — plantilla WhatsApp "Casita del Yoga" (link Google Maps de la dirección)
+- `migration-022-clases-abiertas.sql` — sistema de **clases abiertas**: tablas `clases_abiertas` (con slug, fecha, cupos, `activa`) y `clase_inscripciones`; RPCs anon `obtener_clase_publica(slug)` y `inscribirse_a_clase(slug, nombre, email)`. Columna `leads.clase_link_enviada_at` para tracking. Seed inicial: clase del 16-mayo-2026 (yoga-16-mayo)
 
 Tablas:
 
@@ -151,6 +166,8 @@ Tablas:
 | `clases_realizadas` | **(Estudio)** Instancia ad-hoc de clase puntual (fecha + hora + nombre). MVP sin horarios recurrentes |
 | `asistencia_estudio` | **(Estudio)** UNIQUE(estudiante, clase_realizada). Triggers AFTER INSERT/DELETE descuentan/restauran `clases_usadas` en la membresía si es paquete |
 | `congelaciones_membresia` | **(Estudio)** Historial de pausas. `hasta=NULL` = activamente congelada (UNIQUE INDEX parcial). Al descongelar, RPC calcula días y extiende `fecha_fin` |
+| `clases_abiertas` | Eventos públicos (clase de prueba gratuita, etc.). `slug` = última parte del URL `/clase/<slug>`. `activa=true` = la que se muestra en el panel admin. RPCs anon `obtener_clase_publica`, `inscribirse_a_clase` |
+| `clase_inscripciones` | Inscripciones al evento. Solo nombre + email (sin teléfono). Realtime → contador de cupos en vivo en el form público |
 
 **Storage buckets**:
 - `comprobantes` (privado): anon INSERT permitido, SELECT/DELETE solo authorized.
@@ -248,8 +265,14 @@ Detectadas por pathname en `main.jsx`:
 | `/preinscripcion/<token>` | Form público de preinscripción para lead específico |
 | `/comprobante` | Form público anónimo para subir comprobante (cualquiera) |
 | `/comprobante/<token>` | Form personalizado para persona específica (no pide nombre) |
+| `/clase/<slug>` | Form público de inscripción a clase abierta (gratuita). Cupos en vivo via realtime |
 
 Las rutas públicas añaden `body.public-route` al DOM para que el CSS anule las restricciones de scroll del modo app. Suben archivos a Supabase Storage bucket `comprobantes` (privado, anon INSERT permitido por policy).
+
+## PWA + Open Graph
+
+- **PWA**: `public/manifest.json` + `public/sw.js` (mínimo) + íconos en `public/icon-{192,512}.png`. `theme-color: #B5563A`. Instalable en home screen con UI standalone.
+- **Open Graph / link previews**: meta tags en `index.html` apuntando a `public/og-image.jpg` (página 1 del flyer marketing). Antes WhatsApp/IG mostraban la "mancha terracotta" del PWA al compartir un link. **WhatsApp cachea previews agresivamente** — para forzar refresh tras cambiar la imagen, agregar `?v=N` al link compartido.
 
 ## Iteraciones probables (next up)
 
@@ -271,7 +294,20 @@ Las rutas públicas añaden `body.public-route` al DOM para que el CSS anule las
 
 ---
 
-<!-- Última revisión compound: 2026-04-30 -->
+<!-- Última revisión compound: 2026-05-07 -->
+<!--
+Sesión 2026-05-07 (compound review):
+- main.jsx: 21 awaits secuenciales → Promise.all paralelo (first paint -50%)
+- src/lib/wa.js: helpers WhatsApp/IG centralizados (DRY entre forms.jsx y screen-difusion.jsx)
+- screen-estudio-placeholder.jsx: importación retirada de main.jsx (legacy, archivo conservado)
+- vite.config.js: emptyOutDir true
+- package.json: engines node >=18.18
+- public/og-image.jpg + meta tags Open Graph (preview WhatsApp con flyer real)
+- migration-022-clases-abiertas.sql: clases abiertas + clase_inscripciones + RPCs anon
+- Texto plantilla WA clase abierta actualizado (clase gratuita de prueba)
+-->
+
+<!-- Última revisión anterior: 2026-04-30 -->
 <!--
 Sesión 2026-04-30 features añadidas:
 - Modal de pago unificado (4 atajos + opción sin pago) con regla pronto-pago = precio FIJO
