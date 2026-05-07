@@ -68,36 +68,42 @@ if (claseMatch) {
 }
 
 async function initApp() {
-  // Helpers / chrome (registran globals window.X)
-  await import('./ios-frame.jsx');
-  await import('./tweaks-panel.jsx');
-  await import('./data.jsx');
-  await import('./icons.jsx');
-  await import('./login.jsx');
-  await import('./home.jsx');
-  await import('./screen-reservas.jsx');
-  await import('./screen-pagos.jsx');
-  await import('./screen-marketing.jsx');
-  await import('./screen-crm.jsx');
-  await import('./screen-detail.jsx');
-  await import('./screen-asistencia.jsx');
-  await import('./screen-ajustes.jsx');
-  await import('./screen-difusion.jsx');
-  await import('./screen-papelera-leads.jsx');
-  await import('./screen-preinscripciones.jsx');
-  await import('./screen-leads-descartados.jsx');
-  await import('./screen-clase-inscripciones.jsx');
-  await import('./screen-comprobantes.jsx');
-  await import('./screen-estudio-placeholder.jsx'); // Módulo Estudio — placeholder (legacy, ya no se usa)
-  await import('./screen-estudio.jsx');             // Módulo Estudio — pantalla principal
-  await import('./screen-estudio-onboarding.jsx');  // Wizard de alta de estudiante
-  await import('./screen-estudio-ficha.jsx');       // Ficha individual + sub-sheets
-  await import('./screen-estudio-asistencia.jsx');  // Tomar asistencia a clases
-  await import('./screen-estudio-config.jsx');      // Pantalla de Ajustes del estudio
-  await import('./screen-estudio-comprobantes.jsx');// Validar/rechazar comprobantes
-  await import('./forms.jsx');
-  await import('./forms-sheets.jsx');
-  await import('./store.jsx');
+  // Cargamos todos los módulos en paralelo. Antes eran 21 awaits secuenciales
+  // que bloqueaban el first paint en ~1-2s. Cada módulo sólo registra globals
+  // en `window.X`, no hay dependencias de orden entre ellos. App.jsx se carga
+  // al final porque su export es lo que se renderiza.
+  await Promise.all([
+    import('./ios-frame.jsx'),
+    import('./tweaks-panel.jsx'),
+    import('./data.jsx'),
+    import('./icons.jsx'),
+    import('./login.jsx'),
+    import('./home.jsx'),
+    import('./screen-reservas.jsx'),
+    import('./screen-pagos.jsx'),
+    import('./screen-marketing.jsx'),
+    import('./screen-crm.jsx'),
+    import('./screen-detail.jsx'),
+    import('./screen-asistencia.jsx'),
+    import('./screen-ajustes.jsx'),
+    import('./screen-difusion.jsx'),
+    import('./screen-papelera-leads.jsx'),
+    import('./screen-preinscripciones.jsx'),
+    import('./screen-leads-descartados.jsx'),
+    import('./screen-clase-inscripciones.jsx'),
+    import('./screen-comprobantes.jsx'),
+    import('./screen-estudio.jsx'),             // Módulo Estudio — pantalla principal
+    import('./screen-estudio-onboarding.jsx'),  // Wizard de alta de estudiante
+    import('./screen-estudio-ficha.jsx'),       // Ficha individual + sub-sheets
+    import('./screen-estudio-asistencia.jsx'),  // Tomar asistencia a clases
+    import('./screen-estudio-config.jsx'),      // Pantalla de Ajustes del estudio
+    import('./screen-estudio-comprobantes.jsx'),// Validar/rechazar comprobantes
+    import('./forms.jsx'),
+    import('./forms-sheets.jsx'),
+    import('./store.jsx'),
+  ]);
+  // screen-estudio-placeholder.jsx omitido: era legacy ("ya no se usa").
+  // El archivo sigue en src/ por si quieres consultarlo, pero ya no se importa.
   const { App } = await import('./app.jsx');
 
   // App responsive en cualquier tamaño. En desktop el container queda centrado

@@ -1,4 +1,5 @@
 import React from 'react';
+import { buildWaUrl } from './lib/wa.js';
 
 const { useState, useMemo } = React;
 
@@ -7,13 +8,6 @@ const { useState, useMemo } = React;
 // inscritos uno por uno. Sin API: abre WhatsApp con el mensaje pre-cargado
 // y Sofía toca "enviar" en WA. Al volver, marca como enviado y avanza.
 // ─────────────────────────────────────────────────────────────────────
-
-const cleanPhone = (tel) => (tel || '').replace(/[^\d]/g, '');
-const buildWaUrl = (tel, mensaje) => {
-  const phone = cleanPhone(tel);
-  if (!phone) return null;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
-};
 
 const DifusionScreen = ({ store, onClose }) => {
   const [step, setStep] = useState('elegir');  // elegir | mensaje | enviar

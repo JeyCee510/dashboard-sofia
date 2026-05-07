@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
+import { cleanPhone, cleanInstagram, buildWaUrl, buildIgUrl } from './lib/wa.js';
 import { useComprobanteToken } from './hooks/useComprobanteToken.js';
 import { usePreinscripcion } from './hooks/usePreinscripcion.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
@@ -356,34 +357,7 @@ window.Field = Field;
 // ContactPanel — botones WhatsApp + Instagram + Plantillas
 // ──────────────────────────────────────────
 
-// Limpia un teléfono a solo dígitos (ej "+593 99 234 5678" → "593992345678")
-function cleanPhone(tel) {
-  return (tel || '').replace(/[^\d]/g, '');
-}
-
-// Limpia un handle de IG: quita @, espacios, https://instagram.com/, etc.
-function cleanInstagram(h) {
-  if (!h) return '';
-  let s = h.trim();
-  s = s.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '');
-  s = s.replace(/^@/, '');
-  s = s.split(/[/?#]/)[0]; // por si pegan URL completa con path
-  return s;
-}
-
-function buildWaUrl(tel, mensaje) {
-  const phone = cleanPhone(tel);
-  if (!phone) return null;
-  const text = mensaje ? `?text=${encodeURIComponent(mensaje)}` : '';
-  return `https://wa.me/${phone}${text}`;
-}
-
-function buildIgUrl(handle) {
-  const h = cleanInstagram(handle);
-  if (!h) return null;
-  // ig.me/m/<handle> abre DM en la app si el handle es correcto; fallback al perfil
-  return `https://ig.me/m/${h}`;
-}
+// Helpers WhatsApp/IG centralizados en src/lib/wa.js (antes vivían acá).
 
 // Instagram NO soporta texto pre-cargado en deep link (limitación de Meta).
 // Workaround: copiar el mensaje al clipboard ANTES de abrir IG, para que
