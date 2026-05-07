@@ -13,7 +13,6 @@ function usePreinscripcionesPorLead() {
       .not('lead_id', 'is', null)
       .order('created_at', { ascending: false });
     if (error) { console.error('[preinscripciones por lead]', error); return; }
-    // Por cada lead, dejar la más reciente
     const m = new Map();
     (data || []).forEach(row => {
       if (!m.has(row.lead_id)) m.set(row.lead_id, row);
@@ -28,6 +27,55 @@ function usePreinscripcionesPorLead() {
     return () => { supabase.removeChannel(ch); };
   }, [cargar]);
   return map;
+}
+
+// Hook local: estado de clase abierta por lead. Devuelve dos sets:
+// - linkEnviado: ids de leads con clase_link_enviada_at != null
+// - confirmados: ids de leads cuyo nombre matchea con clase_inscripciones
+function useClaseEstadoPorLead(leads) {
+  const [estado, setEstado] = useState({ linkEnviadoIds: new Set(), confirmadosIds: new Set() });
+  const cargar = useCallback(async () => {
+    if (!leads || leads.length === 0) return;
+    // 1) Clase activa
+    const { data: clases } = await supabase
+      .from('clases_abiertas').select('id').eq('activa', true).limit(1);
+    const claseId = clases?.[0]?.id;
+    if (!claseId) {
+      setEstado({ linkEnviadoIds: new Set(), confirmadosIds: new Set() });
+      return;
+    }
+    // 2) Inscripciones
+    const { data: insc } = await supabase
+      .from('clase_inscripciones').select('nombre').eq('clase_id', claseId);
+    const nombresInscritos = (insc || []).map(i => (i.nombre || '').toLowerCase().trim());
+    // 3) Match con leads
+    const norm = s => (s || '').toLowerCase().trim();
+    const linkEnviadoIds = new Set();
+    const confirmadosIds = new Set();
+    leads.forEach(l => {
+      if (l.claseLinkEnviadaAt) linkEnviadoIds.add(l.id);
+      const lN = norm(l.nombre);
+      const lParts = lN.split(/\s+/).filter(Boolean);
+      const matched = nombresInscritos.some(iN => {
+        if (iN === lN) return true;
+        const iParts = iN.split(/\s+/).filter(Boolean);
+        if (lParts.length === 0 || iParts.length === 0) return false;
+        const overlap = lParts.filter(p => iParts.some(q => q.startsWith(p) || p.startsWith(q))).length;
+        return overlap >= 2;
+      });
+      if (matched) confirmadosIds.add(l.id);
+    });
+    setEstado({ linkEnviadoIds, confirmadosIds });
+  }, [leads]);
+  useEffect(() => {
+    cargar();
+    const ch = supabase.channel('clase-estado-leads')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clase_inscripciones' }, cargar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, cargar)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [cargar]);
+  return estado;
 }
 
 // ──────────────────────────────────────────
@@ -92,10 +140,29 @@ const PreBadge = ({ pre }) => {
   );
 };
 
+// Badge para clase abierta: confirmó / link enviado / nada.
+const ClaseBadge = ({ confirmado, linkEnviado }) => {
+  if (!confirmado && !linkEnviado) return null;
+  const bg = confirmado ? 'rgba(116, 142, 78, 0.14)' : 'rgba(217, 184, 102, 0.18)';
+  const fg = confirmado ? '#5C6F3C' : '#8A6D1B';
+  const txt = confirmado ? 'Clase ✓' : 'Clase: link enviado';
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      marginTop: 4, marginLeft: 4, padding: '2px 8px', borderRadius: 999,
+      background: bg, color: fg,
+      fontSize: 10, letterSpacing: '0.04em', fontWeight: 500,
+    }}>
+      {txt}
+    </div>
+  );
+};
+
 const MarketingScreen = ({ onOpenLead, onNavigate }) => {
   const [filter, setFilter] = React.useState('todos');
   const [search, setSearch] = React.useState('');
   const preMap = usePreinscripcionesPorLead();
+  const claseEstado = useClaseEstadoPorLead(MOCK_LEADS);
 
   // Excluir descartados del embudo activo (siguen en DB, accesibles desde "Descartados")
   const leadsActivos = MOCK_LEADS.filter(l => l.estado !== 'no_interesado');
@@ -147,6 +214,21 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
               >
                 <Icon name="note" size={12} stroke="var(--terracota)" />
                 Preinscripciones
+              </button>
+              <button
+                onClick={() => onNavigate('clase-inscripciones')}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  background: 'var(--bg-warm)',
+                  border: '1px solid var(--line-soft)',
+                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <Icon name="bullhorn" size={12} stroke="var(--gold)" />
+                Clase abierta
               </button>
               <button
                 onClick={() => onNavigate('leads-descartados')}
@@ -288,6 +370,10 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
                     <div className="t2" style={{ fontStyle: 'italic' }}>"{l.mensaje}"</div>
                   )}
                   <PreBadge pre={pre} />
+                  <ClaseBadge
+                    confirmado={claseEstado.confirmadosIds.has(l.id)}
+                    linkEnviado={claseEstado.linkEnviadoIds.has(l.id)}
+                  />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                   <span className="pill" style={{ background: e.bg, color: e.fg, border: 'none' }}>{e.label}</span>

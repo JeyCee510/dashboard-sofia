@@ -989,6 +989,151 @@ Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿
   );
 };
 
+// ──────────────────────────────────────────
+// ClaseAbiertaPanel — para Sofía dentro de LeadForm.
+// Muestra estado del envío del link de la clase abierta + botón para
+// generar mensaje WA con plantilla. Tras enviar, marca clase_link_enviada_at.
+// Si el lead se inscribió a la clase (match por nombre fuzzy), lo refleja.
+// ──────────────────────────────────────────
+const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel }) => {
+  const [activa, setActiva] = React.useState(null);
+  const [inscrito, setInscrito] = React.useState(false);
+  const [linkEnviadoAt, setLinkEnviadoAt] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!leadId) { setLoading(false); return; }
+    let cancelled = false;
+    (async () => {
+      // 1) Clase activa
+      const { data: clases } = await supabase
+        .from('clases_abiertas').select('*').eq('activa', true).order('fecha', { ascending: true }).limit(1);
+      const clase = clases?.[0] || null;
+      // 2) Estado de envío del link al lead
+      const { data: lead } = await supabase
+        .from('leads').select('clase_link_enviada_at').eq('id', leadId).single();
+      // 3) Match por nombre fuzzy: si el lead se inscribió, lo encontramos
+      let yaInscrito = false;
+      if (clase && leadNombre) {
+        const { data: insc } = await supabase
+          .from('clase_inscripciones').select('nombre, email').eq('clase_id', clase.id);
+        const norm = (s) => (s || '').toLowerCase().trim();
+        const lN = norm(leadNombre);
+        yaInscrito = (insc || []).some(i => {
+          const iN = norm(i.nombre);
+          // match si el primer nombre coincide y al menos otra palabra
+          const lParts = lN.split(/\s+/).filter(Boolean);
+          const iParts = iN.split(/\s+/).filter(Boolean);
+          if (lParts.length === 0 || iParts.length === 0) return false;
+          if (iN === lN) return true;
+          const overlap = lParts.filter(p => iParts.some(q => q.startsWith(p) || p.startsWith(q))).length;
+          return overlap >= 2;
+        });
+      }
+      if (cancelled) return;
+      setActiva(clase);
+      setInscrito(yaInscrito);
+      setLinkEnviadoAt(lead?.clase_link_enviada_at || null);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [leadId, leadNombre]);
+
+  if (loading) return null;
+  if (!activa) return null;
+
+  const link = `${window.location.origin}/clase/${activa.slug}`;
+  const firstName = (leadNombre || '').split(' ')[0];
+  const fechaFmt = activa.fecha
+    ? new Date(activa.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'long' })
+    : '';
+  const mensaje = `Hola ${firstName}! 🌿 Voy a ofrecer una clase de yoga abierta y gratuita el ${fechaFmt}, ${activa.hora_inicio?.slice(0,5)}–${activa.hora_fin?.slice(0,5)}. Te la regalo, espero te animes! Inscríbete en este link y queda tu cupo guardado:\n\n${link}`;
+  const waUrl = leadTel ? buildWaUrl(leadTel, mensaje) : null;
+
+  const marcarEnviado = async () => {
+    const ahora = new Date().toISOString();
+    await supabase.from('leads').update({ clase_link_enviada_at: ahora }).eq('id', leadId);
+    setLinkEnviadoAt(ahora);
+  };
+
+  // Inscrito → verde
+  if (inscrito) {
+    return (
+      <div style={{ padding: 12, borderRadius: 12, background: '#DDE0CC', border: '1px solid transparent' }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4D5230', fontWeight: 600 }}>
+          ✓ Confirmó asistencia
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 4, lineHeight: 1.4 }}>
+          Se inscribió a la clase del {fechaFmt}.
+        </div>
+      </div>
+    );
+  }
+
+  // Link ya enviado → amarillo "esperando respuesta"
+  if (linkEnviadoAt) {
+    return (
+      <div style={{ padding: 12, borderRadius: 12, background: '#F2E2C2', border: '1px solid transparent' }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: 600 }}>
+          Link enviado · esperando respuesta
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 4, lineHeight: 1.4 }}>
+          {new Date(linkEnviadoAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })} · clase del {fechaFmt}
+        </div>
+        {waUrl && (
+          <a href={waUrl} target="_blank" rel="noopener noreferrer"
+            style={{
+              display: 'inline-block', marginTop: 8, padding: '6px 12px', borderRadius: 999,
+              background: 'var(--surface)', color: 'var(--ink)', textDecoration: 'none',
+              fontFamily: 'inherit', fontSize: 11, fontWeight: 500,
+              border: '1px solid var(--line-soft)',
+            }}
+          >Reenviar link</a>
+        )}
+      </div>
+    );
+  }
+
+  // Default: aún no se le envió el link
+  return (
+    <div style={{ padding: 12, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
+      <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontWeight: 500, marginBottom: 6 }}>
+        Clase abierta · {fechaFmt}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4, marginBottom: 10 }}>
+        Mándale el link para que se inscriba antes de que se llenen los cupos.
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {waUrl ? (
+          <a
+            href={waUrl} target="_blank" rel="noopener noreferrer"
+            onClick={marcarEnviado}
+            style={{
+              flex: 1, padding: '9px 12px', borderRadius: 10,
+              background: '#25D366', color: '#fff',
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 500, textDecoration: 'none', textAlign: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <Icon name="whatsapp" size={13} stroke="#fff" /> Mandar link por WA
+          </a>
+        ) : (
+          <button
+            type="button" onClick={marcarEnviado}
+            style={{
+              flex: 1, padding: '9px 12px', borderRadius: 10,
+              background: 'var(--surface)', color: 'var(--ink)',
+              border: '1px solid var(--line-soft)',
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+            }}
+          >Marcar como enviado</button>
+        )}
+      </div>
+    </div>
+  );
+};
+window.ClaseAbiertaPanel = ClaseAbiertaPanel;
+
 window.TextInput = TextInput;
 window.InstaInput = InstaInput;
 window.TelInput = TelInput;
@@ -1005,4 +1150,4 @@ window.buildWaUrl = buildWaUrl;
 
 // Exports reales para consumidores que necesitan referencia confiable
 // (en producción Vite minifica/optimiza y el patrón window.X puede no quedar registrado)
-export { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput };
+export { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput, ClaseAbiertaPanel };

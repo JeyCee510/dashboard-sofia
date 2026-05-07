@@ -14,14 +14,24 @@ if ('serviceWorker' in navigator) {
 }
 
 // ─── Routing simple por pathname ───
-// /preinscripcion/<token> y /comprobante son rutas públicas (sin auth).
-// Cualquier otra = la app normal con login.
+// /preinscripcion/<token>, /comprobante y /clase/<slug> son rutas públicas
+// (sin auth). Cualquier otra = la app normal con login.
 const path = window.location.pathname;
 const preinscripcionMatch = path.match(/^\/preinscripcion\/([\w-]+)\/?$/);
 const comprobanteTokenMatch = path.match(/^\/comprobante\/([\w-]+)\/?$/);
 const comprobanteMatch = path.match(/^\/comprobante\/?$/);
+const claseMatch = path.match(/^\/clase\/([\w-]+)\/?$/);
 
-if (preinscripcionMatch) {
+if (claseMatch) {
+  const slug = claseMatch[1];
+  document.body.classList.add('public-route');
+  document.documentElement.classList.add('public-route');
+  import('./clase-publica.jsx').then(({ ClasePublica }) => {
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <ClasePublica slug={slug} />
+    );
+  });
+} else if (preinscripcionMatch) {
   const token = preinscripcionMatch[1];
   document.body.classList.add('public-route');
   document.documentElement.classList.add('public-route');
@@ -76,6 +86,7 @@ async function initApp() {
   await import('./screen-papelera-leads.jsx');
   await import('./screen-preinscripciones.jsx');
   await import('./screen-leads-descartados.jsx');
+  await import('./screen-clase-inscripciones.jsx');
   await import('./screen-comprobantes.jsx');
   await import('./screen-estudio-placeholder.jsx'); // Módulo Estudio — placeholder (legacy, ya no se usa)
   await import('./screen-estudio.jsx');             // Módulo Estudio — pantalla principal

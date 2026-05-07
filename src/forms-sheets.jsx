@@ -1,7 +1,7 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
 import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS } from './lib/precios.js';
-import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput } from './forms.jsx';
+import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput, ClaseAbiertaPanel } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -254,6 +254,13 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
               leadNombre={form.nombre}
               leadTel={form.tel}
               plantillas={store.state.ajustes.plantillasWA}
+            />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <ClaseAbiertaPanel
+              leadId={leadId}
+              leadNombre={form.nombre}
+              leadTel={form.tel}
             />
           </div>
           <div style={{ marginBottom: 14 }}>

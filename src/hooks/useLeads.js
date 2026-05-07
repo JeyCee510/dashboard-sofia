@@ -14,6 +14,7 @@ function fromDb(row) {
     mensaje: row.mensaje || '',
     tiempo: row.tiempo || 'ahora', // legacy, se va a deprecar
     createdAt: row.created_at,     // ISO timestamp real
+    claseLinkEnviadaAt: row.clase_link_enviada_at || null,
   };
 }
 
