@@ -41,7 +41,7 @@ const LoginScreen = ({ onLogin, ownerName, studioName, authError }) => (
         </div>
       )}
       <div className="footer-note">
-        Solo {(ownerName || 'Sofía').split(' ')[0]} accede a este panel · {studioName || 'Yoga Sofía Lira'}
+        Solo {(ownerName || 'Sofía').split(' ')[0]} accede a este panel · {studioName || 'Sofía Lira Yoga'}
       </div>
     </div>
   </div>

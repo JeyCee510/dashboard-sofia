@@ -196,7 +196,7 @@ const ClasePublica = ({ slug }) => {
         )}
 
         <div style={{ marginTop: 22, fontSize: 11, color: 'var(--ink-mute)', textAlign: 'center', lineHeight: 1.4 }}>
-          Yoga Sofía Lira · Tumbaco, Ecuador
+          Sofía Lira Yoga · Tumbaco, Ecuador
         </div>
       </div>
     </div>

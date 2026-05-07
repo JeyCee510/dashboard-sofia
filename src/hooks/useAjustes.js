@@ -10,7 +10,7 @@ const DEFAULT_AJUSTES = {
   precioReserva: 200,
   fechaProntoPago: '10 mayo',
   ownerName: 'Sofía Lira',
-  studioName: 'Yoga Sofía Lira',
+  studioName: 'Sofía Lira Yoga',
   lugar: 'Domo Soulspace · Tumbaco',
   diasFormacion: [
     { idx: 0, fecha: '6 jun', label: 'Día 1', encuentro: 1 },

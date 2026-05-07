@@ -215,7 +215,7 @@ export const PreinscripcionPublic = ({ token }) => {
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div className="serif" style={{ fontSize: 44, color: 'var(--terracota)', fontWeight: 500 }}>S</div>
           <div style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginTop: 8 }}>
-            Yoga Sofía Lira
+            Sofía Lira Yoga
           </div>
           <h1 className="serif" style={{ fontSize: 30, marginTop: 18, fontWeight: 500, lineHeight: 1.15 }}>
             Hola{meta?.lead_nombre ? ` ${meta.lead_nombre.split(' ')[0]}` : ''},<br/>
