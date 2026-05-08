@@ -155,94 +155,51 @@ const InstaInput = ({ value, onChange, placeholder = 'usuario' }) => {
 };
 
 // ──────────────────────────────────────────
-// TelInput — Default Ecuador (+593 9 _ _ _ _ _ _ _ _).
-// Toggle "otro país" → vacía y permite escribir libre con código internacional.
-// El value persistido es siempre con + y dígitos, ej "+593991234567".
+// TelInput — Prefijo "+" fijo, el resto se escribe libre.
+// El value persistido es "+" seguido de lo que escribió Sofía
+// (ej "+593 99 234 5678"). Sin toggle internacional.
 // ──────────────────────────────────────────
-const ECUADOR_PREFIX = '+593 9';
-
-const TelInput = ({ value, onChange, placeholder = '99 234 5678' }) => {
-  // Estado interno: ¿modo Ecuador o internacional?
-  // Inferimos por el value inicial: si está vacío o empieza con +593, modo Ecuador.
-  const inferEcuador = (v) => !v || /^\+?593/.test(v.replace(/\s/g, ''));
-  const [esEcuador, setEsEcuador] = React.useState(() => inferEcuador(value));
-
-  // Lo que mostramos en el input depende del modo.
-  // Modo Ecuador: muestra solo los 8 dígitos después de +593 9.
-  // Modo internacional: muestra el value completo tal cual.
+const TelInput = ({ value, onChange, placeholder = '593 99 234 5678' }) => {
+  // Lo que mostramos: lo que viene después del primer "+". Si no hay "+",
+  // mostramos el value tal cual.
   const display = React.useMemo(() => {
-    if (!esEcuador) return value || '';
     if (!value) return '';
-    const digits = value.replace(/[^\d]/g, '');
-    // Quitar el "5939" si aparece al inicio
-    if (digits.startsWith('5939')) return digits.slice(4);
-    return value;
-  }, [value, esEcuador]);
+    return value.startsWith('+') ? value.slice(1) : value;
+  }, [value]);
 
   const onTyped = (raw) => {
-    if (esEcuador) {
-      // Solo dígitos, máx 8
-      const digits = raw.replace(/[^\d]/g, '').slice(0, 8);
-      onChange(digits ? `+593 9${digits}` : '');
-    } else {
-      onChange(raw);
-    }
-  };
-
-  const toggleInternacional = () => {
-    if (esEcuador) {
-      // pasar a internacional: vaciar
-      setEsEcuador(false);
-      onChange('');
-    } else {
-      // volver a Ecuador: prepoblar prefix
-      setEsEcuador(true);
-      onChange('');
-    }
+    // Persistimos siempre con "+" al inicio. Si Sofía borra todo, value = ''.
+    const trimmed = raw.replace(/^\++/, ''); // por si pegó "+593" — quitamos los + redundantes
+    onChange(trimmed ? `+${trimmed}` : '');
   };
 
   return (
-    <div>
-      <div
+    <div
+      style={{
+        display: 'flex', alignItems: 'stretch',
+        background: 'var(--surface)',
+        border: '1px solid var(--line-soft)',
+        borderRadius: 12, overflow: 'hidden',
+      }}
+    >
+      <span style={{
+        padding: '12px 0 12px 14px', color: 'var(--ink-mute)',
+        fontSize: 14, userSelect: 'none', fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
+      }}>+</span>
+      <input
+        type="tel"
+        inputMode="tel"
+        value={display}
+        onChange={(e) => onTyped(e.target.value)}
+        placeholder={placeholder}
         style={{
-          display: 'flex', alignItems: 'stretch',
-          background: 'var(--surface)',
-          border: '1px solid var(--line-soft)',
-          borderRadius: 12, overflow: 'hidden',
+          flex: 1, background: 'transparent', border: 'none',
+          padding: '12px 14px 12px 6px',
+          fontFamily: 'inherit', fontSize: 14,
+          color: 'var(--ink)', outline: 'none',
         }}
-      >
-        {esEcuador && (
-          <span style={{
-            padding: '12px 0 12px 14px', color: 'var(--ink-mute)',
-            fontSize: 14, userSelect: 'none', fontFamily: 'inherit',
-            whiteSpace: 'nowrap',
-          }}>{ECUADOR_PREFIX}</span>
-        )}
-        <input
-          type="tel"
-          inputMode={esEcuador ? 'numeric' : 'tel'}
-          value={display}
-          onChange={(e) => onTyped(e.target.value)}
-          placeholder={esEcuador ? placeholder : '+1 555 123 4567'}
-          style={{
-            flex: 1, background: 'transparent', border: 'none',
-            padding: esEcuador ? '12px 14px 12px 6px' : '12px 14px',
-            fontFamily: 'inherit', fontSize: 14,
-            color: 'var(--ink)', outline: 'none',
-          }}
-        />
-      </div>
-      <button
-        type="button"
-        onClick={toggleInternacional}
-        style={{
-          marginTop: 6, background: 'transparent', border: 'none',
-          padding: 0, fontFamily: 'inherit', fontSize: 11,
-          color: 'var(--terracota)', cursor: 'pointer',
-        }}
-      >
-        {esEcuador ? '¿Es de otro país? Cambia a internacional' : '← Volver a Ecuador (+593 9)'}
-      </button>
+      />
     </div>
   );
 };

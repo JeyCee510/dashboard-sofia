@@ -101,12 +101,12 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
           )}
           {alumnas.map(a => {
             const restante = Math.max(0, (a.total || 0) - (a.pagado || 0));
-            const tipoLabel = {
-              'pronto-pago': 'Pronto pago',
-              'completo': 'Pago completo',
-              'parcial': 'Parcial',
-              'pendiente': 'Pendiente',
-            }[a.pago] || a.pago;
+            // Paquete = lo que compró Sofía. Pronto pago tiene su propio label.
+            const paqueteLabel =
+              a.pago === 'pronto-pago' ? 'Pronto pago' :
+              a.tipo_inscripcion === 'completa' ? 'Completo' :
+              a.tipo_inscripcion === 'dos_encuentros' ? '2 encuentros' :
+              a.tipo_inscripcion === 'un_encuentro' ? '1 encuentro' : '';
             return (
               <div key={a.id} className="row" onClick={() => onOpenAlumna(a.id)} style={{ cursor: 'pointer' }}>
                 <div className="avatar" style={{ background: a.avatar }}>{a.iniciales}</div>
@@ -115,10 +115,19 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
                   <div className="t2" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span>Se inscribió {a.inscrita}</span>
                     {a.bonoSilla && <span style={{ color: 'var(--gold)' }}>· silla</span>}
-                    <span>· {tipoLabel}</span>
-                    {restante > 0 && (
-                      <span style={{ color: 'var(--rojo)' }}>· falta ${restante}</span>
+                  </div>
+                  <div className="t2" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                    {paqueteLabel && (
+                      <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{paqueteLabel}</span>
                     )}
+                    {a.total ? (
+                      <span style={{ color: 'var(--ink-soft)' }}>· ${a.total}</span>
+                    ) : null}
+                    {restante > 0 ? (
+                      <span style={{ color: 'var(--rojo)' }}>· falta ${restante}</span>
+                    ) : a.total ? (
+                      <span style={{ color: 'var(--oliva)' }}>· pagado</span>
+                    ) : null}
                   </div>
                 </div>
                 <PagoPill pago={a.pago} />

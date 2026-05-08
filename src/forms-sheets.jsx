@@ -658,7 +658,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             </div>
           </div>
 
-          <Field label="Producto que compra">
+          <Field label="① Producto que compra">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {[
                 { key: 'pronto-pago', label: `Pronto pago · $${precioProntoPago}`, sub: 'hasta 10 may · todo incluido (silla)', sel: esProntoPago, onClick: () => setProducto('completa', true) },
@@ -703,7 +703,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
           )}
 
           {!esProntoPago && (
-            <Field label="Bono silla ($40)">
+            <Field label="② Bono silla ($40)">
               <div style={{ display: 'flex', gap: 6 }}>
                 {[
                   { v: true,  l: 'Sí, con silla' },
@@ -738,7 +738,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         </>
       )}
 
-      <Field label="Monto del pago">
+      <Field label={esLead ? '③ ¿Cuánto paga ahora?' : 'Monto del pago'}>
         <NumberInput value={monto} onChange={setMonto} prefix="$" min={0} />
       </Field>
 
@@ -781,7 +781,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       )}
 
       {tipo !== 'ninguno' && (
-        <Field label="Forma de pago">
+        <Field label={esLead ? '③ Forma de pago' : 'Forma de pago'}>
           <SelectChips
             value={forma}
             onChange={setForma}
