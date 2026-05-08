@@ -2,6 +2,7 @@ import React from 'react';
 import { useClasesAbiertas, useInscripcionesClase } from './hooks/useClasesAbiertas.js';
 
 const { useState } = React;
+const Icon = window.Icon;
 
 // ─────────────────────────────────────────────────────────────────────
 // ClaseInscripcionesScreen — admin de inscripciones a una clase abierta.
