@@ -964,29 +964,32 @@ Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿
 };
 
 // ──────────────────────────────────────────
-// ClaseAbiertaPanel — para Sofía dentro de LeadForm.
-// Muestra estado del envío del link de la clase abierta + botón para
-// generar mensaje WA con plantilla. Tras enviar, marca clase_link_enviada_at.
-// Si el lead se inscribió a la clase (match por nombre fuzzy), lo refleja.
+// ClaseAbiertaPanel — para Sofía dentro de LeadForm o FichaAlumna.
+// Soporta dos modos: lead (prop leadId) o alumna (prop alumnaId).
+// Tabla de tracking: leads.clase_link_enviada_at o alumnas.clase_link_enviada_at.
+// Si la persona se inscribió a la clase (match por nombre fuzzy), lo refleja.
 // ──────────────────────────────────────────
-const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel, fechaProntoPago }) => {
+const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoPago }) => {
+  // Modo: alumna si recibimos alumnaId; sino, lead.
+  const tabla = alumnaId ? 'alumnas' : 'leads';
+  const personaId = alumnaId || leadId;
   const [activa, setActiva] = React.useState(null);
   const [inscrito, setInscrito] = React.useState(false);
   const [linkEnviadoAt, setLinkEnviadoAt] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    if (!leadId) { setLoading(false); return; }
+    if (!personaId) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
       // 1) Clase activa
       const { data: clases } = await supabase
         .from('clases_abiertas').select('*').eq('activa', true).order('fecha', { ascending: true }).limit(1);
       const clase = clases?.[0] || null;
-      // 2) Estado de envío del link al lead
-      const { data: lead } = await supabase
-        .from('leads').select('clase_link_enviada_at').eq('id', leadId).single();
-      // 3) Match por nombre fuzzy: si el lead se inscribió, lo encontramos
+      // 2) Estado de envío del link a la persona (lead o alumna)
+      const { data: persona } = await supabase
+        .from(tabla).select('clase_link_enviada_at').eq('id', personaId).single();
+      // 3) Match por nombre fuzzy: si se inscribió, lo encontramos
       let yaInscrito = false;
       if (clase && leadNombre) {
         const { data: insc } = await supabase
@@ -1007,11 +1010,11 @@ const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel, fechaProntoPago }) => 
       if (cancelled) return;
       setActiva(clase);
       setInscrito(yaInscrito);
-      setLinkEnviadoAt(lead?.clase_link_enviada_at || null);
+      setLinkEnviadoAt(persona?.clase_link_enviada_at || null);
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [leadId, leadNombre]);
+  }, [personaId, tabla, leadNombre]);
 
   if (loading) return null;
   if (!activa) return null;
@@ -1031,7 +1034,7 @@ const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel, fechaProntoPago }) => 
 
   const marcarEnviado = async () => {
     const ahora = new Date().toISOString();
-    await supabase.from('leads').update({ clase_link_enviada_at: ahora }).eq('id', leadId);
+    await supabase.from(tabla).update({ clase_link_enviada_at: ahora }).eq('id', personaId);
     setLinkEnviadoAt(ahora);
   };
 

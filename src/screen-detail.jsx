@@ -1,5 +1,5 @@
 import React from 'react';
-import { ContactPanel, ComprobanteTokenAdminPanel, PreinscripcionAdminPanel } from './forms.jsx';
+import { ContactPanel, ComprobanteTokenAdminPanel, PreinscripcionAdminPanel, ClaseAbiertaPanel } from './forms.jsx';
 import { useEventosAlumna } from './hooks/useEventosAlumna.js';
 import { useComprobantesAlumna } from './hooks/useComprobantesAlumna.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
@@ -97,6 +97,14 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               leadNombre={a.nombre}
               leadTel={a.tel}
               plantillas={store.state.ajustes.plantillasWA}
+            />
+          </div>
+          <div style={{ marginTop: 12, textAlign: 'left' }}>
+            <ClaseAbiertaPanel
+              alumnaId={a.id}
+              leadNombre={a.nombre}
+              leadTel={a.tel}
+              fechaProntoPago={store.state.ajustes.fechaProntoPago}
             />
           </div>
           <div style={{ marginTop: 12, textAlign: 'left' }}>
