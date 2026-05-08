@@ -1016,7 +1016,11 @@ const ClaseAbiertaPanel = ({ leadId, leadNombre, leadTel, fechaProntoPago }) => 
   if (loading) return null;
   if (!activa) return null;
 
-  const link = `${window.location.origin}/clase/${activa.slug}`;
+  // Pasamos ?n=<nombre> al link para que el form público no le pida el nombre
+  // al lead (ya lo tenemos). Si el lead reenvía el link a otra persona, esa
+  // persona puede tocar "Cambiar" para reescribirlo.
+  const linkBase = `${window.location.origin}/clase/${activa.slug}`;
+  const link = leadNombre ? `${linkBase}?n=${encodeURIComponent(leadNombre)}` : linkBase;
   const firstName = (leadNombre || '').split(' ')[0];
   const fechaFmt = activa.fecha
     ? new Date(activa.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'long' })

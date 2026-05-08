@@ -18,7 +18,16 @@ const ClasePublica = ({ slug }) => {
   const [enviado, setEnviado] = useState(false);
   const [cuposPostInscripcion, setCuposPostInscripcion] = useState(null);
 
-  const [nombre, setNombre] = useState('');
+  // Si Sofía envía el link a un lead específico, agrega ?n=<nombre> a la URL.
+  // El form se simplifica: muestra "Inscribiéndote como X" en vez de pedir el
+  // nombre. Si el visitante no es esa persona, puede tocar "Cambiar" para
+  // editar manualmente.
+  const nombreDeUrl = (() => {
+    try { return new URL(window.location.href).searchParams.get('n') || ''; }
+    catch { return ''; }
+  })();
+  const [nombre, setNombre] = useState(nombreDeUrl);
+  const [editandoNombre, setEditandoNombre] = useState(!nombreDeUrl);
   const [email, setEmail] = useState('');
 
   const cargar = useCallback(async () => {
@@ -94,7 +103,7 @@ const ClasePublica = ({ slug }) => {
             background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
             fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5,
           }}>
-            Sofía te confirmará un día antes la <strong>ubicación exacta</strong> (Casita del Yoga o Domo Soulspace).
+            Te esperamos en <strong>{clase.ubicacion}</strong>. 🌿
             {cuposPostInscripcion !== null && (
               <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-mute)' }}>
                 Quedan {cuposPostInscripcion} {cuposPostInscripcion === 1 ? 'cupo' : 'cupos'} para otras personas.
@@ -157,13 +166,33 @@ const ClasePublica = ({ slug }) => {
         {/* Form */}
         {!lleno && (
           <>
-            <div style={{ marginBottom: 14 }}>
-              <Label>Tu nombre</Label>
-              <input
-                type="text" value={nombre} onChange={e => setNombre(e.target.value)}
-                placeholder="Nombre completo" style={inputStyle}
-              />
-            </div>
+            {editandoNombre ? (
+              <div style={{ marginBottom: 14 }}>
+                <Label>Tu nombre</Label>
+                <input
+                  type="text" value={nombre} onChange={e => setNombre(e.target.value)}
+                  placeholder="Nombre completo" style={inputStyle}
+                />
+              </div>
+            ) : (
+              <div style={{
+                marginBottom: 14, padding: '12px 14px', borderRadius: 12,
+                background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
+                fontSize: 13, color: 'var(--ink-soft)', display: 'flex',
+                alignItems: 'center', justifyContent: 'space-between', gap: 10,
+              }}>
+                <div>Inscribiéndote como <strong style={{ color: 'var(--ink)' }}>{nombre}</strong></div>
+                <button
+                  type="button"
+                  onClick={() => { setEditandoNombre(true); setNombre(''); }}
+                  style={{
+                    background: 'transparent', border: 'none', padding: 0,
+                    color: 'var(--terracota)', fontSize: 12, fontFamily: 'inherit',
+                    textDecoration: 'underline', cursor: 'pointer',
+                  }}
+                >Cambiar</button>
+              </div>
+            )}
             <div style={{ marginBottom: 18 }}>
               <Label>Email</Label>
               <input
