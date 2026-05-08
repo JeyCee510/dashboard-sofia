@@ -1,5 +1,6 @@
 import React from 'react';
 import { alumnaAsisteDia, PRECIOS_DEFAULT } from './lib/precios.js';
+import { supabase as sbClient } from './lib/supabase.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -91,14 +92,29 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const safeLeads = leads || MOCK_LEADS || [];
   const safeMensajes = mensajes || MENSAJES_RECIENTES || [];
 
-  // Clase abierta activa (si hay) — para mostrar en "Para ti hoy" un ActionRow
-  // con cupos en vivo. Hooks vienen via window.X (patrón de la app).
-  const useClasesAbiertas = window.useClasesAbiertas;
-  const useInscripcionesClase = window.useInscripcionesClase;
-  const claseInfo = useClasesAbiertas ? useClasesAbiertas() : { activa: null };
-  const claseInsc = useInscripcionesClase ? useInscripcionesClase(claseInfo.activa?.id) : { items: [] };
-  const claseActiva = claseInfo.activa;
-  const claseInscritos = claseInsc.items?.length || 0;
+  // Clase abierta activa: fetch directo (sin canal realtime para no colisionar
+  // con el que usa screen-clase-inscripciones cuando abre el overlay). Si en
+  // el futuro queremos contador en vivo, hay que usar un canal con NOMBRE
+  // ÚNICO distinto al de useClasesAbiertas. Por ahora, refresh on focus.
+  const [claseActiva, setClaseActiva] = useState(null);
+  const [claseInscritos, setClaseInscritos] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const cargar = async () => {
+      const { data: clases } = await sbClient.from('clases_abiertas').select('*').eq('activa', true).order('fecha', { ascending: true }).limit(1);
+      const clase = clases?.[0] || null;
+      if (cancelled) return;
+      setClaseActiva(clase);
+      if (!clase) return;
+      const { count } = await sbClient.from('clase_inscripciones').select('*', { count: 'exact', head: true }).eq('clase_id', clase.id);
+      if (!cancelled) setClaseInscritos(count || 0);
+    };
+    cargar();
+    // Re-fetch al volver al tab del navegador (sustituye al realtime)
+    const onFocus = () => cargar();
+    window.addEventListener('focus', onFocus);
+    return () => { cancelled = true; window.removeEventListener('focus', onFocus); };
+  }, []);
   const claseCupos = claseActiva ? Math.max(0, claseActiva.cupos_max - claseInscritos) : 0;
   const totalAlumnas = safeAlumnas.length;
   const cupos = tweaks.capacidad - totalAlumnas;
