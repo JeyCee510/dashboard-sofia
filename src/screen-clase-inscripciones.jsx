@@ -2,7 +2,6 @@ import React from 'react';
 import { useClasesAbiertas, useInscripcionesClase } from './hooks/useClasesAbiertas.js';
 
 const { useState } = React;
-const Icon = window.Icon;
 
 // ─────────────────────────────────────────────────────────────────────
 // ClaseInscripcionesScreen — admin de inscripciones a una clase abierta.
@@ -10,6 +9,11 @@ const Icon = window.Icon;
 // ─────────────────────────────────────────────────────────────────────
 
 const ClaseInscripcionesScreen = ({ onClose }) => {
+  // Icon se lee acá adentro (no al top-level del módulo) porque main.jsx
+  // ahora carga los módulos en paralelo con Promise.all, así que cuando
+  // este archivo se evalúa, icons.jsx puede no haber registrado window.Icon
+  // todavía. Patrón: leer globals en render-time.
+  const Icon = window.Icon;
   const { activa, loading: loadingClase } = useClasesAbiertas();
   const { items, loading: loadingInsc, eliminar } = useInscripcionesClase(activa?.id);
   const [copiado, setCopiado] = useState(false);
