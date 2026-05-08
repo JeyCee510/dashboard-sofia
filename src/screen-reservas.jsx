@@ -101,9 +101,15 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
           )}
           {alumnas.map(a => {
             const restante = Math.max(0, (a.total || 0) - (a.pagado || 0));
-            // Paquete = lo que compró Sofía. Pronto pago tiene su propio label.
+            // Paquete = lo que compró Sofía. Pronto pago se detecta por:
+            //   pago === 'pronto-pago' (ya pagó completo a tarifa pronto pago)
+            //   o total === precioProntoPago en una completa (aún pagando)
+            const precioPP = tweaks.precioProntoPago || 484;
+            const esProntoPagoProducto =
+              a.pago === 'pronto-pago' ||
+              (a.tipo_inscripcion === 'completa' && Number(a.total) === Number(precioPP));
             const paqueteLabel =
-              a.pago === 'pronto-pago' ? 'Pronto pago' :
+              esProntoPagoProducto ? 'Pronto pago' :
               a.tipo_inscripcion === 'completa' ? 'Completo' :
               a.tipo_inscripcion === 'dos_encuentros' ? '2 encuentros' :
               a.tipo_inscripcion === 'un_encuentro' ? '1 encuentro' : '';

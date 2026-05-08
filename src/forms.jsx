@@ -159,7 +159,7 @@ const InstaInput = ({ value, onChange, placeholder = 'usuario' }) => {
 // El value persistido es "+" seguido de lo que escribió Sofía
 // (ej "+593 99 234 5678"). Sin toggle internacional.
 // ──────────────────────────────────────────
-const TelInput = ({ value, onChange, placeholder = '593 99 234 5678' }) => {
+const TelInput = ({ value, onChange, placeholder = 'código país + número' }) => {
   // Lo que mostramos: lo que viene después del primer "+". Si no hay "+",
   // mostramos el value tal cual.
   const display = React.useMemo(() => {
