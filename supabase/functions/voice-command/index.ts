@@ -173,7 +173,7 @@ const TOOLS = [
   },
   {
     name: "renunciar_silla",
-    description: "Renunciar al bono silla de una estudiante. Descuenta $30 del total (excepto pronto-pago, que es precio fijo).",
+    description: "Renunciar al bono silla de una estudiante. Descuenta $40 del total (excepto pronto-pago, que es precio fijo).",
     input_schema: {
       type: "object",
       properties: {

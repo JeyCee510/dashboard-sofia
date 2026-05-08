@@ -218,9 +218,12 @@ export function useAlumnas() {
     //   - solo si la alumna aún no tiene silla
     //   - solo si quedan cupos (< sillasMax)
     //   - se ejecuta apenas hay cualquier pago (incluso reserva)
+    //   - SE OMITE si opts.skipAutoSilla === true (ej: lead convertido con
+    //     decisión explícita de Sofía sobre silla)
     let asignarSilla = false;
     const sillasMax = Number(opts.sillasMax) || 6;
     if (
+      !opts.skipAutoSilla &&
       a.tipo_inscripcion === 'completa' &&
       !a.bonoSilla &&
       nuevoPagado >= 200 // mínimo reserva

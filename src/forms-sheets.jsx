@@ -369,6 +369,12 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const [archivo, setArchivo] = React.useState(null);
   const [errorArchivo, setErrorArchivo] = React.useState('');
   const fileInputRef = React.useRef(null);
+  // Producto cuando es lead — define el total y la inscripción.
+  // esProntoPago=true ⇒ tipo='completa', encuentros=[1,2,3], silla incluida, total=484.
+  const [esProntoPago, setEsProntoPago] = React.useState(false);
+  const [prodTipo, setProdTipo] = React.useState('completa');
+  const [prodEncuentros, setProdEncuentros] = React.useState([1, 2, 3]);
+  const [prodSilla, setProdSilla] = React.useState(true);
 
   React.useEffect(() => {
     if (open) {
@@ -380,6 +386,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       setConvirtiendo(false);
       setArchivo(null);
       setErrorArchivo('');
+      // Reset del producto (lead path)
+      setEsProntoPago(false);
+      setProdTipo('completa');
+      setProdEncuentros([1, 2, 3]);
+      setProdSilla(true);
     }
   }, [open, alumnaPreId, leadPreId, comprobantePreData]);
 
@@ -393,6 +404,45 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const precioReserva = store.state.ajustes.precioReserva || 200;
   const precioProntoPago = store.state.ajustes.precioProntoPago || 484;
   const precioRegular = store.state.ajustes.precioRegular || 640;
+
+  // Total del producto (lead path) — depende de tipo + silla. Pronto pago es fijo.
+  const productoTotal = esProntoPago
+    ? precioProntoPago
+    : calcularTotal({ tipo: prodTipo, bonoSilla: prodSilla, ajustes: store.state.ajustes });
+
+  // Helper: cambia el producto y normaliza encuentros_asistir.
+  const setProducto = (nextTipo, isProntoPago = false) => {
+    if (isProntoPago) {
+      setEsProntoPago(true);
+      setProdTipo('completa');
+      setProdEncuentros([1, 2, 3]);
+      setProdSilla(true);
+      return;
+    }
+    setEsProntoPago(false);
+    setProdTipo(nextTipo);
+    if (nextTipo === 'completa') setProdEncuentros([1, 2, 3]);
+    else if (nextTipo === 'dos_encuentros') setProdEncuentros([1, 2]);
+    else if (nextTipo === 'un_encuentro') setProdEncuentros([1]);
+  };
+
+  const toggleEncuentro = (num) => {
+    if (prodTipo === 'un_encuentro') {
+      setProdEncuentros([num]);
+      return;
+    }
+    if (prodTipo === 'dos_encuentros') {
+      const checked = prodEncuentros.includes(num);
+      if (checked) {
+        if (prodEncuentros.length > 1) setProdEncuentros(prodEncuentros.filter(x => x !== num));
+      } else if (prodEncuentros.length < 2) {
+        setProdEncuentros([...prodEncuentros, num].sort());
+      } else {
+        // Reemplaza el primero (FIFO) para mantener exactamente 2
+        setProdEncuentros([prodEncuentros[1], num].sort());
+      }
+    }
+  };
 
   // Sube archivo nuevo a Storage e inserta comprobante en estado validado.
   // Devuelve el id insertado o null.
@@ -459,29 +509,36 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
     if (tipoSel === 'lead' && lead) {
       setConvirtiendo(true);
       try {
+        // Producto elegido por Sofía: tipo + encuentros + silla → total.
+        const insExtra = {
+          tipo_inscripcion: prodTipo,
+          encuentros_asistir: prodEncuentros,
+          total: productoTotal,
+          bonoSilla: esProntoPago ? true : prodSilla, // pronto-pago siempre incluye silla
+        };
         if (sinPago) {
-          // Convertir sin pago: sólo crea alumna con pagado=0 y borra lead
+          // Convertir sin pago: crea alumna con el producto definido, pagado=0
           await store.convertLeadToAlumna(idNum, {
-            tipo_inscripcion: 'completa',
-            encuentros_asistir: [1, 2, 3],
-            total: precioRegular,
+            ...insExtra,
             pagado: 0,
             pago: 'pendiente',
           });
         } else {
-          // 1) Convertir lead → alumna
+          // 1) Convertir lead → alumna con el producto definido
           const nuevaId = await store.convertLeadToAlumna(idNum, {
-            tipo_inscripcion: 'completa',
-            encuentros_asistir: [1, 2, 3],
-            total: precioRegular,
+            ...insExtra,
             pagado: 0,
             pago: 'pendiente',
           });
           if (nuevaId) {
             // 2) Subir comprobante si lo hay
             if (archivo) await subirComprobanteValidado(nuevaId, montoNum, archivo);
-            // 3) Registrar pago
-            await store.registrarPago(nuevaId, montoNum, tipo);
+            // 3) Registrar pago con forma seleccionada.
+            //    skipAutoSilla=true porque Sofía ya decidió silla en el picker.
+            //    Sin esto, una alumna "completa sin silla" recibiría silla auto
+            //    al registrar reserva → bonoSilla=true pero total quedaría en
+            //    el sin_silla (inconsistente).
+            await store.registrarPago(nuevaId, montoNum, tipo, forma, { skipAutoSilla: true });
           }
         }
       } catch (e) {
@@ -524,8 +581,13 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
     { label: 'Otro monto', v: 0, t: 'parcial' },
   ] : esLead ? [
     { label: `Reserva $${precioReserva}`, v: precioReserva, t: 'reserva' },
-    { label: `Pronto pago $${precioProntoPago}`, v: precioProntoPago, t: 'pronto-pago' },
-    { label: `Pago completo $${precioRegular}`, v: precioRegular, t: 'completo' },
+    {
+      label: esProntoPago
+        ? `Pago completo $${productoTotal} (pronto pago)`
+        : `Pago completo $${productoTotal}`,
+      v: productoTotal,
+      t: esProntoPago ? 'pronto-pago' : 'completo',
+    },
     { label: 'Otro monto', v: 0, t: 'parcial' },
     { label: 'Convertir sin pago aún', v: 0, t: 'ninguno' },
   ] : [];
@@ -586,14 +648,94 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       )}
 
       {lead && (
-        <div className="card flat" style={{ padding: 14, marginBottom: 14, background: 'var(--terracota-tint)', borderColor: 'transparent' }}>
-          <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 600, marginBottom: 4 }}>
-            Convirtiendo lead → estudiante
+        <>
+          <div className="card flat" style={{ padding: 14, marginBottom: 14, background: 'var(--terracota-tint)', borderColor: 'transparent' }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 600, marginBottom: 4 }}>
+              Convirtiendo lead → estudiante
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink)' }}>
+              <strong>{lead.nombre}</strong> queda inscrito como estudiante al guardar.
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--ink)' }}>
-            Al registrar este pago, <strong>{lead.nombre}</strong> queda inscrito como estudiante (formación completa) y el lead se elimina del embudo.
+
+          <Field label="Producto que compra">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                { key: 'pronto-pago', label: `Pronto pago · $${precioProntoPago}`, sub: 'hasta 10 may · todo incluido (silla)', sel: esProntoPago, onClick: () => setProducto('completa', true) },
+                { key: 'completa',    label: 'Completo · 50h · 3 encuentros',       sub: '', sel: !esProntoPago && prodTipo === 'completa',       onClick: () => setProducto('completa') },
+                { key: 'dos_enc',     label: '2 encuentros',                         sub: 'elige 2 de 3 fines de semana', sel: !esProntoPago && prodTipo === 'dos_encuentros', onClick: () => setProducto('dos_encuentros') },
+                { key: 'un_enc',      label: '1 encuentro',                          sub: 'elige 1 de 3 fines de semana', sel: !esProntoPago && prodTipo === 'un_encuentro',  onClick: () => setProducto('un_encuentro') },
+              ].map(opt => (
+                <button key={opt.key} type="button" onClick={opt.onClick} style={{
+                  background: opt.sel ? 'var(--terracota-tint)' : 'var(--surface)',
+                  border: `1px solid ${opt.sel ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                  borderRadius: 10, padding: '10px 14px', fontFamily: 'inherit',
+                  fontSize: 13, color: 'var(--ink)', cursor: 'pointer', textAlign: 'left',
+                  fontWeight: opt.sel ? 600 : 400,
+                }}>
+                  {opt.label}
+                  {opt.sub && <div style={{ fontSize: 11, color: 'var(--ink-mute)', fontWeight: 400, marginTop: 2 }}>{opt.sub}</div>}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {!esProntoPago && (prodTipo === 'dos_encuentros' || prodTipo === 'un_encuentro') && (
+            <Field label={prodTipo === 'dos_encuentros' ? '¿Cuáles 2 encuentros?' : '¿Cuál encuentro?'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {ENCUENTROS.map(e => {
+                  const checked = prodEncuentros.includes(e.num);
+                  return (
+                    <button key={e.num} type="button" onClick={() => toggleEncuentro(e.num)} style={{
+                      background: checked ? 'var(--bg-warm)' : 'var(--surface)',
+                      border: `1px solid ${checked ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                      borderRadius: 10, padding: '9px 12px', fontFamily: 'inherit',
+                      fontSize: 13, color: 'var(--ink)', cursor: 'pointer', textAlign: 'left',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    }}>
+                      <span>{e.label} · <span style={{ color: 'var(--ink-mute)' }}>{e.fechas}</span></span>
+                      {checked && <span style={{ color: 'var(--terracota)', fontWeight: 700 }}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+
+          {!esProntoPago && (
+            <Field label="Bono silla ($40)">
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[
+                  { v: true,  l: 'Sí, con silla' },
+                  { v: false, l: 'No (renuncia · −$40)' },
+                ].map(o => {
+                  const sel = prodSilla === o.v;
+                  return (
+                    <button key={String(o.v)} type="button" onClick={() => setProdSilla(o.v)} style={{
+                      flex: 1, padding: '9px 10px', borderRadius: 10,
+                      background: sel ? 'var(--terracota-tint)' : 'var(--surface)',
+                      border: `1px solid ${sel ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                      fontFamily: 'inherit', fontSize: 12, fontWeight: sel ? 600 : 400,
+                      color: 'var(--ink)', cursor: 'pointer',
+                    }}>{o.l}</button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+
+          <div className="card flat" style={{
+            padding: 12, marginBottom: 14, background: 'var(--bg-warm)', borderColor: 'transparent',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          }}>
+            <span style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontWeight: 600 }}>
+              Total a pagar
+            </span>
+            <span className="serif" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)' }}>
+              ${productoTotal}
+            </span>
           </div>
-        </div>
+        </>
       )}
 
       <Field label="Monto del pago">

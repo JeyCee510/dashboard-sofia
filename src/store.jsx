@@ -85,14 +85,14 @@ function useStore() {
   };
   const updateAlumna = (id, patch) => alumnasHook.updateAlumna(id, patch);
   const deleteAlumna = (id) => alumnasHook.deleteAlumna(id);
-  const registrarPago = (alumnaId, monto, tipo, forma) => alumnasHook.registrarPago(
+  const registrarPago = (alumnaId, monto, tipo, forma, extraOpts = {}) => alumnasHook.registrarPago(
     alumnaId, monto, tipo,
-    { sillasMax: state.ajustes.bonoSillaCupos || 6, forma: forma || 'transferencia' }
+    { sillasMax: state.ajustes.bonoSillaCupos || 6, forma: forma || 'transferencia', ...extraOpts }
   );
 
-  // Descuento al renunciar a silla = $30 en todos los tipos de inscripción.
+  // Descuento al renunciar a silla = $40 en todos los tipos de inscripción.
   // Pronto-pago es la única excepción: precio fijo, no baja al renunciar.
-  const DIFERENCIAL_SILLA = 30;
+  const DIFERENCIAL_SILLA = 40;
 
   // Renunciar a silla: descuenta del total.
   // Sobrepago queda como crédito (pagado puede quedar > total).
