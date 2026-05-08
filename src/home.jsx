@@ -90,6 +90,16 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const safeAlumnas = alumnas || MOCK_ALUMNAS || [];
   const safeLeads = leads || MOCK_LEADS || [];
   const safeMensajes = mensajes || MENSAJES_RECIENTES || [];
+
+  // Clase abierta activa (si hay) — para mostrar en "Para ti hoy" un ActionRow
+  // con cupos en vivo. Hooks vienen via window.X (patrón de la app).
+  const useClasesAbiertas = window.useClasesAbiertas;
+  const useInscripcionesClase = window.useInscripcionesClase;
+  const claseInfo = useClasesAbiertas ? useClasesAbiertas() : { activa: null };
+  const claseInsc = useInscripcionesClase ? useInscripcionesClase(claseInfo.activa?.id) : { items: [] };
+  const claseActiva = claseInfo.activa;
+  const claseInscritos = claseInsc.items?.length || 0;
+  const claseCupos = claseActiva ? Math.max(0, claseActiva.cupos_max - claseInscritos) : 0;
   const totalAlumnas = safeAlumnas.length;
   const cupos = tweaks.capacidad - totalAlumnas;
   const ctx = getFormationContext();
@@ -303,6 +313,25 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         <h2>Para ti hoy</h2>
       </div>
       <div style={{ padding: '0 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {claseActiva && (
+          <ActionRow
+            icon="sparkle"
+            accent="terracota"
+            title={`Clase de prueba · ${
+              claseActiva.fecha
+                ? new Date(claseActiva.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' })
+                : ''
+            }`}
+            subtitle={
+              claseInscritos === 0
+                ? `${claseActiva.cupos_max} cupos disponibles · sin inscritos aún`
+                : claseCupos === 0
+                ? `Lleno · ${claseInscritos} inscritos`
+                : `${claseInscritos} inscrito${claseInscritos === 1 ? '' : 's'} · quedan ${claseCupos} cupo${claseCupos === 1 ? '' : 's'}`
+            }
+            onClick={() => onNavigate('clase-inscripciones')}
+          />
+        )}
         {comprobantesPendientes > 0 && (
           <ActionRow
             icon="cash"
