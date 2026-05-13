@@ -15,11 +15,11 @@ const Sheet = ({ open, onClose, title, children, footer }) => {
     <div style={{
       position: 'absolute', inset: 0, zIndex: 70,
       display: 'flex', flexDirection: 'column',
-      animation: 'fadeUp 0.25s ease both',
     }}>
       <div onClick={onClose} style={{
         position: 'absolute', inset: 0,
         background: 'rgba(42, 33, 26, 0.42)',
+        animation: 'fadeIn 0.18s ease both',
       }} />
       <div style={{ flex: 1 }} />
       <div style={{
@@ -29,7 +29,8 @@ const Sheet = ({ open, onClose, title, children, footer }) => {
         maxHeight: '88%',
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 -10px 40px rgba(0,0,0,0.2)',
-        animation: 'slideUp 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.1) both',
+        animation: 'slideUp 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.05) both',
+        willChange: 'transform',
       }}>
         <div style={{
           padding: '10px 0 0',
@@ -68,6 +69,7 @@ const Sheet = ({ open, onClose, title, children, footer }) => {
       </div>
       <style>{`
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
     </div>
   );

@@ -4,6 +4,18 @@ import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS } from './lib/precios.js';
 import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput, ClaseAbiertaPanel } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
+// Perf · monta children DESPUÉS del primer paint del padre. Sirve para
+// paneles pesados (que hacen queries a Supabase al montarse) dentro de un
+// Sheet, así el Sheet aparece instantáneo y los paneles cargan justo después.
+const DeferMount = ({ children, ms = 60 }) => {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    const t = setTimeout(() => setReady(true), ms);
+    return () => clearTimeout(t);
+  }, []);
+  return ready ? children : null;
+};
+
 // ──────────────────────────────────────────
 // Form sheets: alumna · lead · pago + Ajustes screen
 // ──────────────────────────────────────────
@@ -240,37 +252,39 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
               </span>
             </div>
           )}
-          <div style={{ marginBottom: 14 }}>
-            <ContactPanel
-              tel={form.tel}
-              instagram={form.instagram}
-              plantillas={store.state.ajustes.plantillasWA}
-              nombre={form.nombre}
-            />
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <PreinscripcionAdminPanel
-              leadId={leadId}
-              leadNombre={form.nombre}
-              leadTel={form.tel}
-              plantillas={store.state.ajustes.plantillasWA}
-            />
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <ClaseAbiertaPanel
-              leadId={leadId}
-              leadNombre={form.nombre}
-              leadTel={form.tel}
-              fechaProntoPago={store.state.ajustes.fechaProntoPago}
-            />
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <ComprobanteTokenAdminPanel
-              leadId={leadId}
-              nombre={form.nombre}
-              tel={form.tel}
-            />
-          </div>
+          <DeferMount>
+            <div style={{ marginBottom: 14 }}>
+              <ContactPanel
+                tel={form.tel}
+                instagram={form.instagram}
+                plantillas={store.state.ajustes.plantillasWA}
+                nombre={form.nombre}
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <PreinscripcionAdminPanel
+                leadId={leadId}
+                leadNombre={form.nombre}
+                leadTel={form.tel}
+                plantillas={store.state.ajustes.plantillasWA}
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <ClaseAbiertaPanel
+                leadId={leadId}
+                leadNombre={form.nombre}
+                leadTel={form.tel}
+                fechaProntoPago={store.state.ajustes.fechaProntoPago}
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <ComprobanteTokenAdminPanel
+                leadId={leadId}
+                nombre={form.nombre}
+                tel={form.tel}
+              />
+            </div>
+          </DeferMount>
           <button className="btn btn-secondary btn-block" style={{ marginBottom: 14 }} onClick={convertir}>
             <Icon name="arrow" size={14} /> Convertir en estudiante
           </button>

@@ -2,6 +2,17 @@ import React from 'react';
 import { ContactPanel, ComprobanteTokenAdminPanel, PreinscripcionAdminPanel, ClaseAbiertaPanel } from './forms.jsx';
 import { useEventosAlumna } from './hooks/useEventosAlumna.js';
 import { useComprobantesAlumna } from './hooks/useComprobantesAlumna.js';
+
+// Perf · monta children después del primer paint del padre (evita que las
+// queries Supabase de los paneles bloqueen la apertura del overlay).
+const DeferMount = ({ children, ms = 60 }) => {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    const t = setTimeout(() => setReady(true), ms);
+    return () => clearTimeout(t);
+  }, []);
+  return ready ? children : null;
+};
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -83,6 +94,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
             {!a.tel && !a.instagram && <span>sin contacto</span>}
             {a.bonoSilla && <><span>·</span><span style={{ color: 'var(--gold)' }}>bono silla</span></>}
           </div>
+          <DeferMount>
           <div style={{ marginTop: 14 }}>
             <ContactPanel
               tel={a.tel}
@@ -114,6 +126,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               tel={a.tel}
             />
           </div>
+          </DeferMount>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
             <button className="btn btn-ghost btn-sm" onClick={onPagar}>
               <Icon name="cash" size={13} />
