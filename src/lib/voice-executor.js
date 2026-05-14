@@ -36,7 +36,7 @@ const RESPUESTAS_CONSULTA = {
     return `${cap - total} cupos libres de ${cap}.`;
   },
   pagos_pendientes: (state) => {
-    const list = state.alumnas.filter(a => a.pago === 'pendiente' || a.pago === 'parcial');
+    const list = state.alumnas.filter(a => (Number(a.total) || 0) > (Number(a.pagado) || 0));
     if (!list.length) return 'No hay pagos pendientes.';
     const total = list.reduce((s, a) => s + (a.total - a.pagado), 0);
     return `${list.length} pagos pendientes, total $${total}: ${list.slice(0, 5).map(a => a.nombre.split(' ')[0]).join(', ')}${list.length > 5 ? '…' : ''}.`;

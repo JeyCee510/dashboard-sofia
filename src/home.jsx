@@ -130,7 +130,10 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const sinMarcar = alumnasHoy.length - presentesHoy - ausentesHoy;
 
   // Pagos
-  const pagosPendientes = safeAlumnas.filter(a => a.pago === 'pendiente' || a.pago === 'parcial');
+  // Pendiente = cualquiera que debe plata (pagado < total). Incluye alumnas
+  // con pago='pronto-pago' parcial (Alejandra-style: producto pronto pago
+  // pero aún no terminó de pagar el total $484).
+  const pagosPendientes = safeAlumnas.filter(a => (Number(a.total) || 0) > (Number(a.pagado) || 0));
   const totalPendiente = pagosPendientes.reduce((s, a) => s + (a.total - a.pagado), 0);
 
   // Leads nuevos

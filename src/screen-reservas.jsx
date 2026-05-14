@@ -10,7 +10,7 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
   const [search, setSearch] = React.useState('');
 
   let alumnas = MOCK_ALUMNAS;
-  if (filter === 'pendientes') alumnas = alumnas.filter(a => a.pago === 'pendiente' || a.pago === 'parcial');
+  if (filter === 'pendientes') alumnas = alumnas.filter(a => (Number(a.total) || 0) > (Number(a.pagado) || 0));
   if (filter === 'silla') alumnas = alumnas.filter(a => a.bonoSilla);
   if (search) alumnas = alumnas.filter(a => a.nombre.toLowerCase().includes(search.toLowerCase()));
 
@@ -82,7 +82,7 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
       <div style={{ padding: '0 22px' }}>
         <div className="segmented">
           <button className={filter === 'todas' ? 'active' : ''} onClick={() => setFilter('todas')}>Todos · {MOCK_ALUMNAS.length}</button>
-          <button className={filter === 'pendientes' ? 'active' : ''} onClick={() => setFilter('pendientes')}>Pendientes · {MOCK_ALUMNAS.filter(a => a.pago === 'pendiente' || a.pago === 'parcial').length}</button>
+          <button className={filter === 'pendientes' ? 'active' : ''} onClick={() => setFilter('pendientes')}>Pendientes · {MOCK_ALUMNAS.filter(a => (Number(a.total) || 0) > (Number(a.pagado) || 0)).length}</button>
           <button className={filter === 'silla' ? 'active' : ''} onClick={() => setFilter('silla')}>Silla · {sillas}</button>
         </div>
         <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>

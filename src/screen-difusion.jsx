@@ -22,7 +22,7 @@ const DifusionScreen = ({ store, onClose }) => {
 
   const destinatarios = useMemo(() => {
     let lista = store.state.alumnas.filter(a => a.tel);
-    if (audiencia === 'pendientes') lista = lista.filter(a => a.pago === 'pendiente' || a.pago === 'parcial');
+    if (audiencia === 'pendientes') lista = lista.filter(a => (Number(a.total) || 0) > (Number(a.pagado) || 0));
     if (audiencia === 'bono') lista = lista.filter(a => a.bonoSilla);
     return lista;
   }, [store.state.alumnas, audiencia]);
@@ -95,7 +95,7 @@ const DifusionScreen = ({ store, onClose }) => {
                 Todos · {store.state.alumnas.filter(a => a.tel).length}
               </button>
               <button className={audiencia === 'pendientes' ? 'active' : ''} onClick={() => setAudiencia('pendientes')}>
-                Con pago pendiente · {store.state.alumnas.filter(a => a.tel && (a.pago === 'pendiente' || a.pago === 'parcial')).length}
+                Con pago pendiente · {store.state.alumnas.filter(a => a.tel && ((Number(a.total) || 0) > (Number(a.pagado) || 0))).length}
               </button>
               <button className={audiencia === 'bono' ? 'active' : ''} onClick={() => setAudiencia('bono')}>
                 Bono silla · {store.state.alumnas.filter(a => a.tel && a.bonoSilla).length}

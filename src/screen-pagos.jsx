@@ -29,8 +29,10 @@ const PagosScreen = ({ tweaks, store, onOpenAlumna, onNewPago, onNavigate }) => 
   const totalPendiente = totalEsperado - totalCobrado;
 
   let alumnas = MOCK_ALUMNAS;
-  if (filter === 'pendientes') alumnas = alumnas.filter(a => a.pago === 'pendiente' || a.pago === 'parcial');
-  if (filter === 'pagadas') alumnas = alumnas.filter(a => a.pago === 'pronto-pago' || a.pago === 'completo');
+  // "Pendiente" = cualquiera que debe plata (incluye pronto-pago a medio pagar).
+  // "Pagadas" = pagado >= total. "Reservas" se queda igual.
+  if (filter === 'pendientes') alumnas = alumnas.filter(a => (Number(a.total) || 0) > (Number(a.pagado) || 0));
+  if (filter === 'pagadas') alumnas = alumnas.filter(a => (Number(a.total) || 0) > 0 && (Number(a.pagado) || 0) >= (Number(a.total) || 0));
   if (filter === 'reservas') alumnas = alumnas.filter(a => a.pagado === 200);
 
   return (
