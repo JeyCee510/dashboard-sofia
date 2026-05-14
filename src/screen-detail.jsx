@@ -37,9 +37,11 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
   const sillasOtorgadas = store.state.alumnas.filter(x => x.bonoSilla).length;
   const sillasLibres = Math.max(0, sillasMax - sillasOtorgadas);
   const esCompleta = (a.tipo_inscripcion || 'completa') === 'completa';
-  const esProntoPago = a.pago === 'pronto-pago';
-  // Descuento al renunciar = $30 en todos los tipos. Pronto-pago: $0 (precio fijo).
-  const descuentoRenunciar = esProntoPago ? 0 : 30;
+  // Pronto pago se detecta por precio total === precioProntoPago (no por etiqueta).
+  const precioProntoPago = Number(store.state.ajustes.precioProntoPago) || 484;
+  const esProntoPago = esCompleta && Number(a.total) === precioProntoPago;
+  // Descuento al renunciar = $40. Pronto-pago: $0 (precio fijo, incluye silla).
+  const descuentoRenunciar = esProntoPago ? 0 : 40;
 
   const borrar = () => {
     if (!confirm(`¿Borrar a ${a.nombre}? No se puede deshacer.`)) return;

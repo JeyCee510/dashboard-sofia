@@ -195,23 +195,15 @@ export function useAlumnas() {
     }
     const m = Number(monto) || 0;
 
-    let nuevoTotal = a.total;
-    let nuevoPagado = (a.pagado || 0) + m;
+    // Estado derivado puramente de (pagado, total). Sin casos especiales
+    // por tipo de pago (la lógica antigua "pronto-pago congela total" se
+    // eliminó: el total se define al crear la alumna con el producto).
+    const nuevoTotal = a.total;
+    const nuevoPagado = (a.pagado || 0) + m;
     let nuevoEstado;
-
-    if (tipo === 'pronto-pago') {
-      // Pronto pago = precio final. Total se congela en lo que termina pagado.
-      nuevoTotal = nuevoPagado;
-      nuevoEstado = 'pronto-pago';
-    } else if (tipo === 'completo') {
-      // Pago completo regular. Total queda como esté (con/sin silla).
-      nuevoEstado = 'completo';
-    } else {
-      // Reserva, parcial, saldo
-      if (nuevoPagado >= a.total) nuevoEstado = 'completo';
-      else if (nuevoPagado === 0) nuevoEstado = 'pendiente';
-      else nuevoEstado = 'parcial';
-    }
+    if (Number(nuevoTotal) > 0 && nuevoPagado >= Number(nuevoTotal)) nuevoEstado = 'completo';
+    else if (nuevoPagado > 0) nuevoEstado = 'parcial';
+    else nuevoEstado = 'pendiente';
 
     // Asignación automática de silla:
     //   - solo aplica a tipo_inscripcion='completa'

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDesglosePagos } from './hooks/useDesglosePagos.js';
+import { estadoPago, esProntoPagoProducto } from './lib/precios.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -130,7 +131,7 @@ const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumn
         <div className="card flat" style={{ flex: 1, padding: 14 }}>
           <div style={{ fontSize: 11, color: 'var(--ink-mute)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Pronto pago</div>
           <div className="serif" style={{ fontSize: 24, color: 'var(--oliva)', marginTop: 4 }}>
-            {MOCK_ALUMNAS.filter(a => a.pago === 'pronto-pago').length}
+            {MOCK_ALUMNAS.filter(a => esProntoPagoProducto(a, tweaks.precioProntoPago)).length}
           </div>
         </div>
       </div>
@@ -202,7 +203,13 @@ const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumn
                 <div className="body">
                   <div className="t1">{a.nombre}</div>
                   <div className="t2">
-                    Pagó ${a.pagado} · {a.pago === 'pronto-pago' ? 'pronto pago' : a.pago === 'pendiente' ? 'solo reserva' : a.pago === 'parcial' ? 'pago parcial' : 'completo'}
+                    Pagó ${a.pagado} · {
+                      esProntoPagoProducto(a, tweaks.precioProntoPago)
+                        ? 'pronto pago'
+                        : estadoPago(a) === 'completo' ? 'completo'
+                        : estadoPago(a) === 'parcial' ? 'pago parcial'
+                        : 'pendiente'
+                    }
                   </div>
                 </div>
                 {restante > 0 ? (

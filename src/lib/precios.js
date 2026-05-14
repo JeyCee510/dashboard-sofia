@@ -55,3 +55,25 @@ export function alumnaAsisteDia(alumna, diaIdx) {
   const lista = alumna.encuentros_asistir || alumna.encuentrosAsistir || [1, 2, 3];
   return lista.includes(enc);
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Estado de pago derivado · NO leer alumna.pago directo. Antes
+// dependía de una etiqueta que se desincronizaba (alguien con pago=
+// 'pronto-pago' pero pagado<total se contaba como pagado). Ahora es pura
+// función de (pagado, total).
+// ─────────────────────────────────────────────────────────────────────
+export function estadoPago(a) {
+  const total = Number(a?.total) || 0;
+  const pagado = Number(a?.pagado) || 0;
+  if (total === 0) return 'pendiente';
+  if (pagado >= total) return 'completo';
+  if (pagado > 0) return 'parcial';
+  return 'pendiente';
+}
+
+// ¿El PRODUCTO comprado fue pronto pago? Se detecta por precio total ===
+// precio pronto pago. Útil para etiquetar en la UI (pill, listados).
+export function esProntoPagoProducto(a, precioProntoPago) {
+  const pp = Number(precioProntoPago) || 484;
+  return a?.tipo_inscripcion === 'completa' && Number(a?.total) === pp;
+}

@@ -94,13 +94,20 @@ function useStore() {
   // Pronto-pago es la única excepción: precio fijo, no baja al renunciar.
   const DIFERENCIAL_SILLA = 40;
 
+  // Pronto pago se detecta por precio (total === precioProntoPago en completa).
+  // No por etiqueta a.pago — esa ya no existe como fuente de verdad.
+  const esProntoPagoProducto = (a) => {
+    const pp = Number(state.ajustes.precioProntoPago) || 484;
+    return a?.tipo_inscripcion === 'completa' && Number(a?.total) === pp;
+  };
+
   // Renunciar a silla: descuenta del total.
   // Sobrepago queda como crédito (pagado puede quedar > total).
   const renunciarSilla = async (alumnaId) => {
     const a = state.alumnas.find(x => x.id === alumnaId);
     if (!a || !a.bonoSilla) return;
-    const esProntoPago = a.pago === 'pronto-pago';
-    const descuento = esProntoPago ? 0 : DIFERENCIAL_SILLA;
+    const esPP = esProntoPagoProducto(a);
+    const descuento = esPP ? 0 : DIFERENCIAL_SILLA;
     const nuevoTotal = Math.max(0, (a.total || 0) - descuento);
     await alumnasHook.updateAlumna(alumnaId, { bonoSilla: false, total: nuevoTotal });
     await supabase.from('eventos_alumna').insert({
@@ -116,8 +123,8 @@ function useStore() {
   const asignarSilla = async (alumnaId) => {
     const a = state.alumnas.find(x => x.id === alumnaId);
     if (!a || a.bonoSilla) return;
-    const esProntoPago = a.pago === 'pronto-pago';
-    const aumento = esProntoPago ? 0 : DIFERENCIAL_SILLA;
+    const esPP = esProntoPagoProducto(a);
+    const aumento = esPP ? 0 : DIFERENCIAL_SILLA;
     const nuevoTotal = (a.total || 0) + aumento;
     await alumnasHook.updateAlumna(alumnaId, { bonoSilla: true, total: nuevoTotal });
     await supabase.from('eventos_alumna').insert({
@@ -140,7 +147,12 @@ function useStore() {
     const lead = state.leads.find(l => l.id === leadId);
     if (!lead) return;
     const pagado = typeof extra.pagado === 'number' ? extra.pagado : 0;
-    const pago = extra.pago || (pagado > 0 ? 'parcial' : 'pendiente');
+    const totalEstimado = Number(extra.total) || 0;
+    const pago = extra.pago || (
+      totalEstimado > 0 && pagado >= totalEstimado ? 'completo'
+        : pagado > 0 ? 'parcial'
+        : 'pendiente'
+    );
     const nuevaId = await addAlumna({
       nombre: lead.nombre,
       tel: lead.tel,

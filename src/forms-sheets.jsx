@@ -779,22 +779,6 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       )}
 
       {tipo !== 'ninguno' && (
-        <Field label="Tipo">
-          <SelectChips
-            value={tipo}
-            onChange={setTipo}
-            options={[
-              { value: 'reserva', label: 'Reserva' },
-              { value: 'parcial', label: 'Parcial' },
-              { value: 'pronto-pago', label: 'Pronto pago' },
-              { value: 'completo', label: 'Completo' },
-              { value: 'saldo', label: 'Saldo' },
-            ]}
-          />
-        </Field>
-      )}
-
-      {tipo !== 'ninguno' && (
         <Field label={esLead ? '③ Forma de pago' : 'Forma de pago'}>
           <SelectChips
             value={forma}

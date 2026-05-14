@@ -1,4 +1,5 @@
 import React from 'react';
+import { estadoPago, esProntoPagoProducto } from './lib/precios.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -101,15 +102,11 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
           )}
           {alumnas.map(a => {
             const restante = Math.max(0, (a.total || 0) - (a.pagado || 0));
-            // Paquete = lo que compró Sofía. Pronto pago se detecta por:
-            //   pago === 'pronto-pago' (ya pagó completo a tarifa pronto pago)
-            //   o total === precioProntoPago en una completa (aún pagando)
             const precioPP = tweaks.precioProntoPago || 484;
-            const esProntoPagoProducto =
-              a.pago === 'pronto-pago' ||
-              (a.tipo_inscripcion === 'completa' && Number(a.total) === Number(precioPP));
+            // Paquete = lo que compró Sofía. Derivado de tipo_inscripcion + total.
+            const esPP = esProntoPagoProducto(a, precioPP);
             const paqueteLabel =
-              esProntoPagoProducto ? 'Pronto pago' :
+              esPP ? 'Pronto pago' :
               a.tipo_inscripcion === 'completa' ? 'Completo' :
               a.tipo_inscripcion === 'dos_encuentros' ? '2 encuentros' :
               a.tipo_inscripcion === 'un_encuentro' ? '1 encuentro' : '';
@@ -136,7 +133,7 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
                     ) : null}
                   </div>
                 </div>
-                <PagoPill pago={a.pago} />
+                <PagoPill pago={estadoPago(a)} />
               </div>
             );
           })}
@@ -149,11 +146,10 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
 
 const PagoPill = ({ pago }) => {
   const cfg = {
-    'pronto-pago': { label: 'Pagado', cls: 'oliva' },
     'completo': { label: 'Pagado', cls: 'oliva' },
-    'pendiente': { label: 'Pendiente', cls: 'alert' },
-    'parcial': { label: 'Parcial', cls: 'gold' },
-  }[pago];
+    'parcial':  { label: 'Parcial', cls: 'gold' },
+    'pendiente':{ label: 'Pendiente', cls: 'alert' },
+  }[pago] || { label: 'Pendiente', cls: 'alert' };
   return <span className={`pill ${cfg.cls}`}>{cfg.label}</span>;
 };
 
