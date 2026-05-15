@@ -1,14 +1,38 @@
 import React from 'react';
 import { useClasesAbiertas, useInscripcionesClase } from './hooks/useClasesAbiertas.js';
+import { buildWaUrl } from './lib/wa.js';
 
-const { useState } = React;
+const { useState, useMemo } = React;
+
+// Fuzzy match: dado un nombre de inscrito, busca su tel en leads + alumnas.
+// Heurística simple: comparar tokens del nombre (al menos 2 palabras coinciden,
+// o el nombre completo es idéntico ignorando mayúsculas).
+function buscarTelPorNombre(nombre, leads = [], alumnas = []) {
+  const norm = (s) => (s || '').toLowerCase().trim();
+  const tokens = (s) => norm(s).split(/\s+/).filter(Boolean);
+  const target = tokens(nombre);
+  if (target.length === 0) return { tel: null, persona: null };
+  const candidatos = [
+    ...alumnas.map(a => ({ ...a, kind: 'alumna' })),
+    ...leads.map(l => ({ ...l, kind: 'lead' })),
+  ];
+  for (const c of candidatos) {
+    if (!c.tel) continue;
+    const cTokens = tokens(c.nombre);
+    if (cTokens.length === 0) continue;
+    if (norm(c.nombre) === norm(nombre)) return { tel: c.tel, persona: c };
+    const overlap = target.filter(t => cTokens.some(q => q.startsWith(t) || t.startsWith(q))).length;
+    if (overlap >= 2) return { tel: c.tel, persona: c };
+  }
+  return { tel: null, persona: null };
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // ClaseInscripcionesScreen — admin de inscripciones a una clase abierta.
 // Muestra cupos disponibles, lista de inscritos, botón copiar link.
 // ─────────────────────────────────────────────────────────────────────
 
-const ClaseInscripcionesScreen = ({ onClose }) => {
+const ClaseInscripcionesScreen = ({ onClose, store }) => {
   // Icon se lee acá adentro (no al top-level del módulo) porque main.jsx
   // ahora carga los módulos en paralelo con Promise.all, así que cuando
   // este archivo se evalúa, icons.jsx puede no haber registrado window.Icon
@@ -18,6 +42,14 @@ const ClaseInscripcionesScreen = ({ onClose }) => {
   const { items, loading: loadingInsc, eliminar } = useInscripcionesClase(activa?.id);
   const [copiado, setCopiado] = useState(false);
   const [busy, setBusy] = useState(null);
+
+  // Plantilla recordatorio: la buscamos en ajustes.plantillasWA por id.
+  // Cuerpo: el texto base. Sustituimos "querida(o)" por "querida(o) <nombre>"
+  // para personalizar por inscrito.
+  const plantillas = store?.state?.ajustes?.plantillasWA || [];
+  const plantillaRecordatorio = plantillas.find(p => p.id === 'recordatorio_clase');
+  const leadsList  = store?.state?.leads   || [];
+  const alumnasList = store?.state?.alumnas || [];
 
   const link = activa ? `${window.location.origin}/clase/${activa.slug}` : '';
   const cuposDisponibles = activa ? Math.max(0, activa.cupos_max - items.length) : 0;
@@ -138,7 +170,15 @@ const ClaseInscripcionesScreen = ({ onClose }) => {
                 </div>
               ) : (
                 <div className="card flat" style={{ padding: '4px 16px' }}>
-                  {items.map(item => (
+                  {items.map(item => {
+                    // Match por nombre fuzzy a leads/alumnas → tel para WA.
+                    const match = buscarTelPorNombre(item.nombre, leadsList, alumnasList);
+                    // Mensaje recordatorio personalizado: insertamos primer nombre.
+                    const firstName = (item.nombre || '').split(' ')[0];
+                    const cuerpoBase = plantillaRecordatorio?.cuerpo || '';
+                    const mensaje = cuerpoBase.replace('querida(o)', `querida(o) ${firstName}`);
+                    const waUrl = match.tel ? buildWaUrl(match.tel, mensaje) : null;
+                    return (
                     <div key={item.id} className="row" style={{ alignItems: 'flex-start' }}>
                       <div className="body">
                         <div className="t1">{item.nombre}</div>
@@ -146,6 +186,35 @@ const ClaseInscripcionesScreen = ({ onClose }) => {
                         <div style={{ fontSize: 10, color: 'var(--ink-mute)', marginTop: 2 }}>
                           {new Date(item.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </div>
+                        {plantillaRecordatorio && (
+                          waUrl ? (
+                            <a href={waUrl} target="_blank" rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-block', marginTop: 6, padding: '4px 10px',
+                                borderRadius: 999, background: '#25D366', color: '#fff',
+                                fontSize: 11, fontWeight: 500, textDecoration: 'none',
+                              }}
+                            >Enviar recordatorio</a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try { await navigator.clipboard.writeText(mensaje); }
+                                catch {
+                                  const ta = document.createElement('textarea'); ta.value = mensaje;
+                                  document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                                }
+                                alert('Mensaje copiado. Pegalo en WhatsApp / IG manualmente.');
+                              }}
+                              style={{
+                                marginTop: 6, padding: '4px 10px', borderRadius: 999,
+                                background: 'var(--surface)', border: '1px solid var(--line-soft)',
+                                fontFamily: 'inherit', fontSize: 11, color: 'var(--ink-mute)',
+                                cursor: 'pointer',
+                              }}
+                            >Sin tel · Copiar mensaje</button>
+                          )
+                        )}
                       </div>
                       <button
                         onClick={() => onEliminar(item)}
@@ -157,7 +226,8 @@ const ClaseInscripcionesScreen = ({ onClose }) => {
                         }}
                       >×</button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

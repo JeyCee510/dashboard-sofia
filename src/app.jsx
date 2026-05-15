@@ -378,7 +378,7 @@ const App = () => {
         />
       )}
       {overlay === 'clase-inscripciones' && (
-        <ClaseInscripcionesScreen onClose={() => setOverlay(null)} />
+        <ClaseInscripcionesScreen onClose={() => setOverlay(null)} store={store} />
       )}
       {overlay && overlay.type === 'alumna' && (
         <FichaAlumna

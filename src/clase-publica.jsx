@@ -116,6 +116,7 @@ const ClasePublica = ({ slug }) => {
   }
 
   const lleno = clase.cupos_disponibles <= 0;
+  const cerrado = !!clase.cerrado;
 
   return (
     <div style={containerStyle}>
@@ -144,10 +145,17 @@ const ClasePublica = ({ slug }) => {
         {/* Cupos */}
         <div style={{
           padding: '14px 16px', borderRadius: 12,
-          background: lleno ? '#F0D5CE' : 'var(--terracota-tint)',
+          background: (lleno || cerrado) ? '#F0D5CE' : 'var(--terracota-tint)',
           marginBottom: 18, textAlign: 'center',
         }}>
-          {lleno ? (
+          {cerrado ? (
+            <div style={{ color: 'var(--rojo)', fontWeight: 600, fontSize: 14 }}>
+              Inscripciones cerradas
+              <div style={{ fontSize: 11, color: 'var(--ink-soft)', fontWeight: 400, marginTop: 4 }}>
+                Si quieres venir, escríbele a Sofía directo por WhatsApp.
+              </div>
+            </div>
+          ) : lleno ? (
             <div style={{ color: 'var(--rojo)', fontWeight: 600, fontSize: 14 }}>
               Sin cupos disponibles
             </div>
@@ -164,7 +172,7 @@ const ClasePublica = ({ slug }) => {
         </div>
 
         {/* Form */}
-        {!lleno && (
+        {!lleno && !cerrado && (
           <>
             {editandoNombre ? (
               <div style={{ marginBottom: 14 }}>
