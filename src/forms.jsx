@@ -936,6 +936,11 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
   const [inscrito, setInscrito] = React.useState(false);
   const [linkEnviadoAt, setLinkEnviadoAt] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  // Estado de la acción "inscribir manualmente". DEBE estar antes de los
+  // early returns para no violar las Rules of Hooks (sin esto la pantalla
+  // se va a negro al abrir cualquier lead).
+  const [manualBusy, setManualBusy] = React.useState(false);
+  const [manualError, setManualError] = React.useState('');
 
   React.useEffect(() => {
     if (!personaId) { setLoading(false); return; }
@@ -999,8 +1004,6 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
 
   // Inscripción manual (bypass del cierre público). Sofía la usa cuando ya
   // pasó la hora de cierre o cuando quiere inscribir sin pasar por el form.
-  const [manualBusy, setManualBusy] = React.useState(false);
-  const [manualError, setManualError] = React.useState('');
   const inscribirManual = async () => {
     if (!leadNombre) return;
     if (!confirm(`¿Inscribir manualmente a ${leadNombre} a la clase del ${fechaFmt}?`)) return;
