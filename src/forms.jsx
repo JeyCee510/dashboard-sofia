@@ -997,6 +997,26 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
     setLinkEnviadoAt(ahora);
   };
 
+  // Inscripción manual (bypass del cierre público). Sofía la usa cuando ya
+  // pasó la hora de cierre o cuando quiere inscribir sin pasar por el form.
+  const [manualBusy, setManualBusy] = React.useState(false);
+  const [manualError, setManualError] = React.useState('');
+  const inscribirManual = async () => {
+    if (!leadNombre) return;
+    if (!confirm(`¿Inscribir manualmente a ${leadNombre} a la clase del ${fechaFmt}?`)) return;
+    setManualBusy(true);
+    setManualError('');
+    const { data, error } = await supabase.rpc('inscribir_lead_a_clase_manual', {
+      p_slug: activa.slug,
+      p_nombre: leadNombre,
+      p_telefono: leadTel || '',
+    });
+    setManualBusy(false);
+    if (error) { setManualError(error.message); return; }
+    if (data?.error) { setManualError(data.error); return; }
+    setInscrito(true);
+  };
+
   // Inscrito → verde
   if (inscrito) {
     return (
@@ -1021,15 +1041,31 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
         <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 4, lineHeight: 1.4 }}>
           {new Date(linkEnviadoAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })} · clase del {fechaFmt}
         </div>
-        {waUrl && (
-          <a href={waUrl} target="_blank" rel="noopener noreferrer"
+        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+          {waUrl && (
+            <a href={waUrl} target="_blank" rel="noopener noreferrer"
+              style={{
+                display: 'inline-block', padding: '6px 12px', borderRadius: 999,
+                background: 'var(--surface)', color: 'var(--ink)', textDecoration: 'none',
+                fontFamily: 'inherit', fontSize: 11, fontWeight: 500,
+                border: '1px solid var(--line-soft)',
+              }}
+            >Reenviar link</a>
+          )}
+          <button
+            type="button"
+            onClick={inscribirManual}
+            disabled={manualBusy}
             style={{
-              display: 'inline-block', marginTop: 8, padding: '6px 12px', borderRadius: 999,
-              background: 'var(--surface)', color: 'var(--ink)', textDecoration: 'none',
-              fontFamily: 'inherit', fontSize: 11, fontWeight: 500,
-              border: '1px solid var(--line-soft)',
+              padding: '6px 12px', borderRadius: 999,
+              background: 'transparent', color: 'var(--terracota)',
+              border: '1px dashed var(--terracota-soft)',
+              fontFamily: 'inherit', fontSize: 11, fontWeight: 500, cursor: 'pointer',
             }}
-          >Reenviar link</a>
+          >{manualBusy ? 'Inscribiendo…' : '+ Inscribir ya'}</button>
+        </div>
+        {manualError && (
+          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{manualError}</div>
         )}
       </div>
     );
@@ -1070,6 +1106,21 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
           >Marcar como enviado</button>
         )}
       </div>
+      {/* Botón secundario: inscripción manual (bypass cierre) */}
+      <button
+        type="button"
+        onClick={inscribirManual}
+        disabled={manualBusy}
+        style={{
+          marginTop: 8, width: '100%', padding: '7px 10px', borderRadius: 999,
+          background: 'transparent', color: 'var(--terracota)',
+          border: '1px dashed var(--terracota-soft)',
+          fontFamily: 'inherit', fontSize: 11, fontWeight: 500, cursor: 'pointer',
+        }}
+      >{manualBusy ? 'Inscribiendo…' : '+ Inscribir manualmente a la clase'}</button>
+      {manualError && (
+        <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{manualError}</div>
+      )}
     </div>
   );
 };
