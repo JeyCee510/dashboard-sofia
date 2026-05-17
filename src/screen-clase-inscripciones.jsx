@@ -1,31 +1,38 @@
 import React from 'react';
 import { useClasesAbiertas, useInscripcionesClase } from './hooks/useClasesAbiertas.js';
+import { usePreinscripciones } from './hooks/usePreinscripciones.js';
 import { buildWaUrl } from './lib/wa.js';
 import { supabase } from './lib/supabase.js';
 
 const { useState, useMemo, useEffect } = React;
 
-// Fuzzy match: dado un nombre de inscrito, busca su tel en leads + alumnas.
-// Heurística simple: comparar tokens del nombre (al menos 2 palabras coinciden,
-// o el nombre completo es idéntico ignorando mayúsculas).
-function buscarTelPorNombre(nombre, leads = [], alumnas = []) {
+// Fuzzy match: nombre → persona (lead o alumna). NO requiere tel — útil
+// para detectar leads recién creados desde el flow follow-up que aún no
+// tienen teléfono. Si necesitas el tel para WA, lee `persona.tel` (puede
+// ser null y el caller cae al fallback "copiar mensaje").
+function buscarPersonaPorNombre(nombre, leads = [], alumnas = []) {
   const norm = (s) => (s || '').toLowerCase().trim();
   const tokens = (s) => norm(s).split(/\s+/).filter(Boolean);
   const target = tokens(nombre);
-  if (target.length === 0) return { tel: null, persona: null };
+  if (target.length === 0) return null;
   const candidatos = [
     ...alumnas.map(a => ({ ...a, kind: 'alumna' })),
     ...leads.map(l => ({ ...l, kind: 'lead' })),
   ];
   for (const c of candidatos) {
-    if (!c.tel) continue;
     const cTokens = tokens(c.nombre);
     if (cTokens.length === 0) continue;
-    if (norm(c.nombre) === norm(nombre)) return { tel: c.tel, persona: c };
+    if (norm(c.nombre) === norm(nombre)) return c;
     const overlap = target.filter(t => cTokens.some(q => q.startsWith(t) || t.startsWith(q))).length;
-    if (overlap >= 2) return { tel: c.tel, persona: c };
+    if (overlap >= 2) return c;
   }
-  return { tel: null, persona: null };
+  return null;
+}
+
+// Helper compat para los call sites que esperan {tel, persona}.
+function buscarTelPorNombre(nombre, leads, alumnas) {
+  const persona = buscarPersonaPorNombre(nombre, leads, alumnas);
+  return { tel: persona?.tel || null, persona };
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -51,6 +58,25 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
   const fechaProntoPago = store?.state?.ajustes?.fechaProntoPago || '';
   const leadsList   = store?.state?.leads   || [];
   const alumnasList = store?.state?.alumnas || [];
+
+  // Inscripciones a la formación (preinscripciones). Realtime: cuando
+  // alguien llena el form que le mandamos en el follow-up, aparece acá.
+  const { items: preinsc } = usePreinscripciones();
+  // Map lead_id → preinscripcion (puede ser null si aún no respondió)
+  const preinscByLead = useMemo(() => {
+    const m = new Map();
+    (preinsc || []).forEach(p => { if (p.lead_id) m.set(p.lead_id, p); });
+    return m;
+  }, [preinsc]);
+  // Helper: para un inscrito a la clase, ¿hay preinscripcion completada de su lead?
+  const inscritoRespondioForm = (inscrito) => {
+    const persona = buscarPersonaPorNombre(inscrito.nombre, leadsList, alumnasList);
+    if (!persona || persona.kind !== 'lead') return null;
+    const pre = preinscByLead.get(persona.id);
+    if (!pre) return null;
+    const completada = pre.estado === 'completada' || !!pre.completed_at;
+    return completada ? pre : null;
+  };
 
   // ¿Ya pasó la clase? Si sí, mostramos el flow Follow-up en vez de Recordatorio.
   const hoyStr = new Date().toISOString().slice(0, 10);
@@ -180,8 +206,8 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
 
       <div className="app-scroll" style={{ paddingTop: 0 }}>
         <div className="page-header">
-          <div className="eyebrow">{yaPaso ? 'Post-evento' : 'Evento'}</div>
-          <h1>{yaPaso ? 'Follow up clase' : 'Clase abierta'}</h1>
+          <div className="eyebrow">{yaPaso ? 'Post-evento · clase de prueba' : 'Evento'}</div>
+          <h1>{yaPaso ? 'Inscripciones recibidas' : 'Clase abierta'}</h1>
         </div>
 
         {(loadingClase || !activa) ? (
@@ -269,48 +295,50 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
               ) : (
                 <div className="card flat" style={{ padding: '4px 16px' }}>
                   {items.map(item => {
-                    // Match por nombre fuzzy a leads/alumnas → tel para WA.
-                    const match = buscarTelPorNombre(item.nombre, leadsList, alumnasList);
-                    const esAlumnaInscrita = match.persona?.kind === 'alumna';
+                    const persona = buscarPersonaPorNombre(item.nombre, leadsList, alumnasList);
+                    const esAlumnaInscrita = persona?.kind === 'alumna';
+                    const tel = persona?.tel || null;
                     const firstName = (item.nombre || '').split(' ')[0];
-                    // Pre-armar mensaje del RECORDATORIO (pre-clase). El follow-up
-                    // se arma async en enviarFollowup() porque genera token.
+                    // Recordatorio (pre-clase) — mismo flow simple sync
                     const cuerpoRec = plantillaRecordatorio?.cuerpo || '';
                     const mensajeRec = cuerpoRec.replace('querida(o)', `querida(o) ${firstName}`);
-                    const waUrlRec = match.tel ? buildWaUrl(match.tel, mensajeRec) : null;
-                    const followupEnviado = yaRecibioFollowup(item);
+                    const waUrlRec = tel ? buildWaUrl(tel, mensajeRec) : null;
+                    // Follow-up tracking (lead-only). Si el lead no existe aún
+                    // = false; si existe y ya marcamos enviado = true.
+                    const followupEnviado = persona?.kind === 'lead' && !!persona.followupClaseEnviadoAt;
+                    const seInscribio = inscritoRespondioForm(item);
                     const busyFollowup = followupBusy === item.id;
                     const errFollowup = followupError[item.id];
                     return (
-                    <div key={item.id} className="row" style={{
-                      alignItems: 'flex-start',
-                      background: esAlumnaInscrita ? 'rgba(116, 142, 78, 0.08)' : undefined,
-                      borderRadius: esAlumnaInscrita ? 10 : undefined,
-                      padding: esAlumnaInscrita ? '8px 10px' : undefined,
-                      margin: esAlumnaInscrita ? '4px 0' : undefined,
-                    }}>
+                    <div key={item.id} className="row" style={{ alignItems: 'flex-start' }}>
                       <div className="body">
                         <div className="t1" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {item.nombre}
-                          {esAlumnaInscrita && (
+                          {seInscribio && (
                             <span style={{
                               fontSize: 9, padding: '2px 8px', borderRadius: 999,
                               background: 'var(--oliva)', color: '#fff',
-                              letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 600,
-                            }}>✓ Ya inscrita formación</span>
+                              letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 700,
+                            }}>✓ Se inscribió a formación</span>
+                          )}
+                          {!seInscribio && esAlumnaInscrita && (
+                            <span style={{
+                              fontSize: 9, padding: '2px 8px', borderRadius: 999,
+                              background: 'var(--bg-warm)', color: 'var(--ink-mute)',
+                              letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 500,
+                            }}>ya inscrita</span>
                           )}
                         </div>
                         <div className="t2">{item.email || '(sin email)'}</div>
                         <div style={{ fontSize: 10, color: 'var(--ink-mute)', marginTop: 2 }}>
                           {new Date(item.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </div>
-                        {/* Si ya es alumna no mostramos follow-up comercial. Sofía puede
-                            saludar igual desde su ficha si quiere. */}
+                        {/* Si ya es alumna no mostramos follow-up comercial. */}
                         {esAlumnaInscrita ? (
                           <div style={{
-                            marginTop: 6, fontSize: 10, color: 'var(--oliva)', fontStyle: 'italic',
+                            marginTop: 6, fontSize: 10, color: 'var(--ink-mute)', fontStyle: 'italic',
                           }}>
-                            No requiere follow-up comercial · ya pagó su cupo
+                            No requiere follow-up · ya pagó su cupo
                           </div>
                         ) : (
                         /* Follow-up (post-clase) vs Recordatorio (pre-clase) */
@@ -321,14 +349,16 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
                             disabled={busyFollowup}
                             style={{
                               marginTop: 6, padding: '5px 12px', borderRadius: 999,
-                              background: '#25D366',
-                              color: '#fff',
-                              border: 'none', fontFamily: 'inherit', fontSize: 11,
+                              // Si ya se mandó: gris suave con check. Sino: verde.
+                              background: followupEnviado ? 'var(--bg-warm)' : '#25D366',
+                              color: followupEnviado ? 'var(--ink-mute)' : '#fff',
+                              border: followupEnviado ? '1px solid var(--line-soft)' : 'none',
+                              fontFamily: 'inherit', fontSize: 11,
                               fontWeight: 500, cursor: busyFollowup ? 'wait' : 'pointer',
                               opacity: busyFollowup ? 0.6 : 1,
                             }}
                           >
-                            {busyFollowup ? 'Generando…' : followupEnviado ? '✓ Reenviar follow-up' : 'Enviar follow-up'}
+                            {busyFollowup ? 'Generando…' : followupEnviado ? '✓ Follow-up enviado · Reenviar' : 'Enviar follow-up'}
                           </button>
                         ) : (!yaPaso && plantillaRecordatorio) ? (
                           waUrlRec ? (
