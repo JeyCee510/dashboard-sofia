@@ -271,6 +271,7 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
                   {items.map(item => {
                     // Match por nombre fuzzy a leads/alumnas → tel para WA.
                     const match = buscarTelPorNombre(item.nombre, leadsList, alumnasList);
+                    const esAlumnaInscrita = match.persona?.kind === 'alumna';
                     const firstName = (item.nombre || '').split(' ')[0];
                     // Pre-armar mensaje del RECORDATORIO (pre-clase). El follow-up
                     // se arma async en enviarFollowup() porque genera token.
@@ -281,15 +282,39 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
                     const busyFollowup = followupBusy === item.id;
                     const errFollowup = followupError[item.id];
                     return (
-                    <div key={item.id} className="row" style={{ alignItems: 'flex-start' }}>
+                    <div key={item.id} className="row" style={{
+                      alignItems: 'flex-start',
+                      background: esAlumnaInscrita ? 'rgba(116, 142, 78, 0.08)' : undefined,
+                      borderRadius: esAlumnaInscrita ? 10 : undefined,
+                      padding: esAlumnaInscrita ? '8px 10px' : undefined,
+                      margin: esAlumnaInscrita ? '4px 0' : undefined,
+                    }}>
                       <div className="body">
-                        <div className="t1">{item.nombre}</div>
+                        <div className="t1" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {item.nombre}
+                          {esAlumnaInscrita && (
+                            <span style={{
+                              fontSize: 9, padding: '2px 8px', borderRadius: 999,
+                              background: 'var(--oliva)', color: '#fff',
+                              letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 600,
+                            }}>✓ Ya inscrita formación</span>
+                          )}
+                        </div>
                         <div className="t2">{item.email || '(sin email)'}</div>
                         <div style={{ fontSize: 10, color: 'var(--ink-mute)', marginTop: 2 }}>
                           {new Date(item.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </div>
-                        {/* Follow-up (post-clase) vs Recordatorio (pre-clase) */}
-                        {yaPaso && plantillaFollowup ? (
+                        {/* Si ya es alumna no mostramos follow-up comercial. Sofía puede
+                            saludar igual desde su ficha si quiere. */}
+                        {esAlumnaInscrita ? (
+                          <div style={{
+                            marginTop: 6, fontSize: 10, color: 'var(--oliva)', fontStyle: 'italic',
+                          }}>
+                            No requiere follow-up comercial · ya pagó su cupo
+                          </div>
+                        ) : (
+                        /* Follow-up (post-clase) vs Recordatorio (pre-clase) */
+                        yaPaso && plantillaFollowup ? (
                           <button
                             type="button"
                             onClick={() => enviarFollowup(item)}
@@ -333,8 +358,9 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
                               }}
                             >Sin tel · Copiar mensaje</button>
                           )
-                        ) : null}
-                        {errFollowup && (
+                        ) : null
+                        )}
+                        {errFollowup && !esAlumnaInscrita && (
                           <div style={{ marginTop: 4, fontSize: 10, color: 'var(--rojo)' }}>{errFollowup}</div>
                         )}
                       </div>
