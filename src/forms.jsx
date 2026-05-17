@@ -959,6 +959,7 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
   const [activa, setActiva] = React.useState(null);
   const [inscrito, setInscrito] = React.useState(false);
   const [linkEnviadoAt, setLinkEnviadoAt] = React.useState(null);
+  const [followupEnviadoAt, setFollowupEnviadoAt] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   // Estado de la acción "inscribir manualmente". DEBE estar antes de los
   // early returns para no violar las Rules of Hooks (sin esto la pantalla
@@ -974,9 +975,13 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
       const { data: clases } = await supabase
         .from('clases_abiertas').select('*').eq('activa', true).order('fecha', { ascending: true }).limit(1);
       const clase = clases?.[0] || null;
-      // 2) Estado de envío del link a la persona (lead o alumna)
+      // 2) Estado de envío del link + follow-up a la persona.
+      //    followup_clase_enviado_at solo existe en leads (no en alumnas).
+      const cols = tabla === 'leads'
+        ? 'clase_link_enviada_at, followup_clase_enviado_at'
+        : 'clase_link_enviada_at';
       const { data: persona } = await supabase
-        .from(tabla).select('clase_link_enviada_at').eq('id', personaId).single();
+        .from(tabla).select(cols).eq('id', personaId).single();
       // 3) Match por nombre fuzzy: si se inscribió, lo encontramos
       let yaInscrito = false;
       if (clase && leadNombre) {
@@ -999,6 +1004,7 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
       setActiva(clase);
       setInscrito(yaInscrito);
       setLinkEnviadoAt(persona?.clase_link_enviada_at || null);
+      setFollowupEnviadoAt(persona?.followup_clase_enviado_at || null);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -1054,6 +1060,15 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
         <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 4, lineHeight: 1.4 }}>
           Se inscribió a la clase del {fechaFmt}.
         </div>
+        {followupEnviadoAt && (
+          <div style={{
+            marginTop: 8, padding: '6px 10px', borderRadius: 8,
+            background: 'rgba(77,82,48,0.15)', fontSize: 11, color: '#4D5230',
+            fontWeight: 500,
+          }}>
+            ✓ Follow-up enviado · {new Date(followupEnviadoAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}
+          </div>
+        )}
       </div>
     );
   }
@@ -1088,11 +1103,20 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
               background: 'transparent', color: 'var(--terracota)',
               border: '1px dashed var(--terracota-soft)',
               fontFamily: 'inherit', fontSize: 11, fontWeight: 500, cursor: 'pointer',
+              flexShrink: 0,
             }}
           >{manualBusy ? 'Inscribiendo…' : '+ Inscribir ya'}</button>
         </div>
         {manualError && (
           <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{manualError}</div>
+        )}
+        {followupEnviadoAt && (
+          <div style={{
+            marginTop: 8, padding: '6px 10px', borderRadius: 8,
+            background: '#DDE0CC', fontSize: 11, color: '#4D5230', fontWeight: 500,
+          }}>
+            ✓ Follow-up enviado · {new Date(followupEnviadoAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}
+          </div>
         )}
       </div>
     );
@@ -1147,6 +1171,14 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
       >{manualBusy ? 'Inscribiendo…' : '+ Inscribir manualmente a la clase'}</button>
       {manualError && (
         <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{manualError}</div>
+      )}
+      {followupEnviadoAt && (
+        <div style={{
+          marginTop: 8, padding: '6px 10px', borderRadius: 8,
+          background: '#DDE0CC', fontSize: 11, color: '#4D5230', fontWeight: 500,
+        }}>
+          ✓ Follow-up enviado · {new Date(followupEnviadoAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}
+        </div>
       )}
     </div>
   );
