@@ -86,6 +86,9 @@ function formatTodayLong() {
 }
 
 const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensajes, comprobantesPendientes = 0, comprobantePendienteLatest = null }) => {
+  // Icon viene de window (registrado por icons.jsx). Leerlo en render-time
+  // para evitar race condition con el Promise.all paralelo de main.jsx.
+  const Icon = window.Icon;
   // alumnas/leads/mensajes vienen del store via props (reactivos).
   // MOCK_ALUMNAS/MOCK_LEADS/MENSAJES_RECIENTES siguen sincronizados como fallback.
   const safeAlumnas = alumnas || MOCK_ALUMNAS || [];
@@ -336,21 +339,59 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
           // ¿Ya pasó la clase? Comparamos solo fecha (no hora).
           const hoyStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
           const yaPaso = claseActiva.fecha && claseActiva.fecha < hoyStr;
+          // Cuando ya pasó, destacamos visualmente la fila (es la acción
+          // prioritaria del día). Fondo terracota saturado + borde + badge.
+          if (yaPaso) {
+            return (
+              <button
+                onClick={() => onNavigate('clase-inscripciones')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: 16, textAlign: 'left',
+                  border: '2px solid var(--terracota)',
+                  background: 'var(--terracota-tint)',
+                  borderRadius: 14, cursor: 'pointer',
+                  fontFamily: 'inherit', position: 'relative',
+                  boxShadow: '0 2px 12px rgba(181, 86, 58, 0.18)',
+                }}
+              >
+                <div style={{
+                  width: 44, height: 44, borderRadius: 14,
+                  background: 'var(--terracota)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Icon name="sparkle" size={22} strokeWidth={1.8} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase',
+                    color: '#8A3D26', fontWeight: 700, marginBottom: 3,
+                  }}>
+                    Prioridad de hoy
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
+                    Follow up clase de prueba
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>
+                    {claseInscritos} personas · mandar agradecimiento + invitación
+                  </div>
+                </div>
+                <Icon name="chevronR" size={20} stroke="var(--terracota)" />
+              </button>
+            );
+          }
           return (
           <ActionRow
             icon="sparkle"
             accent="terracota"
-            title={yaPaso
-              ? `Follow up clase de prueba`
-              : `Clase de prueba · ${
-                  claseActiva.fecha
-                    ? new Date(claseActiva.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' })
-                    : ''
-                }`
-            }
-            subtitle={yaPaso
-              ? `${claseInscritos} personas · mandar agradecimiento + invitación`
-              : claseInscritos === 0
+            title={`Clase de prueba · ${
+              claseActiva.fecha
+                ? new Date(claseActiva.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' })
+                : ''
+            }`}
+            subtitle={
+              claseInscritos === 0
                 ? `${claseActiva.cupos_max} cupos disponibles · sin inscritos aún`
                 : claseCupos === 0
                 ? `Lleno · ${claseInscritos} inscritos`

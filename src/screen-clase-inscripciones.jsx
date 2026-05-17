@@ -296,14 +296,14 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
                             disabled={busyFollowup}
                             style={{
                               marginTop: 6, padding: '5px 12px', borderRadius: 999,
-                              background: followupEnviado ? 'var(--bg-warm)' : '#25D366',
-                              color: followupEnviado ? 'var(--ink-mute)' : '#fff',
+                              background: '#25D366',
+                              color: '#fff',
                               border: 'none', fontFamily: 'inherit', fontSize: 11,
                               fontWeight: 500, cursor: busyFollowup ? 'wait' : 'pointer',
                               opacity: busyFollowup ? 0.6 : 1,
                             }}
                           >
-                            {busyFollowup ? 'Generando…' : followupEnviado ? '✓ Follow-up enviado · Reenviar' : 'Enviar follow-up'}
+                            {busyFollowup ? 'Generando…' : followupEnviado ? '✓ Reenviar follow-up' : 'Enviar follow-up'}
                           </button>
                         ) : (!yaPaso && plantillaRecordatorio) ? (
                           waUrlRec ? (
