@@ -119,6 +119,12 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
   };
 
   const enviarFollowup = async (inscrito) => {
+    // CRÍTICO iOS Safari/PWA: window.open DEBE invocarse sincrónicamente
+    // dentro del click handler. Después de un `await` se pierde el contexto
+    // de user gesture y Safari/PWA bloquea la apertura silenciosamente.
+    // Solución: abrir una ventana vacía YA y luego redirigirla cuando
+    // tengamos el URL listo.
+    const waWin = window.open('', '_blank');
     setFollowupBusy(inscrito.id);
     setFollowupError(e => ({ ...e, [inscrito.id]: '' }));
     try {
@@ -127,11 +133,18 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
       await supabase.from('leads').update({
         followup_clase_enviado_at: new Date().toISOString(),
       }).eq('id', leadId);
-      // Abrir WA si hay tel; sino, copiar mensaje
       if (leadTel) {
         const waUrl = buildWaUrl(leadTel, mensaje);
-        window.open(waUrl, '_blank', 'noopener');
+        if (waWin && !waWin.closed) {
+          waWin.location.href = waUrl;
+        } else {
+          // Fallback: la ventana se cerró o fue bloqueada → asignar URL al
+          // top-level. Si no se redirige, copiamos el mensaje al clipboard.
+          window.location.href = waUrl;
+        }
       } else {
+        // Sin tel: cerrar la ventana vacía y copiar mensaje
+        if (waWin && !waWin.closed) waWin.close();
         try { await navigator.clipboard.writeText(mensaje); }
         catch {
           const ta = document.createElement('textarea'); ta.value = mensaje;
@@ -142,6 +155,7 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
     } catch (e) {
       console.error('[followup]', e);
       setFollowupError(prev => ({ ...prev, [inscrito.id]: e.message || 'Error' }));
+      if (waWin && !waWin.closed) waWin.close();
     } finally {
       setFollowupBusy(null);
     }
