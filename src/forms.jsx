@@ -570,19 +570,19 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
   };
 
   // Plantilla automática para enviar el link por WhatsApp
-  const mensajeWa = `Hola ${(leadNombre || '').split(' ')[0]}! Para conocernos un poco antes de empezar la formación, te paso una preinscripción rápida (5 min):\n\n${link}\n\nCualquier duda, por aquí 🌿`;
+  const mensajeWa = `Hola ${(leadNombre || '').split(' ')[0]}! Para empezar tu inscripción a la formación, te paso este link (5 min):\n\n${link}\n\nCualquier duda, por aquí 🌿`;
   const waUrl = leadTel && link ? buildWaUrl(leadTel, mensajeWa) : null;
 
   if (loading) {
-    return <div style={{ fontSize: 12, color: 'var(--ink-mute)', padding: 8 }}>Cargando preinscripción…</div>;
+    return <div style={{ fontSize: 12, color: 'var(--ink-mute)', padding: 8 }}>Cargando inscripción…</div>;
   }
 
-  // Caso: alumna ya inscrita pero sin preinscripción registrada → solo info
+  // Caso: alumna ya inscrita pero sin inscripción registrada → solo info
   if (!pre && alumnaId && !leadId) {
     return (
       <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
         <div style={{ fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
-          Sin preinscripción registrada para esta persona.
+          Sin inscripción registrada para esta persona.
         </div>
       </div>
     );
@@ -592,7 +592,7 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
     return (
       <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
         <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
-          Genera un link único de preinscripción. El cliente lo abre sin cuenta y llena un formulario que queda vinculado a su ficha.
+          Genera un link único de inscripción. El cliente lo abre sin cuenta y llena un formulario que queda vinculado a su ficha.
         </div>
         <button
           type="button" onClick={onGenerar} disabled={generando}
@@ -603,7 +603,7 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
             opacity: generando ? 0.6 : 1,
           }}
         >
-          {generando ? 'Generando…' : 'Generar link de preinscripción'}
+          {generando ? 'Generando…' : 'Generar link de inscripción'}
         </button>
       </div>
     );
@@ -624,7 +624,7 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
           }}
         >
           <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4D5230', fontWeight: 600 }}>
-            ✓ Preinscripción · {respuestasCount} {respuestasCount === 1 ? 'respuesta' : 'respuestas'}
+            ✓ Inscripción · {respuestasCount} {respuestasCount === 1 ? 'respuesta' : 'respuestas'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 11, color: '#4D5230' }}>
@@ -658,7 +658,7 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
     <div style={{ padding: 14, borderRadius: 12, background: 'var(--terracota-tint)', border: '1px solid transparent' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 600 }}>
-          Preinscripción pendiente
+          Inscripción pendiente
         </div>
         <div style={{ fontSize: 11, color: '#8A3D26' }}>
           {pre.created_at ? new Date(pre.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' }) : ''}

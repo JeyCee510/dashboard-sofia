@@ -63,11 +63,11 @@ const PreinscripcionesScreen = ({ onClose, onOpenLead, onOpenAlumna }) => {
       <div className="app-scroll" style={{ paddingTop: 0 }}>
         <div className="page-header">
           <div className="eyebrow">Formularios</div>
-          <h1>Preinscripciones</h1>
+          <h1>Inscripciones</h1>
         </div>
 
         <div style={{ padding: '0 22px 14px', fontSize: 12, color: 'var(--ink-mute)', lineHeight: 1.45 }}>
-          Todos los formularios de preinscripción enviados (a leads e inscritos). Toca uno para ver respuestas o ir a su ficha.
+          Todos los formularios de inscripción enviados (a leads e inscritos). Toca uno para ver respuestas o ir a su ficha.
         </div>
 
         {/* Segmented filter */}
@@ -127,7 +127,7 @@ const PreinscripcionesScreen = ({ onClose, onOpenLead, onOpenAlumna }) => {
           )}
           {!loading && filtradas.length === 0 && (
             <div className="card flat" style={{ padding: 26, textAlign: 'center', color: 'var(--ink-mute)', fontSize: 13 }}>
-              {search ? `Sin resultados para "${search}".` : 'No hay preinscripciones en esta categoría.'}
+              {search ? `Sin resultados para "${search}".` : 'No hay inscripciones en esta categoría.'}
             </div>
           )}
           {!loading && filtradas.length > 0 && (

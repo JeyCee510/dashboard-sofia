@@ -1,8 +1,9 @@
 import React from 'react';
 import { useClasesAbiertas, useInscripcionesClase } from './hooks/useClasesAbiertas.js';
 import { buildWaUrl } from './lib/wa.js';
+import { supabase } from './lib/supabase.js';
 
-const { useState, useMemo } = React;
+const { useState, useMemo, useEffect } = React;
 
 // Fuzzy match: dado un nombre de inscrito, busca su tel en leads + alumnas.
 // Heurística simple: comparar tokens del nombre (al menos 2 palabras coinciden,
@@ -43,13 +44,22 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
   const [copiado, setCopiado] = useState(false);
   const [busy, setBusy] = useState(null);
 
-  // Plantilla recordatorio: la buscamos en ajustes.plantillasWA por id.
-  // Cuerpo: el texto base. Sustituimos "querida(o)" por "querida(o) <nombre>"
-  // para personalizar por inscrito.
+  // Plantillas + state desde store
   const plantillas = store?.state?.ajustes?.plantillasWA || [];
   const plantillaRecordatorio = plantillas.find(p => p.id === 'recordatorio_clase');
-  const leadsList  = store?.state?.leads   || [];
+  const plantillaFollowup     = plantillas.find(p => p.id === 'followup_clase');
+  const fechaProntoPago = store?.state?.ajustes?.fechaProntoPago || '';
+  const leadsList   = store?.state?.leads   || [];
   const alumnasList = store?.state?.alumnas || [];
+
+  // ¿Ya pasó la clase? Si sí, mostramos el flow Follow-up en vez de Recordatorio.
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const yaPaso = !!(activa?.fecha && activa.fecha < hoyStr);
+
+  // Tracking local: para qué leadId ya marcamos follow-up enviado en esta sesión
+  // (el dato real vive en leads.followup_clase_enviado_at via realtime).
+  const [followupBusy, setFollowupBusy] = useState(null);   // inscritoId que se está procesando
+  const [followupError, setFollowupError] = useState({});   // { [inscritoId]: 'msg' }
 
   const link = activa ? `${window.location.origin}/clase/${activa.slug}` : '';
   const cuposDisponibles = activa ? Math.max(0, activa.cupos_max - items.length) : 0;
@@ -70,6 +80,80 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
     setBusy(null);
   };
 
+  // ─────────────────────────────────────────────────────────────────────
+  // Follow-up: prepara link de inscripción tokenizado por inscrito y arma
+  // mensaje WhatsApp. Si el inscrito no existe como lead, lo crea.
+  // ─────────────────────────────────────────────────────────────────────
+  const prepararFollowup = async (inscrito) => {
+    // 1) Buscar lead existente por nombre (fuzzy)
+    let lead = buscarTelPorNombre(inscrito.nombre, leadsList, alumnasList).persona;
+    let leadId = lead?.kind === 'lead' ? lead.id : null;
+
+    // 2) Si no hay lead, crearlo desde el inscrito
+    if (!leadId) {
+      const { data: nuevo, error: errLead } = await supabase
+        .from('leads').insert({
+          nombre: inscrito.nombre,
+          fuente: 'otro',
+          estado: 'interesado',
+          mensaje: `Vino a la clase abierta del ${activa.fecha}. Email: ${inscrito.email || '(sin email)'}.`,
+        }).select().single();
+      if (errLead) throw errLead;
+      leadId = nuevo.id;
+    }
+
+    // 3) Generar token de inscripción
+    const { data: token, error: errTok } = await supabase
+      .rpc('crear_preinscripcion', { p_lead_id: leadId });
+    if (errTok) throw errTok;
+    const linkIns = `${window.location.origin}/preinscripcion/${token}`;
+
+    // 4) Construir mensaje sustituyendo placeholders
+    const firstName = (inscrito.nombre || '').split(' ')[0];
+    const cuerpo = (plantillaFollowup?.cuerpo || '')
+      .replace('[Nombre]', firstName)
+      .replace('[fechaProntoPago]', fechaProntoPago || 'el lunes')
+      .replace('[LINK_INSCRIPCION]', linkIns);
+
+    return { leadId, leadTel: lead?.tel || null, mensaje: cuerpo, linkIns };
+  };
+
+  const enviarFollowup = async (inscrito) => {
+    setFollowupBusy(inscrito.id);
+    setFollowupError(e => ({ ...e, [inscrito.id]: '' }));
+    try {
+      const { leadId, leadTel, mensaje } = await prepararFollowup(inscrito);
+      // Marcar tracking
+      await supabase.from('leads').update({
+        followup_clase_enviado_at: new Date().toISOString(),
+      }).eq('id', leadId);
+      // Abrir WA si hay tel; sino, copiar mensaje
+      if (leadTel) {
+        const waUrl = buildWaUrl(leadTel, mensaje);
+        window.open(waUrl, '_blank', 'noopener');
+      } else {
+        try { await navigator.clipboard.writeText(mensaje); }
+        catch {
+          const ta = document.createElement('textarea'); ta.value = mensaje;
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        alert('Sin teléfono · mensaje copiado al portapapeles. Pegalo en WhatsApp / Instagram manualmente.');
+      }
+    } catch (e) {
+      console.error('[followup]', e);
+      setFollowupError(prev => ({ ...prev, [inscrito.id]: e.message || 'Error' }));
+    } finally {
+      setFollowupBusy(null);
+    }
+  };
+
+  // ¿Este inscrito ya recibió follow-up? Lo derivamos del lead match.
+  const yaRecibioFollowup = (inscrito) => {
+    const persona = buscarTelPorNombre(inscrito.nombre, leadsList, alumnasList).persona;
+    if (persona?.kind !== 'lead') return false;
+    return !!persona.followupClaseEnviadoAt;
+  };
+
   return (
     <div className="detail-screen" style={{ background: 'var(--bg)' }}>
       <div className="detail-header">
@@ -82,8 +166,8 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
 
       <div className="app-scroll" style={{ paddingTop: 0 }}>
         <div className="page-header">
-          <div className="eyebrow">Evento</div>
-          <h1>Clase abierta</h1>
+          <div className="eyebrow">{yaPaso ? 'Post-evento' : 'Evento'}</div>
+          <h1>{yaPaso ? 'Follow up clase' : 'Clase abierta'}</h1>
         </div>
 
         {(loadingClase || !activa) ? (
@@ -173,22 +257,43 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
                   {items.map(item => {
                     // Match por nombre fuzzy a leads/alumnas → tel para WA.
                     const match = buscarTelPorNombre(item.nombre, leadsList, alumnasList);
-                    // Mensaje recordatorio personalizado: insertamos primer nombre.
                     const firstName = (item.nombre || '').split(' ')[0];
-                    const cuerpoBase = plantillaRecordatorio?.cuerpo || '';
-                    const mensaje = cuerpoBase.replace('querida(o)', `querida(o) ${firstName}`);
-                    const waUrl = match.tel ? buildWaUrl(match.tel, mensaje) : null;
+                    // Pre-armar mensaje del RECORDATORIO (pre-clase). El follow-up
+                    // se arma async en enviarFollowup() porque genera token.
+                    const cuerpoRec = plantillaRecordatorio?.cuerpo || '';
+                    const mensajeRec = cuerpoRec.replace('querida(o)', `querida(o) ${firstName}`);
+                    const waUrlRec = match.tel ? buildWaUrl(match.tel, mensajeRec) : null;
+                    const followupEnviado = yaRecibioFollowup(item);
+                    const busyFollowup = followupBusy === item.id;
+                    const errFollowup = followupError[item.id];
                     return (
                     <div key={item.id} className="row" style={{ alignItems: 'flex-start' }}>
                       <div className="body">
                         <div className="t1">{item.nombre}</div>
-                        <div className="t2">{item.email}</div>
+                        <div className="t2">{item.email || '(sin email)'}</div>
                         <div style={{ fontSize: 10, color: 'var(--ink-mute)', marginTop: 2 }}>
                           {new Date(item.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </div>
-                        {plantillaRecordatorio && (
-                          waUrl ? (
-                            <a href={waUrl} target="_blank" rel="noopener noreferrer"
+                        {/* Follow-up (post-clase) vs Recordatorio (pre-clase) */}
+                        {yaPaso && plantillaFollowup ? (
+                          <button
+                            type="button"
+                            onClick={() => enviarFollowup(item)}
+                            disabled={busyFollowup}
+                            style={{
+                              marginTop: 6, padding: '5px 12px', borderRadius: 999,
+                              background: followupEnviado ? 'var(--bg-warm)' : '#25D366',
+                              color: followupEnviado ? 'var(--ink-mute)' : '#fff',
+                              border: 'none', fontFamily: 'inherit', fontSize: 11,
+                              fontWeight: 500, cursor: busyFollowup ? 'wait' : 'pointer',
+                              opacity: busyFollowup ? 0.6 : 1,
+                            }}
+                          >
+                            {busyFollowup ? 'Generando…' : followupEnviado ? '✓ Follow-up enviado · Reenviar' : 'Enviar follow-up'}
+                          </button>
+                        ) : (!yaPaso && plantillaRecordatorio) ? (
+                          waUrlRec ? (
+                            <a href={waUrlRec} target="_blank" rel="noopener noreferrer"
                               style={{
                                 display: 'inline-block', marginTop: 6, padding: '4px 10px',
                                 borderRadius: 999, background: '#25D366', color: '#fff',
@@ -199,9 +304,9 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
                             <button
                               type="button"
                               onClick={async () => {
-                                try { await navigator.clipboard.writeText(mensaje); }
+                                try { await navigator.clipboard.writeText(mensajeRec); }
                                 catch {
-                                  const ta = document.createElement('textarea'); ta.value = mensaje;
+                                  const ta = document.createElement('textarea'); ta.value = mensajeRec;
                                   document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
                                 }
                                 alert('Mensaje copiado. Pegalo en WhatsApp / IG manualmente.');
@@ -214,6 +319,9 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
                               }}
                             >Sin tel · Copiar mensaje</button>
                           )
+                        ) : null}
+                        {errFollowup && (
+                          <div style={{ marginTop: 4, fontSize: 10, color: 'var(--rojo)' }}>{errFollowup}</div>
                         )}
                       </div>
                       <button

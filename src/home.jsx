@@ -332,17 +332,25 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         <h2>Para ti hoy</h2>
       </div>
       <div style={{ padding: '0 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {claseActiva && (
+        {claseActiva && (() => {
+          // ¿Ya pasó la clase? Comparamos solo fecha (no hora).
+          const hoyStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+          const yaPaso = claseActiva.fecha && claseActiva.fecha < hoyStr;
+          return (
           <ActionRow
             icon="sparkle"
             accent="terracota"
-            title={`Clase de prueba · ${
-              claseActiva.fecha
-                ? new Date(claseActiva.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' })
-                : ''
-            }`}
-            subtitle={
-              claseInscritos === 0
+            title={yaPaso
+              ? `Follow up clase de prueba`
+              : `Clase de prueba · ${
+                  claseActiva.fecha
+                    ? new Date(claseActiva.fecha + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' })
+                    : ''
+                }`
+            }
+            subtitle={yaPaso
+              ? `${claseInscritos} personas · mandar agradecimiento + invitación`
+              : claseInscritos === 0
                 ? `${claseActiva.cupos_max} cupos disponibles · sin inscritos aún`
                 : claseCupos === 0
                 ? `Lleno · ${claseInscritos} inscritos`
@@ -350,7 +358,8 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
             }
             onClick={() => onNavigate('clase-inscripciones')}
           />
-        )}
+          );
+        })()}
         {comprobantesPendientes > 0 && (
           <ActionRow
             icon="cash"

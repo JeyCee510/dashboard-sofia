@@ -127,7 +127,7 @@ const PreBadge = ({ pre }) => {
   const completada = pre.estado === 'completada' || !!pre.completed_at;
   const bg = completada ? 'rgba(116, 142, 78, 0.14)' : 'rgba(212, 138, 110, 0.14)';
   const fg = completada ? '#5C6F3C' : '#8A3D26';
-  const txt = completada ? 'Preinscripción ✓' : 'Preinscripción · link enviado';
+  const txt = completada ? 'Inscripción ✓' : 'Inscripción · link enviado';
   return (
     <div style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -213,7 +213,7 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
                 }}
               >
                 <Icon name="note" size={12} stroke="var(--terracota)" />
-                Preinscripciones
+                Inscripciones
               </button>
               <button
                 onClick={() => onNavigate('clase-inscripciones')}

@@ -222,7 +222,7 @@ export const PreinscripcionPublic = ({ token }) => {
             <em style={{ color: 'var(--terracota-soft)' }}>cuéntame de ti</em>
           </h1>
           <p style={{ color: 'var(--ink-soft)', marginTop: 14, fontSize: 14, lineHeight: 1.55 }}>
-            Esta preinscripción me ayuda a conocerte antes de que empecemos juntos. Toma 5 minutos y todo es opcional excepto lo marcado con <span style={{ color: 'var(--terracota)' }}>*</span>.
+            Esta inscripción me ayuda a conocerte antes de que empecemos juntos. Toma 5 minutos y todo es opcional excepto lo marcado con <span style={{ color: 'var(--terracota)' }}>*</span>.
           </p>
         </div>
 
@@ -254,7 +254,7 @@ export const PreinscripcionPublic = ({ token }) => {
             opacity: submitting ? 0.6 : 1,
           }}
         >
-          {submitting ? 'Enviando…' : 'Enviar preinscripción'}
+          {submitting ? 'Enviando…' : 'Enviar inscripción'}
         </button>
       </div>
     </div>
