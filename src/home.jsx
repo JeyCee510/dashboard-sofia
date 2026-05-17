@@ -95,12 +95,14 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const safeLeads = leads || MOCK_LEADS || [];
   const safeMensajes = mensajes || MENSAJES_RECIENTES || [];
 
-  // Clase abierta activa: fetch directo (sin canal realtime para no colisionar
-  // con el que usa screen-clase-inscripciones cuando abre el overlay). Si en
-  // el futuro queremos contador en vivo, hay que usar un canal con NOMBRE
-  // ÚNICO distinto al de useClasesAbiertas. Por ahora, refresh on focus.
+  // Clase abierta activa + count de inscripciones a formación post-follow-up.
+  // Fetch directo (sin canal realtime aquí para no colisionar con el que usa
+  // screen-clase-inscripciones cuando abre el overlay). Refresh on focus.
   const [claseActiva, setClaseActiva] = useState(null);
   const [claseInscritos, setClaseInscritos] = useState(0);
+  // Count de leads con followup enviado que YA respondieron el form de
+  // inscripción a la formación. Sirve para alert rojo en home.
+  const [respuestasFormCount, setRespuestasFormCount] = useState(0);
   useEffect(() => {
     let cancelled = false;
     const cargar = async () => {
@@ -108,12 +110,25 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
       const clase = clases?.[0] || null;
       if (cancelled) return;
       setClaseActiva(clase);
-      if (!clase) return;
-      const { count } = await sbClient.from('clase_inscripciones').select('*', { count: 'exact', head: true }).eq('clase_id', clase.id);
-      if (!cancelled) setClaseInscritos(count || 0);
+      if (clase) {
+        const { count } = await sbClient.from('clase_inscripciones').select('*', { count: 'exact', head: true }).eq('clase_id', clase.id);
+        if (!cancelled) setClaseInscritos(count || 0);
+      }
+      // Cuenta de respuestas al form de inscripción desde leads con followup:
+      // 1) IDs de leads que recibieron follow-up
+      const { data: leadsFu } = await sbClient.from('leads').select('id').not('followup_clase_enviado_at', 'is', null);
+      const ids = (leadsFu || []).map(l => l.id);
+      if (ids.length === 0) {
+        if (!cancelled) setRespuestasFormCount(0);
+      } else {
+        const { count: respCount } = await sbClient.from('preinscripcion')
+          .select('id', { count: 'exact', head: true })
+          .in('lead_id', ids)
+          .eq('estado', 'completada');
+        if (!cancelled) setRespuestasFormCount(respCount || 0);
+      }
     };
     cargar();
-    // Re-fetch al volver al tab del navegador (sustituye al realtime)
     const onFocus = () => cargar();
     window.addEventListener('focus', onFocus);
     return () => { cancelled = true; window.removeEventListener('focus', onFocus); };
@@ -336,7 +351,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
       </div>
       <div style={{ padding: '0 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {claseActiva && (() => {
-          // ¿Ya pasó la clase? Comparamos timestamp completo (fecha + hora_fin).
+          // ¿Ya pasó la clase? timestamp completo (fecha + hora_fin Ecuador).
           const yaPaso = (() => {
             if (!claseActiva?.fecha) return false;
             if (claseActiva.hora_fin) {
@@ -346,46 +361,31 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
             const hoyStr = new Date().toISOString().slice(0, 10);
             return claseActiva.fecha < hoyStr;
           })();
-          // Cuando ya pasó, destacamos visualmente la fila (es la acción
-          // prioritaria del día). Fondo terracota saturado + borde + badge.
+          // Post-evento: ActionRow normal, accent rojo + badge contador si
+          // alguien que recibió follow-up YA respondió el form de inscripción.
           if (yaPaso) {
+            const hayRespuesta = respuestasFormCount > 0;
             return (
-              <button
+              <ActionRow
+                icon="sparkle"
+                accent={hayRespuesta ? 'rojo' : 'terracota'}
+                title={
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    Inscripciones recibidas por Clase de Prueba
+                    {hayRespuesta && (
+                      <span style={{
+                        background: 'var(--rojo)', color: '#fff',
+                        borderRadius: 999, padding: '2px 8px',
+                        fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                      }}>{respuestasFormCount} nueva{respuestasFormCount === 1 ? '' : 's'}</span>
+                    )}
+                  </span>
+                }
+                subtitle={hayRespuesta
+                  ? `${respuestasFormCount} persona${respuestasFormCount === 1 ? '' : 's'} respondió el formulario`
+                  : `${claseInscritos} personas · mandar agradecimiento + invitación`}
                 onClick={() => onNavigate('clase-inscripciones')}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: 16, textAlign: 'left',
-                  border: '2px solid var(--terracota)',
-                  background: 'var(--terracota-tint)',
-                  borderRadius: 14, cursor: 'pointer',
-                  fontFamily: 'inherit', position: 'relative',
-                  boxShadow: '0 2px 12px rgba(181, 86, 58, 0.18)',
-                }}
-              >
-                <div style={{
-                  width: 44, height: 44, borderRadius: 14,
-                  background: 'var(--terracota)', color: '#fff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <Icon name="sparkle" size={22} strokeWidth={1.8} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase',
-                    color: '#8A3D26', fontWeight: 700, marginBottom: 3,
-                  }}>
-                    Prioridad de hoy
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>
-                    Follow up clase de prueba
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>
-                    {claseInscritos} personas · mandar agradecimiento + invitación
-                  </div>
-                </div>
-                <Icon name="chevronR" size={20} stroke="var(--terracota)" />
-              </button>
+              />
             );
           }
           return (
