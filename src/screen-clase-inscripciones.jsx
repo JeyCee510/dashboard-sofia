@@ -78,9 +78,20 @@ const ClaseInscripcionesScreen = ({ onClose, store }) => {
     return completada ? pre : null;
   };
 
-  // ¿Ya pasó la clase? Si sí, mostramos el flow Follow-up en vez de Recordatorio.
-  const hoyStr = new Date().toISOString().slice(0, 10);
-  const yaPaso = !!(activa?.fecha && activa.fecha < hoyStr);
+  // ¿Ya pasó la clase? Comparamos timestamp completo (fecha + hora_fin).
+  // Antes solo comparábamos fecha → mismo día daba false aunque la clase
+  // hubiera terminado horas antes. Ahora: si ya pasó la hora_fin, yaPaso=true.
+  const yaPaso = (() => {
+    if (!activa?.fecha) return false;
+    if (activa.hora_fin) {
+      // Asumimos zona Ecuador (UTC-5) si no viene info de TZ
+      const claseFin = new Date(`${activa.fecha}T${activa.hora_fin}-05:00`).getTime();
+      if (!isNaN(claseFin)) return Date.now() > claseFin;
+    }
+    // Fallback: solo comparar fecha
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    return activa.fecha < hoyStr;
+  })();
 
   // Tracking local: para qué leadId ya marcamos follow-up enviado en esta sesión
   // (el dato real vive en leads.followup_clase_enviado_at via realtime).

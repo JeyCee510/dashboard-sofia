@@ -336,9 +336,16 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
       </div>
       <div style={{ padding: '0 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {claseActiva && (() => {
-          // ¿Ya pasó la clase? Comparamos solo fecha (no hora).
-          const hoyStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-          const yaPaso = claseActiva.fecha && claseActiva.fecha < hoyStr;
+          // ¿Ya pasó la clase? Comparamos timestamp completo (fecha + hora_fin).
+          const yaPaso = (() => {
+            if (!claseActiva?.fecha) return false;
+            if (claseActiva.hora_fin) {
+              const claseFin = new Date(`${claseActiva.fecha}T${claseActiva.hora_fin}-05:00`).getTime();
+              if (!isNaN(claseFin)) return Date.now() > claseFin;
+            }
+            const hoyStr = new Date().toISOString().slice(0, 10);
+            return claseActiva.fecha < hoyStr;
+          })();
           // Cuando ya pasó, destacamos visualmente la fila (es la acción
           // prioritaria del día). Fondo terracota saturado + borde + badge.
           if (yaPaso) {
