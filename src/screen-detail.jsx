@@ -103,6 +103,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               instagram={a.instagram}
               plantillas={store.state.ajustes.plantillasWA}
               nombre={a.nombre}
+              fechaProntoPago={store.state.ajustes.fechaProntoPago}
             />
           </div>
           <div style={{ marginTop: 12, textAlign: 'left' }}>

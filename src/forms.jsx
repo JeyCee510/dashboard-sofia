@@ -343,12 +343,23 @@ async function copyAndOpenIg(handle, mensaje) {
   return true;
 }
 
-const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
+// Plantillas que tienen flow propio (botones dedicados en otras pantallas
+// con generación de tokens/links). Se ocultan del selector genérico de
+// ContactPanel para que Sofía no las use ahí por accidente y termine
+// con placeholders sin reemplazar.
+const PLANTILLAS_ESPECIALES = new Set(['followup_clase', 'recordatorio_clase']);
+
+const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago }) => {
   const [showPlantillas, setShowPlantillas] = React.useState(false);
   const [igCopiado, setIgCopiado] = React.useState(false);
   const waUrl = buildWaUrl(tel);
   const igUrl = buildIgUrl(instagram);
   const firstName = (nombre || '').split(' ')[0] || '';
+
+  // Filtra plantillas especiales del selector genérico
+  const plantillasVisibles = (plantillas || []).filter(p =>
+    !PLANTILLAS_ESPECIALES.has(p?.id)
+  );
 
   const onIgClick = async (e) => {
     e.preventDefault();
@@ -361,15 +372,28 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
     setTimeout(() => setIgCopiado(false), 2500);
   };
 
-  // Personaliza la plantilla con el primer nombre si aplica.
-  // Si la plantilla tiene imagen_url, la anexa al final del cuerpo para
-  // que WhatsApp/Instagram muestren preview de la imagen automáticamente.
+  // Personaliza la plantilla. Lógica:
+  //   1. Si tiene placeholder [Nombre] → lo reemplaza con firstName.
+  //      NO modifica el prefijo "Hola..." (el placeholder es la fuente
+  //      de verdad — antes el regex /^Hola!?,?/ rompía templates como
+  //      "Hola querida(o) [Nombre]," resultando "Hola Juan! querida(o) [Nombre],").
+  //   2. Si no tiene [Nombre] → reemplaza el saludo genérico (template tradicional).
+  //   3. Sustituye [fechaProntoPago] si está presente.
+  //   4. Anexa imagen_url al final si la plantilla la tiene.
   const personalizar = (plantilla) => {
     const cuerpo = typeof plantilla === 'string' ? plantilla : plantilla?.cuerpo || '';
     const imagenUrl = typeof plantilla === 'object' ? plantilla?.imagen_url : null;
     let texto = cuerpo;
+    const tieneNombrePlaceholder = /\[Nombre\]/i.test(texto);
     if (firstName) {
-      texto = texto.replace(/^Hola!?,?/i, `Hola ${firstName}!`);
+      if (tieneNombrePlaceholder) {
+        texto = texto.replace(/\[Nombre\]/gi, firstName);
+      } else {
+        texto = texto.replace(/^Hola!?,?/i, `Hola ${firstName}!`);
+      }
+    }
+    if (fechaProntoPago) {
+      texto = texto.replace(/\[fechaProntoPago\]/gi, fechaProntoPago);
     }
     if (imagenUrl) texto = `${texto}\n\n${imagenUrl}`;
     return texto;
@@ -454,7 +478,7 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre }) => {
           </button>
           {showPlantillas && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 6 }}>
-              {plantillas.map(p => {
+              {plantillasVisibles.map(p => {
                 // Pasamos el objeto completo para que personalizar() pueda
                 // anexar la imagen_url si la plantilla la tiene.
                 const personalizado = personalizar(p);

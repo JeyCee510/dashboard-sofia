@@ -259,6 +259,7 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
                 instagram={form.instagram}
                 plantillas={store.state.ajustes.plantillasWA}
                 nombre={form.nombre}
+                fechaProntoPago={store.state.ajustes.fechaProntoPago}
               />
             </div>
             <div style={{ marginBottom: 14 }}>
