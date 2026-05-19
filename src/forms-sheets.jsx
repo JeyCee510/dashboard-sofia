@@ -390,6 +390,9 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const [prodTipo, setProdTipo] = React.useState('completa');
   const [prodEncuentros, setProdEncuentros] = React.useState([1, 2, 3]);
   const [prodSilla, setProdSilla] = React.useState(true);
+  // "Solo validar" — caso comprobante ya registrado manualmente por Sofía.
+  // Solo asocia el archivo a la alumna y lo marca validado, sin sumar.
+  const [soloValidar, setSoloValidar] = React.useState(false);
 
   React.useEffect(() => {
     if (open) {
@@ -406,6 +409,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       setProdTipo('completa');
       setProdEncuentros([1, 2, 3]);
       setProdSilla(true);
+      setSoloValidar(false);
     }
   }, [open, alumnaPreId, leadPreId, comprobantePreData]);
 
@@ -491,19 +495,33 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   };
 
   // Marca un comprobante existente como validado y lo asocia a alumna_id.
-  const validarExistente = async (comprobanteId, alumnaId, montoNum) => {
-    await supabase.from('comprobantes_pago').update({
+  // Si montoNum es null/undefined/0 y soloAsociar=true, NO sobreescribe el
+  // monto del comprobante (caso "solo validar" — el pago fue registrado
+  // aparte por Sofía).
+  const validarExistente = async (comprobanteId, alumnaId, montoNum, soloAsociar = false) => {
+    const patch = {
       estado: 'validado',
       alumna_id: alumnaId,
-      monto: montoNum,
       validado_at: new Date().toISOString(),
-    }).eq('id', comprobanteId);
+    };
+    if (!soloAsociar && montoNum !== null && montoNum !== undefined) {
+      patch.monto = montoNum;
+    }
+    await supabase.from('comprobantes_pago').update(patch).eq('id', comprobanteId);
   };
 
   const guardar = async () => {
     if (!selection) return;
     // Caso especial: convertir lead sin pago aún
     const sinPago = esLead && tipo === 'ninguno';
+    // Caso especial: solo validar comprobante existente (sin sumar al pagado).
+    // Usado cuando Sofía ya registró el pago manualmente y solo quiere
+    // asociar el comprobante a la alumna y marcarlo validado.
+    if (soloValidar && comprobantePreData?.id) {
+      await validarExistente(comprobantePreData.id, idNum, null, true);
+      onClose();
+      return;
+    }
     if (!sinPago && !monto) return;
     const montoNum = Number(monto) || 0;
 
@@ -616,9 +634,10 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         <button
           className="btn btn-primary btn-block"
           onClick={guardar}
-          disabled={!selection || (tipo !== 'ninguno' && !monto) || convirtiendo}
+          disabled={!selection || (!soloValidar && tipo !== 'ninguno' && !monto) || convirtiendo}
         >
           {convirtiendo ? 'Convirtiendo…' :
+           soloValidar ? 'Validar sin sumar al pago' :
            esLead && tipo === 'ninguno' ? 'Inscribir sin pago' :
            esLead ? `Inscribir y registrar $${monto || 0}` :
            `Registrar $${monto || 0}`}
@@ -660,6 +679,35 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             Pagado: <strong>${alumna.pagado}</strong> de ${alumna.total} · Falta <strong style={{ color: 'var(--rojo)' }}>${restante}</strong>
           </div>
         </div>
+      )}
+
+      {/* Solo validar: visible cuando vamos a validar un comprobante existente
+          y la persona elegida es una alumna. Permite asociar + marcar validado
+          sin sumar al pagado (caso: pago ya registrado manualmente). */}
+      {comprobantePreData && alumna && (
+        <label style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          padding: 12, marginBottom: 14, borderRadius: 12,
+          background: soloValidar ? 'var(--terracota-tint)' : 'var(--bg-warm)',
+          border: `1px solid ${soloValidar ? 'var(--terracota)' : 'var(--line-soft)'}`,
+          cursor: 'pointer',
+        }}>
+          <input
+            type="checkbox"
+            checked={soloValidar}
+            onChange={(e) => setSoloValidar(e.target.checked)}
+            style={{ marginTop: 2, flexShrink: 0 }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500 }}>
+              Solo validar (sin sumar al pago)
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 2, lineHeight: 1.4 }}>
+              Marca esta opción si ya registraste el pago manualmente y solo quieres
+              asociar el comprobante a la alumna y marcarlo como validado.
+            </div>
+          </div>
+        </label>
       )}
 
       {lead && (
@@ -753,11 +801,13 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         </>
       )}
 
+      {!soloValidar && (
       <Field label={esLead ? '③ ¿Cuánto paga ahora?' : 'Monto del pago'}>
         <NumberInput value={monto} onChange={setMonto} prefix="$" min={0} />
       </Field>
+      )}
 
-      {(alumna || lead) && quickButtons.length > 0 && !comprobantePreData && (
+      {!soloValidar && (alumna || lead) && quickButtons.length > 0 && !comprobantePreData && (
         <Field label="Atajos">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {quickButtons.map(qb => {
@@ -779,7 +829,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         </Field>
       )}
 
-      {tipo !== 'ninguno' && (
+      {!soloValidar && tipo !== 'ninguno' && (
         <Field label={esLead ? '③ Forma de pago' : 'Forma de pago'}>
           <SelectChips
             value={forma}

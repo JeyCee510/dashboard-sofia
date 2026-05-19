@@ -13,6 +13,51 @@ const DeferMount = ({ children, ms = 60 }) => {
   }, []);
   return ready ? children : null;
 };
+
+// Textarea inline para anotar plan de pagos del saldo pendiente. Guarda
+// on blur (al desenfocar) para evitar updates en cada keystroke.
+const PlanPagosEditor = ({ value, onSave }) => {
+  const [local, setLocal] = React.useState(value || '');
+  const [expand, setExpand] = React.useState(!!(value && value.trim()));
+  React.useEffect(() => { setLocal(value || ''); }, [value]);
+  const dirty = local !== (value || '');
+  const guardar = () => { if (dirty) onSave(local); };
+  if (!expand) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpand(true)}
+        style={{
+          marginTop: 8, padding: '4px 10px', borderRadius: 999,
+          background: 'transparent', border: '1px dashed var(--line-soft)',
+          fontFamily: 'inherit', fontSize: 10, color: 'var(--ink-mute)',
+          cursor: 'pointer',
+        }}
+      >+ plan de pagos</button>
+    );
+  }
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ fontSize: 10, color: 'var(--ink-mute)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
+        Plan de pagos del saldo
+      </div>
+      <textarea
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        onBlur={guardar}
+        placeholder="Ej: paga el resto en 2 cuotas, una el 20 may y otra el 1 jun."
+        rows={2}
+        style={{
+          width: '100%', padding: '6px 8px', borderRadius: 8,
+          background: 'var(--surface)',
+          border: `1px solid ${dirty ? 'var(--terracota)' : 'var(--line-soft)'}`,
+          fontFamily: 'inherit', fontSize: 11, color: 'var(--ink)',
+          resize: 'vertical', outline: 'none',
+        }}
+      />
+    </div>
+  );
+};
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -153,6 +198,12 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 4 }}>Falta ${restante}</div>
             ) : (
               <div style={{ fontSize: 11, color: 'var(--oliva)', marginTop: 4 }}>Pago completo ✓</div>
+            )}
+            {restante > 0 && (
+              <PlanPagosEditor
+                value={a.planPagos || ''}
+                onSave={(v) => store.updateAlumna(a.id, { planPagos: v })}
+              />
             )}
           </div>
           <div className="card flat" style={{ flex: 1, padding: 14 }}>

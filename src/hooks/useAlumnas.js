@@ -21,6 +21,7 @@ function fromDb(row) {
     asistencia: [0, 0, 0, 0, 0, 0], // se hidrata desde tabla `asistencia` aparte
     tipo_inscripcion: row.tipo_inscripcion || 'completa',
     encuentros_asistir: Array.isArray(row.encuentros_asistir) ? row.encuentros_asistir : [1, 2, 3],
+    planPagos: row.plan_pagos || '',
   };
 }
 
@@ -39,6 +40,7 @@ function toDb(patch) {
   if ('avatar' in patch) out.avatar = patch.avatar;
   if ('tipo_inscripcion' in patch) out.tipo_inscripcion = patch.tipo_inscripcion;
   if ('encuentros_asistir' in patch) out.encuentros_asistir = patch.encuentros_asistir;
+  if ('planPagos' in patch) out.plan_pagos = patch.planPagos;
   return out;
 }
 
