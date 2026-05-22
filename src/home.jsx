@@ -351,7 +351,9 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
       </div>
       <div style={{ padding: '0 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {claseActiva && (() => {
-          // ¿Ya pasó la clase? timestamp completo (fecha + hora_fin Ecuador).
+          // ¿Ya pasó la clase? Si pasó, NO mostramos nada acá (el archivo de
+          // inscritos sigue accesible desde Leads → botón Inscripciones).
+          // Solo renderizamos cuando la clase aún no pasa.
           const yaPaso = (() => {
             if (!claseActiva?.fecha) return false;
             if (claseActiva.hora_fin) {
@@ -361,33 +363,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
             const hoyStr = new Date().toISOString().slice(0, 10);
             return claseActiva.fecha < hoyStr;
           })();
-          // Post-evento: ActionRow normal, accent rojo + badge contador si
-          // alguien que recibió follow-up YA respondió el form de inscripción.
-          if (yaPaso) {
-            const hayRespuesta = respuestasFormCount > 0;
-            return (
-              <ActionRow
-                icon="sparkle"
-                accent={hayRespuesta ? 'rojo' : 'terracota'}
-                title={
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    Inscripciones recibidas por Clase de Prueba
-                    {hayRespuesta && (
-                      <span style={{
-                        background: 'var(--rojo)', color: '#fff',
-                        borderRadius: 999, padding: '2px 8px',
-                        fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-                      }}>{respuestasFormCount} nueva{respuestasFormCount === 1 ? '' : 's'}</span>
-                    )}
-                  </span>
-                }
-                subtitle={hayRespuesta
-                  ? `${respuestasFormCount} persona${respuestasFormCount === 1 ? '' : 's'} respondió el formulario`
-                  : `${claseInscritos} personas · mandar agradecimiento + invitación`}
-                onClick={() => onNavigate('clase-inscripciones')}
-              />
-            );
-          }
+          if (yaPaso) return null;
           return (
           <ActionRow
             icon="sparkle"
@@ -424,7 +400,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         <ActionRow
           icon="cash"
           accent="rojo"
-          title={`${pagosPendientes.length} pagos por confirmar`}
+          title={`${pagosPendientes.length} pagos por recibir`}
           subtitle={`$${totalPendiente} pendientes de cobrar`}
           onClick={() => onNavigate('pagos')}
         />

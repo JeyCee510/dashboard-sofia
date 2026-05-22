@@ -161,6 +161,8 @@ const ClaseBadge = ({ confirmado, linkEnviado }) => {
 const MarketingScreen = ({ onOpenLead, onNavigate }) => {
   const [filter, setFilter] = React.useState('todos');
   const [search, setSearch] = React.useState('');
+  // 'nombre' = alfabético | 'reciente' = más nuevos primero | 'antiguo' = más viejos primero
+  const [orden, setOrden] = React.useState('nombre');
   const preMap = usePreinscripcionesPorLead();
   const claseEstado = useClaseEstadoPorLead(MOCK_LEADS);
 
@@ -186,9 +188,15 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
       (l.mensaje || '').toLowerCase().includes(q)
     );
   }
-  leads = [...leads].sort((a, b) =>
-    (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' })
-  );
+  leads = [...leads].sort((a, b) => {
+    if (orden === 'reciente') {
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    }
+    if (orden === 'antiguo') {
+      return (a.createdAt || '').localeCompare(b.createdAt || '');
+    }
+    return (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' });
+  });
 
   return (
     <div>
@@ -228,7 +236,7 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
                 }}
               >
                 <Icon name="bullhorn" size={12} stroke="var(--gold)" />
-                Clase abierta
+                Inscripciones recibidas
               </button>
               <button
                 onClick={() => onNavigate('leads-descartados')}
@@ -342,6 +350,32 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
               }}
             >×</button>
           )}
+        </div>
+      </div>
+
+      {/* Orden */}
+      <div style={{ padding: '0 22px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontWeight: 500 }}>
+          Ordenar
+        </span>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {[
+            { v: 'nombre',   l: 'Nombre' },
+            { v: 'reciente', l: 'Más reciente' },
+            { v: 'antiguo',  l: 'Más antiguo' },
+          ].map(o => {
+            const sel = orden === o.v;
+            return (
+              <button key={o.v} type="button" onClick={() => setOrden(o.v)} style={{
+                padding: '4px 10px', borderRadius: 999,
+                background: sel ? 'var(--terracota-tint)' : 'var(--surface)',
+                border: `1px solid ${sel ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                fontFamily: 'inherit', fontSize: 11,
+                color: sel ? 'var(--ink)' : 'var(--ink-mute)',
+                fontWeight: sel ? 600 : 400, cursor: 'pointer',
+              }}>{o.l}</button>
+            );
+          })}
         </div>
       </div>
 

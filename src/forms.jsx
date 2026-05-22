@@ -1012,6 +1012,18 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
 
   if (loading) return null;
   if (!activa) return null;
+  // Si la clase ya pasó, no mostramos este panel en la ficha individual
+  // (ya no es accionable). El archivo de inscritos sigue accesible desde
+  // Leads → botón Inscripciones recibidas.
+  const yaPasoClase = (() => {
+    if (activa.hora_fin) {
+      const claseFin = new Date(`${activa.fecha}T${activa.hora_fin}-05:00`).getTime();
+      if (!isNaN(claseFin)) return Date.now() > claseFin;
+    }
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    return activa.fecha < hoyStr;
+  })();
+  if (yaPasoClase) return null;
 
   // Pasamos ?n=<nombre> al link para que el form público no le pida el nombre
   // al lead (ya lo tenemos). Si el lead reenvía el link a otra persona, esa
