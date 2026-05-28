@@ -69,10 +69,34 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
     return upd;
   });
 
-  const guardar = () => {
+  // Motivo del precio especial — obligatorio cuando el total fue editado
+  // manualmente Y difiere del calculado automáticamente.
+  const [precioMotivo, setPrecioMotivo] = React.useState('');
+  React.useEffect(() => { setPrecioMotivo(''); }, [alumnaId, open]);
+  const totalCalculado = calcularTotal({ tipo: form.tipo_inscripcion, bonoSilla: form.bonoSilla, ajustes: store.state.ajustes });
+  const esPrecioEspecial = form.totalManual && Number(form.total) !== Number(totalCalculado);
+
+  const guardar = async () => {
     if (!form.nombre.trim()) return;
-    if (editing) store.updateAlumna(alumnaId, form);
-    else store.addAlumna(form);
+    // Si es precio especial, exigir motivo
+    if (esPrecioEspecial && !precioMotivo.trim()) {
+      alert('Falta el motivo del precio especial.');
+      return;
+    }
+    const totalAnterior = editing ? Number(editing.total) || 0 : Number(totalCalculado);
+    if (editing) {
+      await store.updateAlumna(alumnaId, form);
+      // Registrar evento de ajuste si cambió el total
+      if (esPrecioEspecial && Number(form.total) !== totalAnterior) {
+        await store.ajustarPrecioAlumna(alumnaId, Number(form.total), precioMotivo, totalAnterior);
+      }
+    } else {
+      const nuevaId = await store.addAlumna(form);
+      // Para una nueva con precio especial, registrar el evento contra el precio calculado
+      if (nuevaId && esPrecioEspecial) {
+        await store.ajustarPrecioAlumna(nuevaId, Number(form.total), precioMotivo, totalCalculado);
+      }
+    }
     onClose();
   };
 
@@ -172,7 +196,34 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
       </div>
       {!form.totalManual && (
         <div style={{ marginTop: -8, marginBottom: 8, fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>
-          Total calculado automáticamente. Edítalo si necesitas un descuento especial.
+          Total calculado automáticamente. Edítalo si necesitas un precio especial.
+        </div>
+      )}
+      {esPrecioEspecial && (
+        <div className="card flat" style={{
+          padding: 10, marginBottom: 14,
+          background: 'var(--terracota-tint)', border: '1px solid var(--terracota)',
+        }}>
+          <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 700, marginBottom: 6 }}>
+            Precio especial · diferencia ${Number(form.total) - totalCalculado >= 0 ? '+' : ''}{Number(form.total) - totalCalculado}
+          </div>
+          <textarea
+            value={precioMotivo}
+            onChange={(e) => setPrecioMotivo(e.target.value)}
+            placeholder="Motivo (beca, intercambio, amistad, promo…)"
+            rows={2}
+            style={{
+              width: '100%', padding: '8px 10px', borderRadius: 8,
+              background: 'var(--surface)', border: '1px solid var(--line-soft)',
+              fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
+              resize: 'vertical', outline: 'none',
+            }}
+          />
+          {!precioMotivo.trim() && (
+            <div style={{ marginTop: 4, fontSize: 10, color: 'var(--rojo)' }}>
+              Motivo obligatorio.
+            </div>
+          )}
         </div>
       )}
       <Field label="Notas">
@@ -393,6 +444,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   // "Solo validar" — caso comprobante ya registrado manualmente por Sofía.
   // Solo asocia el archivo a la alumna y lo marca validado, sin sumar.
   const [soloValidar, setSoloValidar] = React.useState(false);
+  // Precio especial — override del productoTotal cuando Sofía acuerda un
+  // precio puntual (beca, intercambio, amistad). Requiere motivo.
+  const [precioEspecial, setPrecioEspecial] = React.useState(false);
+  const [precioEspecialMonto, setPrecioEspecialMonto] = React.useState(0);
+  const [precioEspecialMotivo, setPrecioEspecialMotivo] = React.useState('');
 
   React.useEffect(() => {
     if (open) {
@@ -410,6 +466,9 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       setProdEncuentros([1, 2, 3]);
       setProdSilla(true);
       setSoloValidar(false);
+      setPrecioEspecial(false);
+      setPrecioEspecialMonto(0);
+      setPrecioEspecialMotivo('');
     }
   }, [open, alumnaPreId, leadPreId, comprobantePreData]);
 
@@ -425,9 +484,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const precioRegular = store.state.ajustes.precioRegular || 640;
 
   // Total del producto (lead path) — depende de tipo + silla. Pronto pago es fijo.
-  const productoTotal = esProntoPago
+  const productoTotalBase = esProntoPago
     ? precioProntoPago
     : calcularTotal({ tipo: prodTipo, bonoSilla: prodSilla, ajustes: store.state.ajustes });
+  // Si precioEspecial está activo, usamos el monto custom como total real
+  const productoTotal = precioEspecial ? (Number(precioEspecialMonto) || 0) : productoTotalBase;
 
   // Helper: cambia el producto y normaliza encuentros_asistir.
   const setProducto = (nextTipo, isProntoPago = false) => {
@@ -540,6 +601,15 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       return;
     }
     if (tipoSel === 'lead' && lead) {
+      // Validación precio especial: motivo obligatorio
+      if (precioEspecial && !precioEspecialMotivo.trim()) {
+        alert('Falta el motivo del precio especial.');
+        return;
+      }
+      if (precioEspecial && (Number(precioEspecialMonto) || 0) <= 0) {
+        alert('El precio especial debe ser mayor a $0.');
+        return;
+      }
       setConvirtiendo(true);
       try {
         // Producto elegido por Sofía: tipo + encuentros + silla → total.
@@ -568,10 +638,17 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             if (archivo) await subirComprobanteValidado(nuevaId, montoNum, archivo);
             // 3) Registrar pago con forma seleccionada.
             //    skipAutoSilla=true porque Sofía ya decidió silla en el picker.
-            //    Sin esto, una alumna "completa sin silla" recibiría silla auto
-            //    al registrar reserva → bonoSilla=true pero total quedaría en
-            //    el sin_silla (inconsistente).
             await store.registrarPago(nuevaId, montoNum, tipo, forma, { skipAutoSilla: true });
+            // 4) Si fue precio especial, registrar evento en timeline
+            if (precioEspecial && productoTotal !== productoTotalBase) {
+              await supabase.from('eventos_alumna').insert({
+                alumna_id: nuevaId,
+                tipo: 'ajuste_precio',
+                titulo: 'Precio especial',
+                subtitulo: `De $${productoTotalBase} a $${productoTotal} · ${precioEspecialMotivo.trim()}`,
+                monto: productoTotal - productoTotalBase,
+              });
+            }
           }
         }
       } catch (e) {
@@ -788,16 +865,72 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
           )}
 
           <div className="card flat" style={{
-            padding: 12, marginBottom: 14, background: 'var(--bg-warm)', borderColor: 'transparent',
+            padding: 12, marginBottom: 8, background: 'var(--bg-warm)', borderColor: 'transparent',
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           }}>
             <span style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontWeight: 600 }}>
               Total a pagar
             </span>
             <span className="serif" style={{ fontSize: 22, fontWeight: 500, color: 'var(--ink)' }}>
+              {precioEspecial && productoTotalBase !== productoTotal && (
+                <span style={{ textDecoration: 'line-through', color: 'var(--ink-mute)', fontSize: 14, marginRight: 8 }}>${productoTotalBase}</span>
+              )}
               ${productoTotal}
             </span>
           </div>
+
+          {/* Precio especial · override + motivo obligatorio */}
+          {!precioEspecial ? (
+            <button
+              type="button"
+              onClick={() => { setPrecioEspecial(true); setPrecioEspecialMonto(productoTotalBase); }}
+              style={{
+                marginBottom: 14, padding: '6px 12px', borderRadius: 999,
+                background: 'transparent', border: '1px dashed var(--terracota-soft)',
+                color: 'var(--terracota)', fontFamily: 'inherit', fontSize: 11,
+                fontWeight: 500, cursor: 'pointer',
+              }}
+            >+ Aplicar precio especial</button>
+          ) : (
+            <div className="card flat" style={{
+              padding: 12, marginBottom: 14,
+              background: 'var(--terracota-tint)', border: '1px solid var(--terracota)',
+            }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
+              }}>
+                <span style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 700 }}>
+                  Precio especial
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setPrecioEspecial(false); setPrecioEspecialMonto(0); setPrecioEspecialMotivo(''); }}
+                  style={{
+                    background: 'transparent', border: 'none', color: 'var(--ink-mute)',
+                    fontSize: 11, cursor: 'pointer', textDecoration: 'underline',
+                  }}
+                >Quitar</button>
+              </div>
+              <NumberInput value={precioEspecialMonto} onChange={setPrecioEspecialMonto} prefix="$" min={1} />
+              <textarea
+                value={precioEspecialMotivo}
+                onChange={(e) => setPrecioEspecialMotivo(e.target.value)}
+                placeholder="Motivo (beca, intercambio, amistad, promo…)"
+                rows={2}
+                style={{
+                  width: '100%', marginTop: 8, padding: '8px 10px', borderRadius: 8,
+                  background: 'var(--surface)', border: '1px solid var(--line-soft)',
+                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
+                  resize: 'vertical', outline: 'none',
+                }}
+              />
+              {!precioEspecialMotivo.trim() && (
+                <div style={{ marginTop: 4, fontSize: 10, color: 'var(--rojo)' }}>
+                  Motivo obligatorio para aplicar precio especial.
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 

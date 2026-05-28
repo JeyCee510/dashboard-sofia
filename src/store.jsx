@@ -119,6 +119,26 @@ function useStore() {
     });
   };
 
+  // Ajustar precio (precio especial). Guarda el nuevo total + registra
+  // evento en timeline con motivo. El home/dashboard suma alumnas.total,
+  // así que el reflejo es inmediato.
+  const ajustarPrecioAlumna = async (alumnaId, nuevoTotal, motivo, totalAnterior) => {
+    const nuevo = Number(nuevoTotal) || 0;
+    const anterior = Number(totalAnterior) || 0;
+    if (nuevo <= 0) return { error: 'Precio debe ser mayor a $0' };
+    if (!motivo || !motivo.trim()) return { error: 'Falta el motivo del ajuste' };
+    const delta = nuevo - anterior;
+    await alumnasHook.updateAlumna(alumnaId, { total: nuevo });
+    await supabase.from('eventos_alumna').insert({
+      alumna_id: alumnaId,
+      tipo: 'ajuste_precio',
+      titulo: 'Precio especial',
+      subtitulo: `De $${anterior} a $${nuevo} · ${motivo.trim()}`,
+      monto: delta,
+    });
+    return { ok: true };
+  };
+
   // Asignar silla manualmente (Sofía override)
   const asignarSilla = async (alumnaId) => {
     const a = state.alumnas.find(x => x.id === alumnaId);
@@ -274,7 +294,7 @@ function useStore() {
     addAlumna, updateAlumna, deleteAlumna,
     addLead, updateLead, deleteLead, convertLeadToAlumna,
     registrarPago,
-    asignarSilla, renunciarSilla,
+    asignarSilla, renunciarSilla, ajustarPrecioAlumna,
     toggleAsistencia, marcarTodosDia,
     updateAjustes,
     // Módulo Estudio (datos + acciones)
