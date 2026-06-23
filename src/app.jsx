@@ -50,15 +50,12 @@ const App = () => {
   const [voiceExecResult, setVoiceExecResult] = useState(null);
 
   // ── Selector de módulos: Inicio (launcher) | Formación | Estudio | Wizard ──
-  // 'launcher' es el home provisional con las tarjetas de proyectos.
-  // Persiste en localStorage para recordar el último lugar visitado.
-  const [moduloActivo, setModuloActivoState] = useState(() => {
-    try { return localStorage.getItem('moduloActivo') || 'launcher'; }
-    catch { return 'launcher'; }
-  });
+  // 'launcher' es el menú de inicio con las tarjetas de proyectos.
+  // Cada cold start abre en el launcher (no se persiste el último módulo) —
+  // así Sofía siempre ve el menú al abrir el PWA y decide a dónde entrar.
+  const [moduloActivo, setModuloActivoState] = useState('launcher');
   const setModuloActivo = (m) => {
     setModuloActivoState(m);
-    try { localStorage.setItem('moduloActivo', m); } catch {}
   };
   // Estado del módulo Estudio (overlays/sheets propios)
   const [estudioOverlay, setEstudioOverlay] = useState(null);   // null | { type:'ficha', id } | 'asistencia' | 'config' | 'comprobantes'
