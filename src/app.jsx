@@ -69,7 +69,10 @@ const App = () => {
     if (!p) return;
     if (p.slug === 'estudio') setModuloActivo('estudio');
     else if (p.slug === 'formacion-junio-2026') setModuloActivo('formacion');
-    // Refinar la Práctica y todo proyecto nuevo → shell convergido (personas/participaciones)
+    // Refinar usa su motor del taller (link público/personalizado, selección modular, tiers).
+    // Sus inscritos se sincronizan al pool compartido `personas` vía trigger (mig 035).
+    else if (p.slug === 'refinar-la-practica' && window.TallerScreen) setModuloActivo('taller');
+    // Proyectos nuevos del wizard → shell convergido (personas/participaciones)
     else { setProyectoActivo(p); setModuloActivo('proyecto'); }
   };
 
