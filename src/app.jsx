@@ -49,11 +49,12 @@ const App = () => {
   const [voiceToast, setVoiceToast] = useState(null);
   const [voiceExecResult, setVoiceExecResult] = useState(null);
 
-  // ── Switch de módulos: Formación (lo actual) | Estudio (nuevo) ──
-  // Persiste en localStorage para recordar el último módulo usado.
+  // ── Selector de módulos: Inicio (launcher) | Formación | Estudio | Wizard ──
+  // 'launcher' es el home provisional con las tarjetas de proyectos.
+  // Persiste en localStorage para recordar el último lugar visitado.
   const [moduloActivo, setModuloActivoState] = useState(() => {
-    try { return localStorage.getItem('moduloActivo') || 'formacion'; }
-    catch { return 'formacion'; }
+    try { return localStorage.getItem('moduloActivo') || 'launcher'; }
+    catch { return 'launcher'; }
   });
   const setModuloActivo = (m) => {
     setModuloActivoState(m);
@@ -63,6 +64,8 @@ const App = () => {
   const [estudioOverlay, setEstudioOverlay] = useState(null);   // null | { type:'ficha', id } | 'asistencia' | 'config' | 'comprobantes'
   const [estudioSheet, setEstudioSheet] = useState(null);       // null | 'onboarding'
 
+  const LauncherScreen = window.LauncherScreen;
+  const ProyectoWizard = window.ProyectoWizard;
   const EstudioScreen = window.EstudioScreen;
   const EstudioFicha = window.EstudioFicha;
   const EstudioOnboarding = window.EstudioOnboarding;
@@ -155,13 +158,36 @@ const App = () => {
     );
   }
 
+  // ── App autenticada — Inicio (home provisional con tarjetas) ──
+  if (moduloActivo === 'launcher' && LauncherScreen) {
+    return (
+      <div className="app">
+        <LauncherScreen
+          ownerName={screenTweaks.ownerName}
+          onEstudio={() => setModuloActivo('estudio')}
+          onFormacion={() => setModuloActivo('formacion')}
+          onNuevoProyecto={() => setModuloActivo('wizard')}
+        />
+      </div>
+    );
+  }
+
+  // ── App autenticada — Wizard de nuevo proyecto ──
+  if (moduloActivo === 'wizard' && ProyectoWizard) {
+    return (
+      <div className="app">
+        <ProyectoWizard onClose={() => setModuloActivo('launcher')} />
+      </div>
+    );
+  }
+
   // ── App autenticada — Módulo Estudio ──
   if (moduloActivo === 'estudio' && EstudioScreen) {
     return (
       <div className="app">
         <EstudioScreen
           store={store}
-          onSwitch={() => setModuloActivo('formacion')}
+          onSwitch={() => setModuloActivo('launcher')}
           onOpenEstudiante={(id) => setEstudioOverlay({ type: 'ficha', id })}
           onNewEstudiante={() => setEstudioSheet('onboarding')}
           onTomarAsistencia={() => setEstudioOverlay('asistencia')}
@@ -249,13 +275,12 @@ const App = () => {
 
   return (
     <div className="app">
-      {/* Flecha al módulo Estudio (top-right, flotante sobre el header de cada screen).
-          Cuando construyamos las pantallas reales del estudio, esta flecha cambia
-          de comportamiento desde dentro del Estudio (vuelve a Formación). */}
+      {/* Volver al Inicio (home con tarjetas de proyectos). Flotante top-right
+          sobre el header de cada screen de la formación. */}
       <button
-        onClick={() => setModuloActivo('estudio')}
-        title="Ir al Estudio"
-        aria-label="Ir al módulo Estudio"
+        onClick={() => setModuloActivo('launcher')}
+        title="Volver al inicio"
+        aria-label="Volver al inicio"
         style={{
           position: 'absolute',
           top: 12, right: 12,
@@ -273,7 +298,7 @@ const App = () => {
           boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
         }}
       >
-        Estudio →
+        ← Inicio
       </button>
 
       <div

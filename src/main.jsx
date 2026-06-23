@@ -78,6 +78,8 @@ async function initApp() {
     import('./data.jsx'),
     import('./icons.jsx'),
     import('./login.jsx'),
+    import('./screen-launcher.jsx'),          // Home provisional (selector de proyectos)
+    import('./screen-proyecto-wizard.jsx'),   // Wizard de alcance de nuevo proyecto
     import('./home.jsx'),
     import('./screen-reservas.jsx'),
     import('./screen-pagos.jsx'),
