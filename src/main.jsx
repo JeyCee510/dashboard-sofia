@@ -14,15 +14,56 @@ if ('serviceWorker' in navigator) {
 }
 
 // ─── Routing simple por pathname ───
-// /preinscripcion/<token>, /comprobante y /clase/<slug> son rutas públicas
-// (sin auth). Cualquier otra = la app normal con login.
+// Rutas públicas (sin auth):
+//   /preinscripcion/<token>           formación: confirmar inscripción
+//   /comprobante[/<token>]             formación: subir comprobante
+//   /clase/<slug>                      clase abierta: inscribirse
+//   /taller/<slug>                     taller: inscribirse (público)
+//   /taller/<slug>/i/<token>           taller: inscribirse (link personalizado)
+//   /taller-comprobante/<token>        taller: subir comprobante
 const path = window.location.pathname;
 const preinscripcionMatch = path.match(/^\/preinscripcion\/([\w-]+)\/?$/);
 const comprobanteTokenMatch = path.match(/^\/comprobante\/([\w-]+)\/?$/);
 const comprobanteMatch = path.match(/^\/comprobante\/?$/);
 const claseMatch = path.match(/^\/clase\/([\w-]+)\/?$/);
+const tallerPersonalizadoMatch = path.match(/^\/taller\/([\w-]+)\/i\/([\w-]+)\/?$/);
+const tallerPublicoMatch = path.match(/^\/taller\/([\w-]+)\/?$/);
+const tallerComprobanteMatch = path.match(/^\/taller-comprobante\/([\w-]+)\/?$/);
 
-if (claseMatch) {
+if (tallerComprobanteMatch) {
+  const t = tallerComprobanteMatch[1];
+  document.body.classList.add('public-route');
+  document.documentElement.classList.add('public-route');
+  import('./icons.jsx').then(() =>
+    import('./taller-comprobante.jsx').then(({ TallerComprobante }) => {
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <TallerComprobante token={t} />
+      );
+    })
+  );
+} else if (tallerPersonalizadoMatch) {
+  const [, tslug, ttok] = tallerPersonalizadoMatch;
+  document.body.classList.add('public-route');
+  document.documentElement.classList.add('public-route');
+  import('./icons.jsx').then(() =>
+    import('./taller-publico.jsx').then(({ TallerPublico }) => {
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <TallerPublico slug={tslug} token={ttok} />
+      );
+    })
+  );
+} else if (tallerPublicoMatch) {
+  const tslug = tallerPublicoMatch[1];
+  document.body.classList.add('public-route');
+  document.documentElement.classList.add('public-route');
+  import('./icons.jsx').then(() =>
+    import('./taller-publico.jsx').then(({ TallerPublico }) => {
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <TallerPublico slug={tslug} token={null} />
+      );
+    })
+  );
+} else if (claseMatch) {
   const slug = claseMatch[1];
   document.body.classList.add('public-route');
   document.documentElement.classList.add('public-route');
@@ -80,6 +121,7 @@ async function initApp() {
     import('./login.jsx'),
     import('./screen-launcher.jsx'),          // Home provisional (selector de proyectos)
     import('./screen-proyecto-wizard.jsx'),   // Wizard de alcance de nuevo proyecto
+    import('./screen-taller.jsx'),            // Módulo Taller drop-in modular ("Refinar la Práctica")
     import('./home.jsx'),
     import('./screen-reservas.jsx'),
     import('./screen-pagos.jsx'),

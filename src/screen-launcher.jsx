@@ -70,7 +70,7 @@ const ProjectCard = ({ icon, accent, eyebrow, title, subtitle, badge, onClick })
   );
 };
 
-const LauncherScreen = ({ ownerName = 'Sofía', onEstudio, onFormacion, onNuevoProyecto }) => {
+const LauncherScreen = ({ ownerName = 'Sofía', onEstudio, onFormacion, onTaller, onNuevoProyecto }) => {
   const saludo = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return 'Buenos días';
@@ -107,6 +107,15 @@ const LauncherScreen = ({ ownerName = 'Sofía', onEstudio, onFormacion, onNuevoP
           title="Estudio"
           subtitle="Membresías, clases y asistencia del día a día"
           onClick={onEstudio}
+        />
+        <ProjectCard
+          icon="users"
+          accent="terracota"
+          eyebrow="Taller · jul–nov 2026"
+          badge="Activo"
+          title="Refinar la Práctica"
+          subtitle="6 sábados de práctica profunda · drop-in modular"
+          onClick={onTaller}
         />
         <ProjectCard
           icon="users"

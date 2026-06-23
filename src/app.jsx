@@ -63,6 +63,7 @@ const App = () => {
 
   const LauncherScreen = window.LauncherScreen;
   const ProyectoWizard = window.ProyectoWizard;
+  const TallerScreen = window.TallerScreen;
   const EstudioScreen = window.EstudioScreen;
   const EstudioFicha = window.EstudioFicha;
   const EstudioOnboarding = window.EstudioOnboarding;
@@ -162,6 +163,7 @@ const App = () => {
         <LauncherScreen
           ownerName={screenTweaks.ownerName}
           onEstudio={() => setModuloActivo('estudio')}
+          onTaller={() => setModuloActivo('taller')}
           onFormacion={() => setModuloActivo('formacion')}
           onNuevoProyecto={() => setModuloActivo('wizard')}
         />
@@ -174,6 +176,19 @@ const App = () => {
     return (
       <div className="app">
         <ProyectoWizard onClose={() => setModuloActivo('launcher')} />
+      </div>
+    );
+  }
+
+  // ── App autenticada — Módulo Taller (drop-in modular) ──
+  if (moduloActivo === 'taller' && TallerScreen) {
+    return (
+      <div className="app">
+        <TallerScreen
+          proyectoSlug="refinar-la-practica"
+          onSwitch={() => setModuloActivo('launcher')}
+        />
+        <VoiceButton onExecute={handleVoiceExecute} executingResult={voiceExecResult} />
       </div>
     );
   }
