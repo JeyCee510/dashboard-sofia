@@ -141,6 +141,10 @@ Migraciones aplicadas (en orden cronológico):
 - `migration-020-emilia-pronto-pago.sql` — fix puntual (alumna Emilia: regla pronto-pago)
 - `migration-021-plantilla-casita.sql` — plantilla WhatsApp "Casita del Yoga" (link Google Maps de la dirección)
 - `migration-022-clases-abiertas.sql` — sistema de **clases abiertas**: tablas `clases_abiertas` (con slug, fecha, cupos, `activa`) y `clase_inscripciones`; RPCs anon `obtener_clase_publica(slug)` y `inscribirse_a_clase(slug, nombre, email)`. Columna `leads.clase_link_enviada_at` para tracking. Seed inicial: clase del 16-mayo-2026 (yoga-16-mayo)
+- `migration-023→028` — clases abiertas v2: inscripción manual desde admin, plantilla recordatorio, follow-up tracking (`leads.followup_clase_enviado_at`)
+- `migration-030-plan-pagos.sql` — columna `alumnas.plan_pagos text` para nota libre del plan de pagos
+- `migration-031-proyectos-borradores.sql` — tabla `proyectos_borradores` (alimentada por el wizard, status `borrador|activado`)
+- `migration-032-taller-drop-in-modular.sql` — **patrón nuevo "taller drop-in modular"** (namespace `taller_*` aislado del módulo formación). Tablas: `proyectos` (genérico), `taller_encuentros`, `taller_inscritos` (con `comprobante_token` único), `taller_inscripciones_encuentros` (n-a-m con asistencia booleana), `taller_preinscripciones` (tokens), `taller_pagos`, `taller_eventos`. RPCs públicos: `taller_obtener_publico`, `taller_cargar_preinscripcion`, `taller_crear_preinscripcion` (admin), `taller_completar_preinscripcion` (con token), `taller_inscripcion_publica` (sin token), `taller_obtener_por_comprobante_token`. Seed: proyecto "Refinar la Práctica" (slug `refinar-la-practica`) con 6 sábados jul-nov 2026, cupos 22 c/u, tiers $80/150/210/390
 
 Tablas:
 
@@ -168,6 +172,14 @@ Tablas:
 | `congelaciones_membresia` | **(Estudio)** Historial de pausas. `hasta=NULL` = activamente congelada (UNIQUE INDEX parcial). Al descongelar, RPC calcula días y extiende `fecha_fin` |
 | `clases_abiertas` | Eventos públicos (clase de prueba gratuita, etc.). `slug` = última parte del URL `/clase/<slug>`. `activa=true` = la que se muestra en el panel admin. RPCs anon `obtener_clase_publica`, `inscribirse_a_clase` |
 | `clase_inscripciones` | Inscripciones al evento. Solo nombre + email (sin teléfono). Realtime → contador de cupos en vivo en el form público |
+| `proyectos_borradores` | **(Wizard)** Borradores guardados por Sofí desde el wizard de nuevo proyecto. Estado `borrador|activado`. NO hay UI para listarlos todavía (TODO) |
+| `proyectos` | **(Multi-proyecto)** Genérico: `slug`, `nombre`, `tipo` (taller_drop_in, formacion, estudio), `estado` (activo/archivado), `config` jsonb con precios/cupos/etc. Referencia opcional al `borrador_id` que lo originó |
+| `taller_encuentros` | **(Taller)** Las N sesiones de un taller. Cupos por encuentro |
+| `taller_inscritos` | **(Taller)** 1 fila por persona inscrita a un proyecto-taller. `comprobante_token` único para link público de comprobantes |
+| `taller_inscripciones_encuentros` | **(Taller)** n-a-m: qué encuentros eligió cada inscrita. `asistio` booleano por encuentro |
+| `taller_preinscripciones` | **(Taller)** Tokens para link personalizado (origen='admin') o público (origen='publico'). Se cierra con `completada_at` + `inscrito_id` |
+| `taller_pagos` | **(Taller)** Audit trail. RLS público por `comprobante_token` permite INSERT desde la página personal de la inscrita |
+| `taller_eventos` | **(Taller)** Timeline. Tipos: `inscripcion_publica`, `inscripcion_manual`, `pago_registrado`, `comprobante_validado`, etc. |
 
 **Storage buckets**:
 - `comprobantes` (privado): anon INSERT permitido, SELECT/DELETE solo authorized.
@@ -262,10 +274,13 @@ Detectadas por pathname en `main.jsx`:
 
 | Ruta | Función |
 |---|---|
-| `/preinscripcion/<token>` | Form público de preinscripción para lead específico |
-| `/comprobante` | Form público anónimo para subir comprobante (cualquiera) |
-| `/comprobante/<token>` | Form personalizado para persona específica (no pide nombre) |
-| `/clase/<slug>` | Form público de inscripción a clase abierta (gratuita). Cupos en vivo via realtime |
+| `/preinscripcion/<token>` | Formación: confirmar inscripción de lead específico |
+| `/comprobante` | Formación: form público anónimo para subir comprobante |
+| `/comprobante/<token>` | Formación: form personalizado por persona (no pide nombre) |
+| `/clase/<slug>` | Clase abierta: inscripción gratuita con cupos en vivo via realtime |
+| `/taller/<slug>` | Taller drop-in modular: inscripción pública abierta (cualquiera) |
+| `/taller/<slug>/i/<token>` | Taller: inscripción con link personalizado (prellenado por admin) |
+| `/taller-comprobante/<token>` | Taller: página privada para subir comprobantes (1 por inscrita) |
 
 Las rutas públicas añaden `body.public-route` al DOM para que el CSS anule las restricciones de scroll del modo app. Suben archivos a Supabase Storage bucket `comprobantes` (privado, anon INSERT permitido por policy).
 
@@ -293,6 +308,62 @@ Las rutas públicas añaden `body.public-route` al DOM para que el CSS anule las
 | SQL Editor (correr migrations) | https://supabase.com/dashboard/project/orceickorgdynlsbskvx/sql/new |
 
 ---
+
+<!-- Última revisión compound: 2026-06-23 (PM) -->
+<!--
+Sesión 2026-06-23 (post-handoff Opus 4.8):
+- Launcher SIEMPRE abre como home (cold start ignora localStorage). app.jsx:
+  useState('launcher') directo. Antes guardaba último módulo visitado, pero
+  ese comportamiento dejaba a Sofí/JC fuera de la nueva pantalla de inicio.
+
+- NUEVO PATRÓN: "taller drop-in modular" (migration-032). Namespace `taller_*`
+  aislado de la formación. Tablas:
+    proyectos (genérico: slug, nombre, tipo, estado, config jsonb)
+    taller_encuentros (las N sesiones del taller)
+    taller_inscritos (1 fila por persona)
+    taller_inscripciones_encuentros (relación n-a-m + asistencia booleana)
+    taller_preinscripciones (tokens para link personalizado/público)
+    taller_pagos
+    taller_eventos (timeline)
+  RLS: admin via is_authorized() + policies abiertas por slug activo o
+  comprobante_token. RPCs públicos: taller_obtener_publico,
+  taller_cargar_preinscripcion, taller_crear_preinscripcion (admin),
+  taller_completar_preinscripcion (con token), taller_inscripcion_publica
+  (sin token, link genérico /taller/<slug>), taller_obtener_por_comprobante_token.
+
+- Primer proyecto activado en este patrón: "Refinar la Práctica" (slug
+  refinar-la-practica). 6 sábados jul-nov 2026, cupos 22 c/u por sábado,
+  tiers $80/150/210/390. Creado desde el borrador #1 del wizard.
+
+- Frontend nuevo:
+    src/hooks/useTaller.js  — hook con inscritos enriquecidos (saldo derivado,
+                              encuentros, pagos), encuentros con cupos en vivo,
+                              mutaciones. Realtime un canal por proyecto.
+    src/screen-taller.jsx   — admin con tabs Encuentros/Inscritas/Pagos,
+                              ficha individual con sub-tabs info/pagos/asistencia,
+                              generador de link personalizado (abre WA con prefill),
+                              registro y validación de pagos, precio especial
+                              con motivo + evento timeline.
+    src/taller-publico.jsx  — /taller/<slug> y /taller/<slug>/i/<token>,
+                              cupos en vivo, redirect al comprobante post-submit.
+    src/taller-comprobante.jsx — /taller-comprobante/<token>, sube archivos al
+                              bucket Storage 'comprobantes' bajo prefix
+                              taller/<slug>/, RLS permite INSERT por
+                              comprobante_token válido.
+
+- Launcher ahora tiene 4 tarjetas:
+    Estudio · Refinar la Práctica (activo) · Formación archivada · Nuevo proyecto
+
+- UX gap conocido: el wizard guarda en proyectos_borradores pero NO hay UI
+  para listar/editar borradores. Hoy se descubre rápido sólo si Sofí no ve
+  sus respuestas y JC pregunta. La tarjeta "Nuevo proyecto" debería mostrar
+  borradores existentes antes del CTA de crear nuevo. TODO.
+
+- Aplicados aprendizajes previos: window.open SÍNCRONO antes de awaits (iOS
+  PWA), window.Icon leído render-time, useState al tope (Rules of Hooks),
+  realtime canal único por feature, bucket comprobantes reutilizado, RLS
+  con is_authorized() + lectura pública por token.
+-->
 
 <!-- Última revisión compound: 2026-06 -->
 <!--
