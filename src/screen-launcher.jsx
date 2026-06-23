@@ -70,7 +70,22 @@ const ProjectCard = ({ icon, accent, eyebrow, title, subtitle, badge, onClick })
   );
 };
 
-const LauncherScreen = ({ ownerName = 'Sofía', onEstudio, onFormacion, onTaller, onNuevoProyecto }) => {
+// Presentación de cada proyecto según su shell/estado
+const presentar = (p) => {
+  const archivado = p.estado === 'archivado';
+  if (p.shell === 'estudio') return { icon: 'sparkle', accent: 'oliva', eyebrow: 'En curso', badge: null, subtitle: 'Membresías, clases y asistencia del día a día' };
+  return {
+    icon: 'users',
+    accent: archivado ? 'terracota' : 'terracota',
+    eyebrow: (p.tipo ? p.tipo[0].toUpperCase() + p.tipo.slice(1) : 'Proyecto'),
+    badge: archivado ? 'Archivada' : (p.estado === 'activo' ? 'Activo' : null),
+    subtitle: p.descripcion || 'Inscritos, pagos y leads',
+  };
+};
+
+const LauncherScreen = ({ ownerName = 'Sofía', onAbrirProyecto, onNuevoProyecto, onEstudio, onFormacion, onTaller }) => {
+  const useProyectos = window.useProyectos;
+  const { proyectos, loading } = useProyectos ? useProyectos() : { proyectos: [], loading: false };
   const saludo = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return 'Buenos días';
@@ -78,68 +93,46 @@ const LauncherScreen = ({ ownerName = 'Sofía', onEstudio, onFormacion, onTaller
     return 'Buenas noches';
   }, []);
 
+  // Orden: activos primero, archivados al final
+  const ordenados = useMemo(() => {
+    const peso = (p) => (p.estado === 'archivado' ? 100 : 0) + (p.orden || 0);
+    return [...proyectos].sort((a, b) => peso(a) - peso(b));
+  }, [proyectos]);
+
   return (
     <div className="app-scroll fade-in" style={{ padding: '0' }}>
       <div style={{ padding: '64px 22px 22px' }}>
-        {/* Encabezado cálido */}
-        <div style={{
-          fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase',
-          color: 'var(--ink-mute)', marginBottom: 6,
-        }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 6 }}>
           {saludo}, {ownerName}
         </div>
-        <h1 style={{
-          fontFamily: "'Cormorant Garamond', serif",
-          fontSize: 34, lineHeight: 1.05, margin: '0 0 6px',
-          color: 'var(--ink)', fontWeight: 600,
-        }}>
+        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, lineHeight: 1.05, margin: '0 0 6px', color: 'var(--ink)', fontWeight: 600 }}>
           Tus proyectos
         </h1>
         <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', margin: '0 0 28px', maxWidth: 320 }}>
           Elige dónde quieres trabajar hoy, o define un proyecto nuevo.
         </p>
 
-        {/* Tarjetas */}
+        {loading && <div style={{ color: 'var(--ink-mute)', fontSize: 13, marginBottom: 14 }}>Cargando proyectos…</div>}
+
+        {ordenados.map(p => {
+          const v = presentar(p);
+          return (
+            <ProjectCard
+              key={p.id}
+              icon={v.icon} accent={v.accent} eyebrow={v.eyebrow} badge={v.badge}
+              title={p.nombre} subtitle={v.subtitle}
+              onClick={() => onAbrirProyecto && onAbrirProyecto(p)}
+            />
+          );
+        })}
+
         <ProjectCard
-          icon="sparkle"
-          accent="oliva"
-          eyebrow="En curso"
-          title="Estudio"
-          subtitle="Membresías, clases y asistencia del día a día"
-          onClick={onEstudio}
-        />
-        <ProjectCard
-          icon="users"
-          accent="terracota"
-          eyebrow="Taller · jul–nov 2026"
-          badge="Activo"
-          title="Refinar la Práctica"
-          subtitle="6 sábados de práctica profunda · drop-in modular"
-          onClick={onTaller}
-        />
-        <ProjectCard
-          icon="users"
-          accent="terracota"
-          eyebrow="Formación · jun 2026"
-          badge="Archivada"
-          title="El Arte de Enseñar Yoga"
-          subtitle="50h · consulta inscritos, pagos e historial"
-          onClick={onFormacion}
-        />
-        <ProjectCard
-          icon="plus"
-          accent="gold"
-          eyebrow="Empezar algo"
-          title="Nuevo proyecto"
-          subtitle="Define el alcance y obtén un camino a seguir"
+          icon="plus" accent="gold" eyebrow="Empezar algo"
+          title="Nuevo proyecto" subtitle="Define el alcance y obtén un camino a seguir"
           onClick={onNuevoProyecto}
         />
 
-        <div style={{
-          marginTop: 18, textAlign: 'center',
-          fontSize: 11, color: 'var(--ink-mute)',
-          fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic',
-        }}>
+        <div style={{ marginTop: 18, textAlign: 'center', fontSize: 11, color: 'var(--ink-mute)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic' }}>
           Sofía Lira · Yoga
         </div>
       </div>

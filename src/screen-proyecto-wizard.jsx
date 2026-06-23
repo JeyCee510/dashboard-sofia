@@ -124,21 +124,37 @@ const ProyectoWizard = ({ onClose }) => {
     try {
       const { data: u } = await supabase.auth.getUser();
       const email = u?.user?.email || (ALLOWED_EMAILS[0] || null);
-      const { error: err } = await supabase.from('proyectos_borradores').insert({
+      const scope = {
+        frecuencia: d.frecuencia, sesiones: d.sesiones, duracion: d.duracion, fechas: d.fechas,
+        modalidad: d.modalidad, ubicacion: d.ubicacion, cupos: d.cupos,
+        publico: d.publico, nivel: d.nivel,
+        precioBase: d.precioBase, tiers: d.tiers,
+      };
+      // 1) Guardar el borrador (registro del alcance + camino a seguir)
+      const { data: borr, error: err } = await supabase.from('proyectos_borradores').insert({
         nombre: d.nombre.trim() || 'Proyecto sin nombre',
-        tipo: d.tipo || null,
-        estado: 'borrador',
+        tipo: d.tipo || null, estado: 'borrador',
         descripcion: d.descripcion || null,
-        scope: {
-          frecuencia: d.frecuencia, sesiones: d.sesiones, duracion: d.duracion, fechas: d.fechas,
-          modalidad: d.modalidad, ubicacion: d.ubicacion, cupos: d.cupos,
-          publico: d.publico, nivel: d.nivel,
-          precioBase: d.precioBase, tiers: d.tiers,
-        },
-        plan: plan,
-        creado_por: email,
-      });
+        scope, plan, creado_por: email,
+      }).select('id').single();
       if (err) throw err;
+
+      // 2) Publicarlo como PROYECTO real → aparece en el inicio con el shell familiar.
+      //    Todos usan el shell de la formación (pestañas) por ahora; lee personas/participaciones.
+      const base = (d.nombre.trim() || 'proyecto').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40) || 'proyecto';
+      const slug = base + '-' + Date.now().toString(36).slice(-4);
+      const { error: errP } = await supabase.from('proyectos').insert({
+        slug, nombre: d.nombre.trim() || 'Proyecto sin nombre',
+        tipo: d.tipo || 'otro', shell: 'formacion', estado: 'activo',
+        descripcion: d.descripcion || null,
+        modalidad: d.modalidad || null, ubicacion: d.ubicacion || null,
+        cupos: d.cupos ? parseInt(d.cupos, 10) : null,
+        precio_base: d.precioBase ? parseFloat(d.precioBase) : null,
+        config: scope, borrador_id: borr?.id || null, creado_por: email, orden: 50,
+      });
+      if (errP) throw errP;
       setSaved(true);
     } catch (e) {
       console.error('[wizard] guardar', e);
@@ -160,10 +176,10 @@ const ProyectoWizard = ({ onClose }) => {
           {Icon ? <Icon name="check" size={30} strokeWidth={2} /> : '✓'}
         </div>
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, margin: '0 0 8px', color: 'var(--ink)' }}>
-          Guardado
+          ¡Proyecto creado!
         </h2>
-        <p style={{ fontSize: 14, color: 'var(--ink-soft)', maxWidth: 300, margin: '0 auto 28px' }}>
-          El borrador de <strong>{d.nombre || 'tu proyecto'}</strong> quedó registrado. Juan Cristóbal ya lo puede ver y empezar a estructurarlo.
+        <p style={{ fontSize: 14, color: 'var(--ink-soft)', maxWidth: 320, margin: '0 auto 28px' }}>
+          <strong>{d.nombre || 'Tu proyecto'}</strong> ya aparece en tu inicio, con sus pestañas de Inscritos, Pagos y Leads (compartidos). Ábrelo cuando quieras empezar a inscribir gente.
         </p>
         <button className="btn btn-primary btn-block" onClick={onClose} style={{ maxWidth: 280, margin: '0 auto' }}>
           Volver al inicio

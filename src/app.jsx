@@ -61,8 +61,21 @@ const App = () => {
   const [estudioOverlay, setEstudioOverlay] = useState(null);   // null | { type:'ficha', id } | 'asistencia' | 'config' | 'comprobantes'
   const [estudioSheet, setEstudioSheet] = useState(null);       // null | 'onboarding'
 
+  // Proyecto activo en el shell convergido (genérico, modelo personas/participaciones)
+  const [proyectoActivo, setProyectoActivo] = useState(null);
+
+  // Rutea una tarjeta del launcher: legacy → su módulo de siempre; resto → shell genérico
+  const abrirProyecto = (p) => {
+    if (!p) return;
+    if (p.slug === 'estudio') setModuloActivo('estudio');
+    else if (p.slug === 'formacion-junio-2026') setModuloActivo('formacion');
+    else if (p.slug === 'refinar-la-practica' && window.TallerScreen) setModuloActivo('taller');
+    else { setProyectoActivo(p); setModuloActivo('proyecto'); }
+  };
+
   const LauncherScreen = window.LauncherScreen;
   const ProyectoWizard = window.ProyectoWizard;
+  const ProyectoShell = window.ProyectoShell;
   const TallerScreen = window.TallerScreen;
   const EstudioScreen = window.EstudioScreen;
   const EstudioFicha = window.EstudioFicha;
@@ -162,9 +175,7 @@ const App = () => {
       <div className="app">
         <LauncherScreen
           ownerName={screenTweaks.ownerName}
-          onEstudio={() => setModuloActivo('estudio')}
-          onTaller={() => setModuloActivo('taller')}
-          onFormacion={() => setModuloActivo('formacion')}
+          onAbrirProyecto={abrirProyecto}
           onNuevoProyecto={() => setModuloActivo('wizard')}
         />
       </div>
@@ -176,6 +187,15 @@ const App = () => {
     return (
       <div className="app">
         <ProyectoWizard onClose={() => setModuloActivo('launcher')} />
+      </div>
+    );
+  }
+
+  // ── App autenticada — Shell genérico de proyecto (modelo convergido) ──
+  if (moduloActivo === 'proyecto' && ProyectoShell && proyectoActivo) {
+    return (
+      <div className="app">
+        <ProyectoShell proyecto={proyectoActivo} onBack={() => setModuloActivo('launcher')} />
       </div>
     );
   }
