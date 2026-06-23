@@ -738,6 +738,7 @@ const TallerScreen = ({ proyectoSlug = 'refinar-la-practica', onSwitch }) => {
   }
 
   return (
+    <>
     <div className="app-scroll fade-in">
       <div style={{ padding: '32px 18px 80px' }}>
         {/* Header */}
@@ -776,25 +777,7 @@ const TallerScreen = ({ proyectoSlug = 'refinar-la-practica', onSwitch }) => {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 14 }}>
-          {[
-            { id: 'encuentros', label: `Encuentros (${taller.encuentros.length})` },
-            { id: 'inscritos', label: `Inscritas (${stats.totalInscritas})` },
-            { id: 'pagos', label: 'Pagos' },
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                padding: '10px 14px', background: 'transparent', border: 'none',
-                borderBottom: tab === t.id ? '2px solid var(--terracota)' : '2px solid transparent',
-                fontWeight: 600, color: tab === t.id ? 'var(--terracota)' : 'var(--ink-soft)',
-                cursor: 'pointer', fontSize: 13,
-              }}
-            >{t.label}</button>
-          ))}
-        </div>
+        {/* Las pestañas ahora viven en la barra inferior (estilo formación) */}
 
         {/* Contenido por tab */}
         {tab === 'encuentros' && (
@@ -839,6 +822,23 @@ const TallerScreen = ({ proyectoSlug = 'refinar-la-practica', onSwitch }) => {
         onClose={() => setSheet(null)}
       />
     </div>
+
+    {/* Barra inferior de navegación (igual que la formación) */}
+    <div className="tabbar">
+      <div className="tabbar-inner">
+        {[
+          { id: 'encuentros', label: 'Encuentros', icon: 'calendar' },
+          { id: 'inscritos', label: 'Inscritas', icon: 'users' },
+          { id: 'pagos', label: 'Pagos', icon: 'cash' },
+        ].map(t => (
+          <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+            {Icon ? <Icon name={t.icon} size={18} strokeWidth={tab === t.id ? 1.8 : 1.5} /> : null}
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+    </>
   );
 };
 
