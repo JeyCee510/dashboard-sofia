@@ -294,6 +294,31 @@ Las rutas públicas añaden `body.public-route` al DOM para que el CSS anule las
 
 ---
 
+<!-- Última revisión compound: 2026-06 -->
+<!--
+Sesión 2026-05/06 features añadidas:
+- Clases abiertas (mig-022→028): tablas + RPCs anon + admin manual + cierre por hora_fin.
+  Ruta /clase/<slug> con cupos en vivo. Inscripción manual desde lead.
+- Follow-up post-clase: panel admin "Inscripciones recibidas" en Leads,
+  botón verde por inscrito → busca/crea lead, genera token, abre WA.
+  Tracking leads.followup_clase_enviado_at.
+- UI rename "preinscripción" → "inscripción" (solo strings).
+- Silla 30 → 40 en diferencial.
+- PagoForm reforma: producto picker (pronto pago/completo/2enc/1enc),
+  precio especial con motivo obligatorio + evento timeline,
+  "solo validar comprobante" sin sumar al pago.
+- TelInput sin auto-593, prefijo + solo.
+- main.jsx parallel imports (Promise.all). CUIDADO: race con window.Icon
+  si se lee a nivel módulo. Patrón: leer dentro del componente render.
+- Perf iOS PWA: touch-action manipulation + DeferMount para paneles
+  dentro de Sheet + window.open SÍNCRONO antes del await (sino bloqueado).
+- Plan de pagos (mig-030): alumnas.plan_pagos text + editor en ficha.
+- helpers en lib/precios.js: estadoPago(a), esProntoPagoProducto(a, precioPP).
+  Filtros pendientes ya no usan etiqueta a.pago, usan pagado < total.
+- PWA + Open Graph (manifest, og-image, sw noop).
+- src/lib/wa.js: helpers WA/IG centralizados.
+-->
+
 <!-- Última revisión compound: 2026-05-07 -->
 <!--
 Sesión 2026-05-07 (compound review):
