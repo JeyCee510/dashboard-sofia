@@ -56,7 +56,7 @@ const AltaSheet = ({ open, titulo, conTotal, onClose, onGuardar }) => {
 const ProyectoShell = ({ proyecto, onBack }) => {
   const Icon = window.Icon;
   const useProyectoData = window.useProyectoData;
-  const { inscritos, leads, loading, agregarInscrito, registrarPago, agregarLead, convertirLead } = useProyectoData(proyecto.id);
+  const { inscritos, leads, encuentros, loading, agregarInscrito, registrarPago, agregarLead, convertirLead } = useProyectoData(proyecto.id);
   const [tab, setTab] = useState('home');
   const [sheet, setSheet] = useState(null); // 'inscrito' | 'lead'
 
@@ -69,6 +69,7 @@ const ProyectoShell = ({ proyecto, onBack }) => {
 
   const tabs = [
     { id: 'home', label: 'Hoy', icon: 'home' },
+    ...(encuentros.length ? [{ id: 'encuentros', label: 'Encuentros', icon: 'calendar' }] : []),
     { id: 'inscritos', label: 'Inscritos', icon: 'users' },
     { id: 'pagos', label: 'Pagos', icon: 'cash', badge: stats.pendientes },
     { id: 'leads', label: 'Leads', icon: 'bullhorn' },
@@ -105,6 +106,25 @@ const ProyectoShell = ({ proyecto, onBack }) => {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── ENCUENTROS ── */}
+          {tab === 'encuentros' && (
+            <div>
+              <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, margin: '0 0 12px', color: 'var(--ink)' }}>Encuentros</h1>
+              {encuentros.map(e => (
+                <div key={e.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, marginBottom: 10, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, background: 'var(--terracota-tint)', color: 'var(--terracota)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{e.numero}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 500, color: 'var(--ink)' }}>{e.titulo || `Encuentro ${e.numero}`}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                      {[e.fecha, [e.hora_inicio, e.hora_fin].filter(Boolean).join('–'), e.ubicacion].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  {e.cupos != null && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{e.cupos} cupos</span>}
+                </div>
+              ))}
             </div>
           )}
 

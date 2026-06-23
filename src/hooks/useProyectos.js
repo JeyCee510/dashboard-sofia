@@ -59,6 +59,7 @@ export function useProyectos() {
 export function useProyectoData(proyectoId) {
   const [inscritos, setInscritos] = useState([]); // participaciones rol=inscrito + persona
   const [leads, setLeads] = useState([]);         // participaciones rol=lead (pool compartido)
+  const [encuentros, setEncuentros] = useState([]); // sesiones del proyecto (taller_encuentros)
   const [loading, setLoading] = useState(true);
   const idRef = useRef(proyectoId);
   idRef.current = proyectoId;
@@ -78,9 +79,16 @@ export function useProyectoData(proyectoId) {
       .select('*, persona:personas(*)')
       .eq('rol', 'lead')
       .order('created_at', { ascending: false });
-    const [{ data: di }, { data: dl }] = await Promise.all([insc, lds]);
+    // Encuentros/sesiones del proyecto (si los tiene; tabla genérica taller_encuentros)
+    const enc = supabase
+      .from('taller_encuentros')
+      .select('*')
+      .eq('proyecto_id', proyectoId)
+      .order('numero', { ascending: true });
+    const [{ data: di }, { data: dl }, encRes] = await Promise.all([insc, lds, enc]);
     setInscritos(di || []);
     setLeads(dl || []);
+    setEncuentros((encRes && !encRes.error && encRes.data) ? encRes.data : []);
     setLoading(false);
   }, [proyectoId]);
 
@@ -167,7 +175,7 @@ export function useProyectoData(proyectoId) {
     await cargar();
   }, [cargar]);
 
-  return { inscritos, leads, loading, recargar: cargar, agregarInscrito, registrarPago, agregarLead, convertirLead };
+  return { inscritos, leads, encuentros, loading, recargar: cargar, agregarInscrito, registrarPago, agregarLead, convertirLead };
 }
 
 window.useProyectos = useProyectos;
