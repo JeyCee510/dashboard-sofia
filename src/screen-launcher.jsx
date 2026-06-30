@@ -93,10 +93,20 @@ const LauncherScreen = ({ ownerName = 'Sofía', onAbrirProyecto, onNuevoProyecto
     return 'Buenas noches';
   }, []);
 
-  // Orden: activos primero, archivados al final
+  // Fallback ESTÁTICO: si la base aún no respondió (Supabase frío), el inicio
+  // igual se ve y es usable al instante. Los slugs deben coincidir con el
+  // routing de app.jsx para que las tarjetas funcionen sin la base.
+  const FALLBACK = [
+    { id: 'fb-estudio',  slug: 'estudio',              nombre: 'Estudio',                shell: 'estudio',   estado: 'activo',    orden: 20, descripcion: 'Membresías, clases y asistencia del día a día' },
+    { id: 'fb-refinar',  slug: 'refinar-la-practica',  nombre: 'Refinar la Práctica',    shell: 'formacion', estado: 'activo',    tipo: 'taller', orden: 10 },
+    { id: 'fb-formacion',slug: 'formacion-junio-2026', nombre: 'El Arte de Enseñar Yoga', shell: 'formacion', estado: 'archivado', tipo: 'formacion', orden: 30 },
+  ];
+
+  // Orden: activos primero, archivados al final. Usa fallback si no hay datos.
   const ordenados = useMemo(() => {
+    const base = proyectos.length ? proyectos : FALLBACK;
     const peso = (p) => (p.estado === 'archivado' ? 100 : 0) + (p.orden || 0);
-    return [...proyectos].sort((a, b) => peso(a) - peso(b));
+    return [...base].sort((a, b) => peso(a) - peso(b));
   }, [proyectos]);
 
   return (
@@ -111,8 +121,6 @@ const LauncherScreen = ({ ownerName = 'Sofía', onAbrirProyecto, onNuevoProyecto
         <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', margin: '0 0 28px', maxWidth: 320 }}>
           Elige dónde quieres trabajar hoy, o define un proyecto nuevo.
         </p>
-
-        {loading && <div style={{ color: 'var(--ink-mute)', fontSize: 13, marginBottom: 14 }}>Cargando proyectos…</div>}
 
         {ordenados.map(p => {
           const v = presentar(p);
