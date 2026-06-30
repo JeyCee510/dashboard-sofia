@@ -1,4 +1,5 @@
 import React from 'react';
+import { useProyectos } from './hooks/useProyectos.js';
 const { useMemo } = React;
 
 // ──────────────────────────────────────────────────────────────
@@ -84,8 +85,7 @@ const presentar = (p) => {
 };
 
 const LauncherScreen = ({ ownerName = 'Sofía', onAbrirProyecto, onNuevoProyecto, onEstudio, onFormacion, onTaller }) => {
-  const useProyectos = window.useProyectos;
-  const { proyectos, loading } = useProyectos ? useProyectos() : { proyectos: [], loading: false };
+  const { proyectos, loading } = useProyectos();
   const saludo = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return 'Buenos días';

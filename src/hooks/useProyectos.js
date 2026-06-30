@@ -43,14 +43,11 @@ export function useProyectos() {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    cargar();
-    const ch = supabase
-      .channel('proyectos-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos' }, cargar)
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [cargar]);
+  // Solo carga al montar — SIN canal realtime permanente en el inicio.
+  // El proyecto Supabase es free/compartido y se "duerme"; abrir un canal
+  // realtime en cada apertura del launcher alarga el cold-start. El inicio
+  // se remonta al volver, así que recarga sola tras publicar un proyecto.
+  useEffect(() => { cargar(); }, [cargar]);
 
   return { proyectos, loading, recargar: cargar };
 }
