@@ -151,8 +151,15 @@ async function initApp() {
   // screen-estudio-placeholder.jsx omitido: era legacy ("ya no se usa").
   // El archivo sigue en src/ por si quieres consultarlo, pero ya no se importa.
   const { App } = await import('./app.jsx');
+  const { UpdateNotifier } = await import('./update-notifier.jsx');
 
   // App responsive en cualquier tamaño. En desktop el container queda centrado
   // con max-width (ver styles.css). En mobile ocupa fullscreen. Sin frame iOS.
-  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  // UpdateNotifier va como hermano: avisa cuando hay una versión nueva desplegada.
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <>
+      <App />
+      <UpdateNotifier />
+    </>
+  );
 }
