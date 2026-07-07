@@ -1,6 +1,6 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
-import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS } from './lib/precios.js';
+import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS, esTaller, encuentrosDeAjustes, precioTaller } from './lib/precios.js';
 import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput, ClaseAbiertaPanel } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
@@ -22,7 +22,18 @@ const DeferMount = ({ children, ms = 60 }) => {
 
 const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   const editing = alumnaId && store.state.alumnas.find(a => a.id === alumnaId);
-  const defaultForm = () => ({
+  // Modo taller drop-in: precio por nº de encuentros (tiers), sin completa/2/1 ni silla.
+  const taller = esTaller(store.state.ajustes);
+  const encuentrosProy = encuentrosDeAjustes(store.state.ajustes);
+  const totalEncuentros = encuentrosProy.length;
+  const defaultForm = () => taller ? ({
+    nombre: '', tel: '', instagram: '', notas: '', bonoSilla: false, pago: 'pendiente',
+    pagado: 0,
+    tipo_inscripcion: 'taller',
+    encuentros_asistir: encuentrosProy.map(e => e.num),
+    total: precioTaller(totalEncuentros, store.state.ajustes),
+    totalManual: false,
+  }) : ({
     nombre: '', tel: '', instagram: '', notas: '', bonoSilla: false, pago: 'pendiente',
     pagado: 0,
     tipo_inscripcion: 'completa',
@@ -58,8 +69,14 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
     const cur = f.encuentros_asistir || [];
     let next;
     if (cur.includes(num)) next = cur.filter(x => x !== num);
-    else next = [...cur, num].sort();
-    // Mantener consistencia con el tipo
+    else next = [...cur, num].sort((a, b) => a - b);
+    // Taller: precio por nº de encuentros elegidos (tiers)
+    if (taller) {
+      const upd = { ...f, encuentros_asistir: next, tipo_inscripcion: 'taller' };
+      if (!f.totalManual) upd.total = precioTaller(next.length, store.state.ajustes);
+      return upd;
+    }
+    // Formación: mantener consistencia con el tipo
     let tipo = f.tipo_inscripcion;
     if (next.length === 3) tipo = 'completa';
     else if (next.length === 2) tipo = 'dos_encuentros';
@@ -73,7 +90,9 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   // manualmente Y difiere del calculado automáticamente.
   const [precioMotivo, setPrecioMotivo] = React.useState('');
   React.useEffect(() => { setPrecioMotivo(''); }, [alumnaId, open]);
-  const totalCalculado = calcularTotal({ tipo: form.tipo_inscripcion, bonoSilla: form.bonoSilla, ajustes: store.state.ajustes });
+  const totalCalculado = taller
+    ? precioTaller((form.encuentros_asistir || []).length, store.state.ajustes)
+    : calcularTotal({ tipo: form.tipo_inscripcion, bonoSilla: form.bonoSilla, ajustes: store.state.ajustes });
   const esPrecioEspecial = form.totalManual && Number(form.total) !== Number(totalCalculado);
 
   const guardar = async () => {
@@ -134,18 +153,10 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
       <Field label="Instagram (opcional)">
         <InstaInput value={form.instagram} onChange={v => set('instagram', v)} />
       </Field>
-      <Field label="Tipo de inscripción">
-        <SelectChips
-          value={form.tipo_inscripcion}
-          onChange={v => set('tipo_inscripcion', v)}
-          options={TIPOS_INSCRIPCION}
-        />
-      </Field>
-
-      {form.tipo_inscripcion !== 'completa' && (
-        <Field label={form.tipo_inscripcion === 'dos_encuentros' ? '¿Cuáles 2 encuentros asistirá?' : '¿Cuál encuentro asistirá?'}>
+      {taller ? (
+        <Field label="¿Cuáles encuentros?" hint={`El precio depende de cuántos elija (${(form.encuentros_asistir || []).length} seleccionados)`}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {ENCUENTROS.map(e => {
+            {encuentrosProy.map(e => {
               const sel = (form.encuentros_asistir || []).includes(e.num);
               return (
                 <button
@@ -167,16 +178,53 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
             })}
           </div>
         </Field>
-      )}
+      ) : (
+        <>
+          <Field label="Tipo de inscripción">
+            <SelectChips
+              value={form.tipo_inscripcion}
+              onChange={v => set('tipo_inscripcion', v)}
+              options={TIPOS_INSCRIPCION}
+            />
+          </Field>
 
-      <SwitchToggle
-        label="Bono silla"
-        hint={form.tipo_inscripcion === 'completa'
-          ? 'Recibe silla de yoga profesional (primeros 6 inscritos a completa)'
-          : 'Incluye silla (cuesta extra para inscripción parcial)'}
-        value={form.bonoSilla}
-        onChange={v => set('bonoSilla', v)}
-      />
+          {form.tipo_inscripcion !== 'completa' && (
+            <Field label={form.tipo_inscripcion === 'dos_encuentros' ? '¿Cuáles 2 encuentros asistirá?' : '¿Cuál encuentro asistirá?'}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {ENCUENTROS.map(e => {
+                  const sel = (form.encuentros_asistir || []).includes(e.num);
+                  return (
+                    <button
+                      key={e.num} type="button" onClick={() => toggleEncuentro(e.num)}
+                      style={{
+                        padding: '10px 14px', borderRadius: 12,
+                        background: sel ? 'var(--ink)' : 'var(--surface)',
+                        color: sel ? 'var(--bg)' : 'var(--ink-soft)',
+                        border: '1px solid ' + (sel ? 'transparent' : 'var(--line-soft)'),
+                        fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+                        cursor: 'pointer', textAlign: 'left',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      }}
+                    >
+                      <span>{e.label}</span>
+                      <span style={{ fontSize: 11, opacity: 0.7 }}>{e.fechas}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+
+          <SwitchToggle
+            label="Bono silla"
+            hint={form.tipo_inscripcion === 'completa'
+              ? 'Recibe silla de yoga profesional (primeros 6 inscritos a completa)'
+              : 'Incluye silla (cuesta extra para inscripción parcial)'}
+            value={form.bonoSilla}
+            onChange={v => set('bonoSilla', v)}
+          />
+        </>
+      )}
 
       <Field label="Estado de pago">
         <SelectChips
