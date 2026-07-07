@@ -44,7 +44,10 @@ function toDb(patch) {
   return out;
 }
 
-export function useAlumnas() {
+// proyectoId por defecto = 2 (formación junio 2026). El filtro por proyecto_id
+// es no-op para la formación (todas sus filas ya tienen ese id), así que su
+// comportamiento no cambia. Para el taller se pasa proyectoId=1.
+export function useAlumnas(proyectoId = 2) {
   const [alumnas, setAlumnas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -62,6 +65,7 @@ export function useAlumnas() {
       const { data, error } = await supabase
         .from('alumnas')
         .select('*')
+        .eq('proyecto_id', proyectoId)
         .order('created_at', { ascending: true });
       if (cancelled) return;
       if (error) {
@@ -73,7 +77,7 @@ export function useAlumnas() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [proyectoId]);
 
   // Realtime: si Sofía o Juan editan desde otra pestaña, se sincroniza.
   // Usamos upsert defensivo (INSERT y UPDATE comparten path) para que los
@@ -81,8 +85,8 @@ export function useAlumnas() {
   // se pierdan si el evento llega como UPDATE.
   useEffect(() => {
     const ch = supabase
-      .channel('alumnas-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'alumnas' }, (payload) => {
+      .channel('alumnas-changes-' + proyectoId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'alumnas', filter: `proyecto_id=eq.${proyectoId}` }, (payload) => {
         if (payload.eventType === 'DELETE') {
           setAlumnas(prev => prev.filter(a => a.id !== payload.old.id));
           return;
@@ -97,7 +101,7 @@ export function useAlumnas() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [proyectoId]);
 
   const addAlumna = useCallback(async (data) => {
     const iniciales = (data.nombre || '').split(' ').filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('');
@@ -117,6 +121,7 @@ export function useAlumnas() {
       avatar: `oklch(0.74 0.07 ${hue})`,
       tipo_inscripcion: data.tipo_inscripcion || 'completa',
       encuentros_asistir: data.encuentros_asistir || [1, 2, 3],
+      proyecto_id: proyectoId,
     };
     const { data: inserted, error } = await supabase
       .from('alumnas')
@@ -243,7 +248,7 @@ export function useAlumnas() {
     // 1. Insertar registro en `pagos` (audit trail) — solo si monto > 0
     if (m > 0) {
       const forma = opts.forma || 'transferencia'; // default cuando el caller no especifica
-      await supabase.from('pagos').insert({ alumna_id: alumnaId, monto: m, tipo, forma });
+      await supabase.from('pagos').insert({ alumna_id: alumnaId, monto: m, tipo, forma, proyecto_id: proyectoId });
     }
     // 2. Actualizar acumulado + total + (eventualmente) silla en `alumnas`
     await supabase.from('alumnas').update(dbPatch).eq('id', alumnaId);

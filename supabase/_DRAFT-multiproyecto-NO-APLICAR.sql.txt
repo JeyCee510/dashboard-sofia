@@ -1,0 +1,106 @@
+-- ─────────────────────────────────────────────────────────────────────────
+-- Migración 032 · Multi-proyecto (tabla `proyectos` + proyecto_id)
+--
+-- Generaliza la app de "una sola formación" a "varios proyectos". Cada
+-- proyecto tiene un SHELL (qué UI usa): 'formacion' (cohorte con pestañas
+-- Hoy/Inscritos/Pagos/Leads) o 'estudio' (recurrente, membresías).
+--
+-- 100% ADITIVA: crea una tabla nueva y agrega columnas NULLABLE. No borra
+-- ni modifica datos existentes. La app actual (que no conoce proyecto_id)
+-- sigue funcionando: lee con select('*') y los inserts dejan proyecto_id
+-- en NULL hasta que el frontend nuevo lo setee. El backfill asocia todo lo
+-- existente al proyecto correcto.
+--
+-- LEADS = pool COMPARTIDO entre proyectos: NO se les pone proyecto_id de
+-- filtro; solo un proyecto_interes_id opcional para etiquetar. La pestaña
+-- Leads se ve igual en todos los proyectos.
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- ── 1. Tabla proyectos ──
+CREATE TABLE IF NOT EXISTS public.proyectos (
+  id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  slug          text UNIQUE NOT NULL,
+  nombre        text NOT NULL,
+  tipo          text,                         -- formacion|taller|retiro|intensivo|programa|clases|estudio|otro
+  shell         text NOT NULL DEFAULT 'formacion',  -- 'formacion' | 'estudio' (qué UI renderiza)
+  estado        text NOT NULL DEFAULT 'activo',     -- activo | archivado | borrador
+  descripcion   text,
+  modalidad     text,
+  ubicacion     text,
+  cupos         integer,
+  precio_base   numeric,
+  config        jsonb NOT NULL DEFAULT '{}'::jsonb, -- precios/tiers, fechas dinámicas, etc.
+  fecha_inicio  date,
+  fecha_fin     date,
+  orden         integer NOT NULL DEFAULT 0,
+  archivado_at  timestamptz,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION public.touch_proyectos()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
+
+DROP TRIGGER IF EXISTS proyectos_touch ON public.proyectos;
+CREATE TRIGGER proyectos_touch BEFORE UPDATE ON public.proyectos
+  FOR EACH ROW EXECUTE FUNCTION public.touch_proyectos();
+
+ALTER TABLE public.proyectos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "proyectos_admin" ON public.proyectos;
+CREATE POLICY "proyectos_admin" ON public.proyectos
+  FOR ALL USING (public.is_authorized()) WITH CHECK (public.is_authorized());
+
+-- ── 2. Seed de los dos proyectos existentes ──
+INSERT INTO public.proyectos (slug, nombre, tipo, shell, estado, descripcion, ubicacion, cupos, precio_base, orden, archivado_at, fecha_inicio, fecha_fin)
+VALUES
+  ('formacion-junio-2026', 'El Arte de Enseñar Yoga', 'formacion', 'formacion', 'archivado',
+   'Formación de 50h. Junio 2026.', 'Domo Soulspace, Tumbaco', 25, 640, 10, now(), '2026-06-06', '2026-06-21'),
+  ('estudio', 'Estudio', 'programa', 'estudio', 'activo',
+   'Clases y membresías del día a día.', NULL, NULL, NULL, 20, NULL, NULL)
+ON CONFLICT (slug) DO NOTHING;
+
+-- ── 3. proyecto_id en tablas de la FORMACIÓN ──
+ALTER TABLE public.alumnas        ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+ALTER TABLE public.pagos          ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+ALTER TABLE public.asistencia     ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+ALTER TABLE public.eventos_alumna ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+
+-- ── 4. proyecto_id en tablas del ESTUDIO ──
+ALTER TABLE public.estudiantes_estudio       ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+ALTER TABLE public.membresias                ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+ALTER TABLE public.pagos_estudio             ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+ALTER TABLE public.comprobantes_pago_estudio ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+ALTER TABLE public.clases_realizadas         ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+ALTER TABLE public.asistencia_estudio        ADD COLUMN IF NOT EXISTS proyecto_id bigint REFERENCES public.proyectos(id);
+
+-- ── 5. Leads = pool compartido. Solo etiqueta opcional de interés. ──
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS proyecto_interes_id bigint REFERENCES public.proyectos(id);
+
+-- ── 6. Backfill: asociar lo existente al proyecto correcto ──
+DO $$
+DECLARE
+  fid bigint;
+  eid bigint;
+BEGIN
+  SELECT id INTO fid FROM public.proyectos WHERE slug='formacion-junio-2026';
+  SELECT id INTO eid FROM public.proyectos WHERE slug='estudio';
+
+  UPDATE public.alumnas        SET proyecto_id = fid WHERE proyecto_id IS NULL;
+  UPDATE public.pagos          SET proyecto_id = fid WHERE proyecto_id IS NULL;
+  UPDATE public.asistencia     SET proyecto_id = fid WHERE proyecto_id IS NULL;
+  UPDATE public.eventos_alumna SET proyecto_id = fid WHERE proyecto_id IS NULL;
+
+  UPDATE public.estudiantes_estudio       SET proyecto_id = eid WHERE proyecto_id IS NULL;
+  UPDATE public.membresias                SET proyecto_id = eid WHERE proyecto_id IS NULL;
+  UPDATE public.pagos_estudio             SET proyecto_id = eid WHERE proyecto_id IS NULL;
+  UPDATE public.comprobantes_pago_estudio SET proyecto_id = eid WHERE proyecto_id IS NULL;
+  UPDATE public.clases_realizadas         SET proyecto_id = eid WHERE proyecto_id IS NULL;
+  UPDATE public.asistencia_estudio        SET proyecto_id = eid WHERE proyecto_id IS NULL;
+END $$;
+
+-- ── 7. Índices para filtrado por proyecto ──
+CREATE INDEX IF NOT EXISTS alumnas_proyecto_idx     ON public.alumnas(proyecto_id);
+CREATE INDEX IF NOT EXISTS pagos_proyecto_idx       ON public.pagos(proyecto_id);
+CREATE INDEX IF NOT EXISTS asistencia_proyecto_idx  ON public.asistencia(proyecto_id);
+CREATE INDEX IF NOT EXISTS estudiantes_proyecto_idx ON public.estudiantes_estudio(proyecto_id);

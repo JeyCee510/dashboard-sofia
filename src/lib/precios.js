@@ -25,6 +25,39 @@ export const ENCUENTROS = [
   { num: 3, label: 'Encuentro 3', fechas: '20 y 21 jun', dias: [4, 5] },
 ];
 
+// ─────────────────────────────────────────────────────────────────────
+// Modo TALLER drop-in (aditivo, no afecta la formación):
+// cada encuentro es independiente y el precio depende del NÚMERO de
+// encuentros elegidos (tiers). Los encuentros y tiers vienen de la config
+// del proyecto (ajustes: tipo='taller', diasFormacion[], tiers{}).
+// ─────────────────────────────────────────────────────────────────────
+export function esTaller(ajustes) {
+  return ajustes?.tipo === 'taller' && Array.isArray(ajustes?.diasFormacion);
+}
+
+// Encuentros del proyecto. Formación → ENCUENTROS fijo (3, pares de días).
+// Taller → uno por cada día de ajustes.diasFormacion.
+export function encuentrosDeAjustes(ajustes) {
+  if (esTaller(ajustes)) {
+    return ajustes.diasFormacion.map((d, i) => ({
+      num: i + 1,
+      label: d.label || `Encuentro ${i + 1}`,
+      fechas: d.fecha || '',
+      dias: [d.idx ?? i],
+    }));
+  }
+  return ENCUENTROS;
+}
+
+// Precio por número de encuentros elegidos (tiers del taller).
+export function precioTaller(nEncuentros, ajustes) {
+  const tiers = ajustes?.tiers || {};
+  const total = ajustes?.diasFormacion?.length || 6;
+  // Si eligió todos → precio del paquete completo si existe.
+  if (nEncuentros >= total && tiers[String(total)] != null) return Number(tiers[String(total)]);
+  return Number(tiers[String(nEncuentros)] ?? tiers.default ?? 0);
+}
+
 // Calcula el total esperado según tipo + silla. Permite override desde ajustes.
 export function calcularTotal({ tipo, bonoSilla, ajustes }) {
   const precios = (ajustes && ajustes.precios) || PRECIOS_DEFAULT;
@@ -32,25 +65,26 @@ export function calcularTotal({ tipo, bonoSilla, ajustes }) {
   return bonoSilla ? tipoMap.con_silla : tipoMap.sin_silla;
 }
 
-// Resuelve qué días (0..5) debería atender una alumna según sus encuentros_asistir
-export function diasAsistencia(encuentrosAsistir) {
+// Resuelve qué días debería atender una alumna según sus encuentros_asistir.
+// `encuentros` opcional: por defecto ENCUENTROS (formación); el taller pasa los suyos.
+export function diasAsistencia(encuentrosAsistir, encuentros = ENCUENTROS) {
   const set = new Set();
   (encuentrosAsistir || [1, 2, 3]).forEach(num => {
-    const e = ENCUENTROS.find(x => x.num === num);
+    const e = encuentros.find(x => x.num === num);
     if (e) e.dias.forEach(d => set.add(d));
   });
   return [...set].sort((a, b) => a - b);
 }
 
-// Para un día (0..5), devuelve el número del encuentro al que pertenece
-export function encuentroDelDia(diaIdx) {
-  const e = ENCUENTROS.find(x => x.dias.includes(diaIdx));
+// Para un día, devuelve el número del encuentro al que pertenece
+export function encuentroDelDia(diaIdx, encuentros = ENCUENTROS) {
+  const e = encuentros.find(x => x.dias.includes(diaIdx));
   return e ? e.num : null;
 }
 
 // ¿Le toca a esta alumna asistir el día diaIdx?
-export function alumnaAsisteDia(alumna, diaIdx) {
-  const enc = encuentroDelDia(diaIdx);
+export function alumnaAsisteDia(alumna, diaIdx, encuentros = ENCUENTROS) {
+  const enc = encuentroDelDia(diaIdx, encuentros);
   if (enc === null) return false;
   const lista = alumna.encuentros_asistir || alumna.encuentrosAsistir || [1, 2, 3];
   return lista.includes(enc);

@@ -31,14 +31,14 @@ function toDb(patch) {
   return out;
 }
 
-export function useLeads() {
+export function useLeads(proyectoId = 2) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('leads').select('*').eq('proyecto_id', proyectoId).order('created_at', { ascending: false });
       if (!cancelled) {
         if (error) console.error('[leads] load', error);
         setLeads((data || []).map(fromDb));
@@ -46,11 +46,11 @@ export function useLeads() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [proyectoId]);
 
   useEffect(() => {
-    const ch = supabase.channel('leads-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, (payload) => {
+    const ch = supabase.channel('leads-changes-' + proyectoId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads', filter: `proyecto_id=eq.${proyectoId}` }, (payload) => {
         if (payload.eventType === 'DELETE') {
           setLeads(prev => prev.filter(l => l.id !== payload.old.id));
           return;
@@ -69,10 +69,10 @@ export function useLeads() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [proyectoId]);
 
   const addLead = useCallback(async (data) => {
-    const row = { estado: 'nuevo', tiempo: 'ahora', mensaje: '', ...data };
+    const row = { estado: 'nuevo', tiempo: 'ahora', mensaje: '', ...data, proyecto_id: proyectoId };
     const { data: inserted, error } = await supabase.from('leads').insert(row).select().single();
     if (error) { console.error('[leads] add', error); throw error; }
     // Optimistic local update: no esperamos al realtime

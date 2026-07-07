@@ -16,7 +16,7 @@ function fromDb(row) {
   };
 }
 
-export function useMensajes() {
+export function useMensajes(proyectoId = 2) {
   const [mensajes, setMensajes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,6 +26,7 @@ export function useMensajes() {
       const { data, error } = await supabase
         .from('mensajes')
         .select('*')
+        .eq('proyecto_id', proyectoId)
         .order('created_at', { ascending: false })
         .limit(20);
       if (cancelled) return;
@@ -34,11 +35,11 @@ export function useMensajes() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [proyectoId]);
 
   useEffect(() => {
-    const ch = supabase.channel('mensajes-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mensajes' }, (payload) => {
+    const ch = supabase.channel('mensajes-changes-' + proyectoId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mensajes', filter: `proyecto_id=eq.${proyectoId}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setMensajes(prev => [fromDb(payload.new), ...prev].slice(0, 20));
         } else if (payload.eventType === 'UPDATE') {
@@ -49,7 +50,7 @@ export function useMensajes() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [proyectoId]);
 
   const marcarLeido = useCallback(async (id) => {
     setMensajes(prev => prev.map(m => m.id === id ? { ...m, sinLeer: false } : m));

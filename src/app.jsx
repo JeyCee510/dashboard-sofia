@@ -42,7 +42,10 @@ const App = () => {
 
   const auth = useAuth();
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const store = useStore();
+  // Proyecto que corre el motor de la formación: 2 = formación junio (default),
+  // 1 = taller Refinar. El store filtra todo por este id (no-op para la formación).
+  const [formacionProyectoId, setFormacionProyectoId] = useState(2);
+  const store = useStore(formacionProyectoId);
   const [tab, setTab] = useState('home');
   const [overlay, setOverlay] = useState(null);
   const [sheet, setSheet] = useState(null);
@@ -68,10 +71,12 @@ const App = () => {
   const abrirProyecto = (p) => {
     if (!p) return;
     if (p.slug === 'estudio') setModuloActivo('estudio');
-    else if (p.slug === 'formacion-junio-2026') setModuloActivo('formacion');
-    // Refinar usa su motor del taller (link público/personalizado, selección modular, tiers).
-    // Sus inscritos se sincronizan al pool compartido `personas` vía trigger (mig 035).
-    else if (p.slug === 'refinar-la-practica' && window.TallerScreen) setModuloActivo('taller');
+    else if (p.slug === 'formacion-junio-2026') { setFormacionProyectoId(2); setModuloActivo('formacion'); }
+    // Refinar ahora corre el MOTOR de la formación (mismas pestañas y features:
+    // leads, inscritos, pagos, WhatsApp, difusión…), con sus datos (proyecto_id=1)
+    // y su config (fechas/precios/plantillas desde proyectos.config). El link
+    // público /taller/<slug> sigue funcionando aparte.
+    else if (p.slug === 'refinar-la-practica') { setFormacionProyectoId(1); setModuloActivo('formacion'); }
     // Proyectos nuevos del wizard → shell convergido (personas/participaciones)
     else { setProyectoActivo(p); setModuloActivo('proyecto'); }
   };

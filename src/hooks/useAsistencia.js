@@ -7,7 +7,7 @@ const { useState, useEffect, useCallback } = React;
 // Internamente usamos un Map serializable {`${diaIdx}:${alumnaId}` -> {presente, rowId}}
 // pero exponemos al store la forma de objeto anidado para no romper screens.
 
-export function useAsistencia() {
+export function useAsistencia(proyectoId = 2) {
   const [asistencia, setAsistencia] = useState({}); // { 0: { 12: true, 15: false }, ... }
   const [rowMap, setRowMap] = useState({});         // { '0:12': rowId }
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,7 @@ export function useAsistencia() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.from('asistencia').select('*');
+      const { data, error } = await supabase.from('asistencia').select('*').eq('proyecto_id', proyectoId);
       if (cancelled) return;
       if (error) {
         console.error('[asistencia] load', error);
@@ -34,12 +34,12 @@ export function useAsistencia() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [proyectoId]);
 
   // Realtime
   useEffect(() => {
-    const ch = supabase.channel('asistencia-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'asistencia' }, (payload) => {
+    const ch = supabase.channel('asistencia-changes-' + proyectoId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'asistencia', filter: `proyecto_id=eq.${proyectoId}` }, (payload) => {
         const r = payload.new || payload.old;
         const key = `${r.dia_idx}:${r.alumna_id}`;
         if (payload.eventType === 'DELETE') {
@@ -63,7 +63,7 @@ export function useAsistencia() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [proyectoId]);
 
   // Ciclo de toggle: undefined → true → false → undefined (igual que antes)
   const toggleAsistencia = useCallback(async (diaIdx, alumnaId) => {
@@ -74,7 +74,7 @@ export function useAsistencia() {
     if (cur === undefined) {
       // INSERT presente=true (optimistic)
       setAsistencia(prev => ({ ...prev, [diaIdx]: { ...(prev[diaIdx] || {}), [alumnaId]: true } }));
-      const { data, error } = await supabase.from('asistencia').insert({ dia_idx: diaIdx, alumna_id: alumnaId, presente: true }).select().single();
+      const { data, error } = await supabase.from('asistencia').insert({ dia_idx: diaIdx, alumna_id: alumnaId, presente: true, proyecto_id: proyectoId }).select().single();
       if (!error && data) setRowMap(prev => ({ ...prev, [key]: data.id }));
       else if (error) console.error('[asistencia] insert', error);
     } else if (cur === true) {
@@ -108,7 +108,7 @@ export function useAsistencia() {
       return { ...prev, [diaIdx]: map };
     });
     // Upsert por (alumna_id, dia_idx) único
-    const rows = alumnasIds.map(id => ({ dia_idx: diaIdx, alumna_id: id, presente: true }));
+    const rows = alumnasIds.map(id => ({ dia_idx: diaIdx, alumna_id: id, presente: true, proyecto_id: proyectoId }));
     const { data, error } = await supabase.from('asistencia').upsert(rows, { onConflict: 'alumna_id,dia_idx' }).select();
     if (error) { console.error('[asistencia] marcarTodos', error); return; }
     if (data) {

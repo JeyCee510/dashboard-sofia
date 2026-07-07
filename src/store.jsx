@@ -26,12 +26,16 @@ window.useComprobanteToken = useComprobanteToken;
 // ajustes, mensajes. Cada hook maneja su realtime + optimistic UI.
 // ─────────────────────────────────────────────────────────────────────
 
-function useStore() {
-  const alumnasHook = useAlumnas();
-  const leadsHook = useLeads();
-  const asistenciaHook = useAsistencia();
-  const ajustesHook = useAjustes();
-  const mensajesHook = useMensajes();
+// proyectoId por defecto = 2 (formación junio 2026). Los hooks filtran por
+// proyecto_id; para la formación es no-op (todas sus filas ya tienen id=2).
+// Para el taller (proyectoId=1) corre el MISMO motor con los datos del taller.
+function useStore(proyectoId = 2) {
+  const esFormacion = proyectoId === 2;
+  const alumnasHook = useAlumnas(proyectoId);
+  const leadsHook = useLeads(proyectoId);
+  const asistenciaHook = useAsistencia(proyectoId);
+  const ajustesHook = useAjustes({ proyectoId, esFormacion });
+  const mensajesHook = useMensajes(proyectoId);
   const comprobantesPendientesHook = useComprobantesPendientes();
 
   // ── Módulo Estudio ──

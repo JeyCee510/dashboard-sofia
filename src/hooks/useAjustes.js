@@ -85,40 +85,56 @@ function deepMerge(target, source) {
   return out;
 }
 
-export function useAjustes() {
+// Formación (default): ajustes viven en la tabla singleton `ajustes` (id=1).
+// Otros proyectos (taller, etc.): ajustes viven en `proyectos.config` de ese
+// proyecto (la tabla `ajustes` tiene constraint only_one_row). Misma forma.
+export function useAjustes({ proyectoId = 2, esFormacion = true } = {}) {
   const [ajustes, setAjustes] = useState(DEFAULT_AJUSTES);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.from('ajustes').select('data').eq('id', 1).single();
-      if (cancelled) return;
-      if (error) {
-        console.error('[ajustes] load', error);
-      } else if (data?.data) {
-        // Deep merge para preservar defaults nuevos (ej: estudio.*) si la fila vieja no los tiene
-        setAjustes(deepMerge(DEFAULT_AJUSTES, data.data));
+      let cfg = null;
+      if (esFormacion) {
+        const { data, error } = await supabase.from('ajustes').select('data').eq('id', 1).single();
+        if (error) console.error('[ajustes] load', error); else cfg = data?.data;
+      } else {
+        const { data, error } = await supabase.from('proyectos').select('config').eq('id', proyectoId).single();
+        if (error) console.error('[ajustes] load proyecto', error); else cfg = data?.config;
       }
+      if (cancelled) return;
+      if (cfg) setAjustes(deepMerge(DEFAULT_AJUSTES, cfg));
+      else setAjustes(DEFAULT_AJUSTES);
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [esFormacion, proyectoId]);
 
-  // Realtime: si Sofía cambia ajustes en otra pestaña, sincronizar
+  // Realtime: sincronizar si se editan los ajustes desde otra pestaña
   useEffect(() => {
-    const ch = supabase.channel('ajustes-changes')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ajustes' }, (payload) => {
-        if (payload.new?.data) setAjustes(deepMerge(DEFAULT_AJUSTES, payload.new.data));
-      })
-      .subscribe();
+    const ch = esFormacion
+      ? supabase.channel('ajustes-changes')
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ajustes' }, (payload) => {
+            if (payload.new?.data) setAjustes(deepMerge(DEFAULT_AJUSTES, payload.new.data));
+          })
+      : supabase.channel('proyecto-ajustes-' + proyectoId)
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'proyectos', filter: `id=eq.${proyectoId}` }, (payload) => {
+            if (payload.new?.config) setAjustes(deepMerge(DEFAULT_AJUSTES, payload.new.config));
+          });
+    ch.subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [esFormacion, proyectoId]);
 
   const persist = useCallback(async (full) => {
-    const { error } = await supabase.from('ajustes').update({ data: full }).eq('id', 1);
-    if (error) console.error('[ajustes] update', error);
-  }, []);
+    if (esFormacion) {
+      const { error } = await supabase.from('ajustes').update({ data: full }).eq('id', 1);
+      if (error) console.error('[ajustes] update', error);
+    } else {
+      const { error } = await supabase.from('proyectos').update({ config: full }).eq('id', proyectoId);
+      if (error) console.error('[ajustes] update proyecto', error);
+    }
+  }, [esFormacion, proyectoId]);
 
   const persistDebounced = useDebounced(persist, 700);
 
