@@ -131,6 +131,9 @@ const App = () => {
   window.MOCK_LEADS = store.state.leads;
   window.MENSAJES_RECIENTES = store.state.mensajes;
   window.DIAS_FORMACION = store.state.ajustes.diasFormacion;
+  // Config completa del proyecto activo (sedes, matriz de precios, reservas)
+  // para que las screens se adapten sin recibir props nuevas.
+  window.AJUSTES_PROYECTO = store.state.ajustes;
 
   const screenTweaks = {
     capacidad: store.state.ajustes.capacidad,

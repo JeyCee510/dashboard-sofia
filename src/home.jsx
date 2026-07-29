@@ -18,13 +18,42 @@ const DIAS_FECHAS = [
   { idx: 5, date: new Date(2026, 5, 21), label: 'Día 6', encuentro: 3, fechaCorta: '21 jun' },
 ];
 
-function getFormationContext() {
+// Convierte los días configurados del proyecto (ajustes.diasFormacion) en el
+// mismo shape que DIAS_FECHAS. Así el home sirve para CUALQUIER proyecto
+// (formación, taller, seminario) y no sólo para junio 2026.
+// Acepta fecha ISO ('2026-11-20') o texto ('20–22 nov'); si no hay fecha
+// parseable, el día simplemente no dispara cuenta regresiva.
+const MESES_ES = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, oct:9, nov:10, dic:11 };
+function parseFechaDia(f, anioRef) {
+  if (!f) return null;
+  const iso = String(f).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  // '20–22 nov' o '3–6 dic' → toma el primer número y el mes
+  const m = String(f).toLowerCase().match(/(\d{1,2})\s*[–\-—]?\s*\d{0,2}\s*([a-záéíóú]{3})/);
+  if (m && MESES_ES[m[2]] !== undefined) return new Date(anioRef, MESES_ES[m[2]], Number(m[1]));
+  return null;
+}
+
+function diasDeAjustes(ajustesDias) {
+  if (!Array.isArray(ajustesDias) || !ajustesDias.length) return DIAS_FECHAS;
+  const anio = new Date().getFullYear();
+  return ajustesDias.map((d, i) => ({
+    idx: d.idx ?? i,
+    date: parseFechaDia(d.fechaISO || d.fecha, anio) || new Date(2100, 0, 1),
+    label: d.label || `Día ${i + 1}`,
+    encuentro: d.encuentro ?? (i + 1),
+    fechaCorta: d.fecha || '',
+  }));
+}
+
+function getFormationContext(dias = DIAS_FECHAS) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const firstDay = DIAS_FECHAS[0].date;
-  const lastDay = DIAS_FECHAS[5].date;
-  const todayDia = DIAS_FECHAS.find(d => d.date.getTime() === today.getTime());
-  const nextDia = DIAS_FECHAS.find(d => d.date >= today);
+  const firstDay = dias[0].date;
+  const lastDay = dias[dias.length - 1].date;
+  const todayDia = dias.find(d => d.date.getTime() === today.getTime());
+  const nextDia = dias.find(d => d.date >= today);
+  const DIAS_FECHAS = dias; // el resto de la función usa este nombre
   const diffDays = Math.round((firstDay - today) / (1000 * 60 * 60 * 24));
   const dayDiff = (d) => Math.round((d - today) / (1000 * 60 * 60 * 24));
 
@@ -136,7 +165,12 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const claseCupos = claseActiva ? Math.max(0, claseActiva.cupos_max - claseInscritos) : 0;
   const totalAlumnas = safeAlumnas.length;
   const cupos = tweaks.capacidad - totalAlumnas;
-  const ctx = getFormationContext();
+  // Días/encuentros del PROYECTO activo (formación, taller o seminario)
+  const diasProyecto = React.useMemo(
+    () => diasDeAjustes(window.DIAS_FORMACION),
+    [window.DIAS_FORMACION]
+  );
+  const ctx = getFormationContext(diasProyecto);
   const greeting = getGreeting();
   const todayStr = formatTodayLong();
 
@@ -158,9 +192,19 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const leadsNuevos = safeLeads.filter(l => l.estado === 'nuevo');
   const sinLeer = safeMensajes.filter(m => m.sinLeer).length;
 
-  // Bono silla
+  // Bono silla — sólo existe en la formación. Si el proyecto tiene
+  // bonoSillaCupos = 0 (taller, seminario), no se muestra nada de silla.
   const sillasOtorgadas = safeAlumnas.filter(a => a.bonoSilla).length;
-  const sillasMax = tweaks.bonoSillaCupos || 6;
+  const sillasMax = Number(tweaks.bonoSillaCupos ?? 6);
+  const usaSilla = sillasMax > 0;
+
+  // Config del proyecto activo (sedes, matriz de precios, reservas).
+  // Si el proyecto define sedes (Seminario Angelo), el home muestra ESAS y no
+  // los precios de la formación.
+  const ajustesProy = (window.AJUSTES_PROYECTO || {});
+  const sedesCfg = Array.isArray(ajustesProy.sedes) ? ajustesProy.sedes : [];
+  const matriz = ajustesProy.matrizPrecios || null;
+  const reservasCfg = ajustesProy.reservaPorSede || null;
 
   // Consolidado financiero
   const totalVendido = safeAlumnas.reduce((s, a) => s + (Number(a.total) || 0), 0);
@@ -412,7 +456,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
           onClick={() => onNavigate('marketing')}
         />
         {/* Mensajes WA/IG removidos: sin integración API, no hay forma de detectarlos */}
-        {sillasOtorgadas > 0 && (
+        {usaSilla && sillasOtorgadas > 0 && (
           <ActionRow
             icon="chair"
             accent="gold"
@@ -433,46 +477,90 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
       </div>
       <div style={{ padding: '0 22px' }}>
         <div className="card flat" style={{ padding: 16 }}>
-          {/* Tarifa principal */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
-            <div style={{ color: 'var(--ink)', fontWeight: 500 }}>
-              Completa <span style={{ fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>· 50h · 3 encuentros</span>
-            </div>
-            <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.completa.con_silla}</div>
+          {sedesCfg.length > 0 ? (
+            <>
+              {/* Proyecto con SEDES (Seminario Angelo): precio por sede y por combinación */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
+                {sedesCfg.map(s => (
+                  <React.Fragment key={s.n}>
+                    <div style={{ color: 'var(--ink)', fontWeight: 500 }}>
+                      {s.nombre}
+                      <span style={{ display: 'block', fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>
+                        {[s.fechas, s.lugar].filter(Boolean).join(' · ')}
+                      </span>
+                    </div>
+                    <div className="serif" style={{ fontSize: 17, color: 'var(--ink)', textAlign: 'right' }}>
+                      ${s.prontoPago || s.regular}
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
+              {matriz && (
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)', display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
+                  <div style={{ color: 'var(--terracota)', fontWeight: 500 }}>Los 3 encuentros</div>
+                  <div className="serif" style={{ fontSize: 18, color: 'var(--terracota)', textAlign: 'right' }}>
+                    ${Object.values(matriz['3'] || {}).reduce((a, b) => a + Number(b || 0), 0)}
+                  </div>
+                  <div style={{ color: 'var(--ink-soft)', fontWeight: 500 }}>Pronto pago</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'right' }}>
+                    hasta {tweaks.fechaProntoPago || '13 de septiembre'}
+                  </div>
+                </div>
+              )}
+              {reservasCfg && (
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line-soft)', fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.45 }}>
+                  Apartar cupo (solo retiros):{' '}
+                  {Object.entries(reservasCfg).filter(([, v]) => v).map(([k, v]) => {
+                    const s = sedesCfg.find(x => String(x.n) === k);
+                    return `${s ? s.nombre.split('·')[0].trim() : k} $${v}`;
+                  }).join(' · ')}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Formación clásica */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
+                <div style={{ color: 'var(--ink)', fontWeight: 500 }}>
+                  Completa <span style={{ fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>· 50h · 3 encuentros</span>
+                </div>
+                <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.completa.con_silla}</div>
 
-            <div style={{ color: 'var(--ink)', fontWeight: 500 }}>2 encuentros</div>
-            <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.dos_encuentros.con_silla}</div>
+                <div style={{ color: 'var(--ink)', fontWeight: 500 }}>2 encuentros</div>
+                <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.dos_encuentros.con_silla}</div>
 
-            <div style={{ color: 'var(--ink)', fontWeight: 500 }}>1 encuentro</div>
-            <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.un_encuentro.con_silla}</div>
-          </div>
+                <div style={{ color: 'var(--ink)', fontWeight: 500 }}>1 encuentro</div>
+                <div className="serif" style={{ fontSize: 18, color: 'var(--ink)', textAlign: 'right' }}>${PRECIOS_DEFAULT.un_encuentro.con_silla}</div>
+              </div>
 
-          {/* Pronto pago + reserva */}
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)', display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
-            <div style={{ color: 'var(--terracota)', fontWeight: 500 }}>
-              Pronto pago <span style={{ fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>· hasta {tweaks.fechaProntoPago || '10 mayo'}</span>
-            </div>
-            <div className="serif" style={{ fontSize: 18, color: 'var(--terracota)', textAlign: 'right' }}>${tweaks.precioProntoPago || 484}</div>
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)', display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
+                <div style={{ color: 'var(--terracota)', fontWeight: 500 }}>
+                  Pronto pago <span style={{ fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>· hasta {tweaks.fechaProntoPago || '10 mayo'}</span>
+                </div>
+                <div className="serif" style={{ fontSize: 18, color: 'var(--terracota)', textAlign: 'right' }}>${tweaks.precioProntoPago || 484}</div>
 
-            <div style={{ color: 'var(--ink-soft)', fontWeight: 500 }}>Reserva (aparta cupo)</div>
-            <div className="serif" style={{ fontSize: 14, color: 'var(--ink-soft)', textAlign: 'right' }}>${tweaks.precioReserva || 200}</div>
-          </div>
+                <div style={{ color: 'var(--ink-soft)', fontWeight: 500 }}>Reserva (aparta cupo)</div>
+                <div className="serif" style={{ fontSize: 14, color: 'var(--ink-soft)', textAlign: 'right' }}>${tweaks.precioReserva || 200}</div>
+              </div>
 
-          {/* Bono silla — estado en vivo */}
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-              <span style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: 600 }}>Bono silla</span>
-              <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
-                <strong style={{ color: 'var(--ink)' }}>{sillasOtorgadas}</strong>/{sillasMax} asignadas
-              </span>
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.45 }}>
-              Las primeras {sillasMax} personas que se inscriben a la formación completa y pagan reserva o más reciben silla automáticamente. El precio ya la incluye.
-            </div>
-            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-mute)', lineHeight: 1.45 }}>
-              Si renuncian: <strong>−$30</strong> al total · pronto pago <strong>sin descuento</strong> (precio fijo).
-            </div>
-          </div>
+              {usaSilla && (
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: 600 }}>Bono silla</span>
+                    <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                      <strong style={{ color: 'var(--ink)' }}>{sillasOtorgadas}</strong>/{sillasMax} asignadas
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.45 }}>
+                    Las primeras {sillasMax} personas que se inscriben a la formación completa y pagan reserva o más reciben silla automáticamente. El precio ya la incluye.
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-mute)', lineHeight: 1.45 }}>
+                    Si renuncian: <strong>−$30</strong> al total · pronto pago <strong>sin descuento</strong> (precio fijo).
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
