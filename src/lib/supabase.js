@@ -29,7 +29,7 @@ export const supabase = createClient(url || 'http://placeholder.local', anonKey 
 export const ALLOWED_EMAILS = [
   'sofilira@gmail.com',
   'jclira@gmail.com',
-  'micaela@educacionparalapaz.net', // colaboradora · solo Seminario Angelo
+  'micatello121314@gmail.com', // Micaela · colaboradora, solo Seminario Angelo
 ];
 
 export const isEmailAllowed = (email) => {
