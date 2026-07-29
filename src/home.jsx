@@ -221,7 +221,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div className="eyebrow">{todayStr}</div>
-            <h1>{greeting},<br/><em>Sofía</em></h1>
+            <h1>{greeting},<br/><em>{(tweaks.ownerName || 'Sofía').split(' ')[0]}</em></h1>
           </div>
           <button onClick={() => onNavigate('ajustes')} style={{
             width: 40, height: 40, borderRadius: '50%',
@@ -298,12 +298,51 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
           </div>
           <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
           <div style={{ flex: 1 }}>
-            <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>50 h</div>
+            <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>
+              {sedesCfg.length ? sedesCfg.length : '50 h'}
+            </div>
             <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
-              programa
+              {sedesCfg.length ? 'encuentros' : 'programa'}
             </div>
           </div>
         </div>
+
+        {/* Los encuentros/sedes del proyecto dentro del hero (Seminario Angelo) */}
+        {sedesCfg.length > 0 && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(251,247,240,0.14)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {sedesCfg.map(s => {
+              // Inscritos que eligieron esta sede
+              const inscritosSede = safeAlumnas.filter(a =>
+                (a.encuentros_asistir || a.encuentrosAsistir || []).includes(s.n)
+              ).length;
+              const cuposSede = (ajustesProy.cuposPorSede || {})[String(s.n)] || null;
+              return (
+                <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                    background: 'rgba(251,247,240,0.12)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 600,
+                  }}>{s.n}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{s.nombre}</div>
+                    <div style={{ fontSize: 10.5, opacity: 0.6 }}>
+                      {[s.fechas, s.lugar].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div className="serif" style={{ fontSize: 16, lineHeight: 1 }}>
+                      {inscritosSede}{cuposSede ? <span style={{ fontSize: 11, opacity: 0.5 }}>/{cuposSede}</span> : null}
+                    </div>
+                    <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.55, marginTop: 2 }}>
+                      inscritos
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Consolidado financiero */}
         <div style={{

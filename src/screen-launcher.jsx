@@ -84,7 +84,7 @@ const presentar = (p) => {
   };
 };
 
-const LauncherScreen = ({ ownerName = 'Sofía', onAbrirProyecto, onNuevoProyecto, onEstudio, onFormacion, onTaller }) => {
+const LauncherScreen = ({ ownerName = 'Sofía', esAdmin = true, onAbrirProyecto, onNuevoProyecto, onEstudio, onFormacion, onTaller }) => {
   const { proyectos, loading } = useProyectos();
   const saludo = useMemo(() => {
     const h = new Date().getHours();
@@ -106,11 +106,15 @@ const LauncherScreen = ({ ownerName = 'Sofía', onAbrirProyecto, onNuevoProyecto
   // Se ocultan los proyectos marcados con config.oculto (ej. la formación de
   // junio, ya cerrada). Siguen existiendo en la base y se pueden reactivar.
   const ordenados = useMemo(() => {
-    const base = (proyectos.length ? proyectos : FALLBACK)
+    // El fallback estático SOLO se usa mientras carga y únicamente para admins.
+    // Un colaborador (ej. Micaela) jamás debe ver tarjetas de proyectos a los
+    // que no tiene acceso: para ella la lista viene siempre de la base (RLS).
+    const usarFallback = !proyectos.length && esAdmin;
+    const base = (usarFallback ? FALLBACK : proyectos)
       .filter(p => !(p.config && p.config.oculto));
     const peso = (p) => (p.estado === 'archivado' ? 100 : 0) + (p.orden || 0);
     return [...base].sort((a, b) => peso(a) - peso(b));
-  }, [proyectos]);
+  }, [proyectos, esAdmin]);
 
   return (
     <div className="app-scroll fade-in" style={{ padding: '0' }}>
