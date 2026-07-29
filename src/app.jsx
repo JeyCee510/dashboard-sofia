@@ -77,6 +77,9 @@ const App = () => {
     // y su config (fechas/precios/plantillas desde proyectos.config). El link
     // público /taller/<slug> sigue funcionando aparte.
     else if (p.slug === 'refinar-la-practica') { setFormacionProyectoId(1); setModuloActivo('formacion'); }
+    // Seminario Angelo (3 sedes, nov–dic 2026): mismo motor de la formación,
+    // con sus datos (proyecto_id=4) y su config. Lo gestionan Sofía y Micaela.
+    else if (p.slug === 'seminario-angelo') { setFormacionProyectoId(4); setModuloActivo('formacion'); }
     // Proyectos nuevos del wizard → shell convergido (personas/participaciones)
     else { setProyectoActivo(p); setModuloActivo('proyecto'); }
   };
