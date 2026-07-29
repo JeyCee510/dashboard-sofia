@@ -66,6 +66,7 @@ function useStore(proyectoId = 2) {
   }, [ajustesHook.ajustes]);
 
   const state = {
+    proyectoId,
     alumnas: alumnasHook.alumnas,
     leads: leadsHook.leads,
     asistencia: asistenciaHook.asistencia,

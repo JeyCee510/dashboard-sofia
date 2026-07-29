@@ -82,7 +82,9 @@ const ActividadDeFicha = ({ proyectoId, entidad, entidadId }) => {
 // Pantalla completa: registro del proyecto
 const ActividadScreen = ({ proyectoId, nombreProyecto = 'este proyecto', onClose }) => {
   const Icon = window.Icon;
-  const { eventos, loading } = useActividad({ proyectoId, limit: 150 });
+  // Vista global: sólo lo relevante (notas, pagos, estados, altas). Las
+  // ediciones menores viven dentro de cada ficha.
+  const { eventos, loading } = useActividad({ proyectoId, limit: 150, soloRelevantes: true });
 
   // Agrupar por día para que se lea como un diario
   const grupos = useMemo(() => {

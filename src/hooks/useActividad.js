@@ -8,7 +8,12 @@ const { useState, useEffect, useCallback } = React;
 //   useActividad({ proyectoId })                 → registro global del proyecto
 //   useActividad({ proyectoId, entidad, entidadId }) → historial de UNA ficha
 // ──────────────────────────────────────────────────────────────
-export function useActividad({ proyectoId, entidad = null, entidadId = null, limit = 100 } = {}) {
+// Acciones que le importan a Sofía en la vista global. Las ediciones menores
+// ('actualizo') se registran igual, pero sólo se ven dentro de cada ficha —
+// si no, el registro global se vuelve ruido y deja de leerse.
+export const ACCIONES_RELEVANTES = ['creo', 'pago', 'cambio_estado', 'nota', 'mensaje', 'elimino'];
+
+export function useActividad({ proyectoId, entidad = null, entidadId = null, limit = 100, soloRelevantes = false } = {}) {
   const [eventos, setEventos] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,11 +27,12 @@ export function useActividad({ proyectoId, entidad = null, entidadId = null, lim
       .limit(limit);
     if (entidad) q = q.eq('entidad', entidad);
     if (entidadId) q = q.eq('entidad_id', entidadId);
+    if (soloRelevantes) q = q.in('accion', ACCIONES_RELEVANTES);
     const { data, error } = await q;
     if (error) console.warn('[actividad] load', error);
     setEventos(data || []);
     setLoading(false);
-  }, [proyectoId, entidad, entidadId, limit]);
+  }, [proyectoId, entidad, entidadId, limit, soloRelevantes]);
 
   useEffect(() => {
     setLoading(true);

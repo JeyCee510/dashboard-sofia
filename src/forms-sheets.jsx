@@ -384,6 +384,22 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
                 tel={form.tel}
               />
             </div>
+            {/* Historial del lead: qué pasó y quién lo hizo (bitácora) */}
+            {leadId && window.ActividadDeFicha && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{
+                  fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  color: 'var(--ink-mute)', marginBottom: 8,
+                }}>
+                  Historial
+                </div>
+                <window.ActividadDeFicha
+                  proyectoId={store.state.proyectoId}
+                  entidad="lead"
+                  entidadId={leadId}
+                />
+              </div>
+            )}
           </DeferMount>
           <button className="btn btn-secondary btn-block" style={{ marginBottom: 14 }} onClick={convertir}>
             <Icon name="arrow" size={14} /> Convertir en estudiante
