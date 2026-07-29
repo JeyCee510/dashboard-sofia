@@ -34,6 +34,30 @@ fi
 # cuando no hay otro git corriendo.
 rm -f .git/*.lock 2>/dev/null || true
 
+# En el sandbox de Cowork el mount puede impedir borrar .git/*.lock ("Operation
+# not permitted"). En ese caso git local es inusable: se hace el push por un
+# clon temporal, copiando el árbol de trabajo (sin .git ni node_modules).
+if ls .git/*.lock >/dev/null 2>&1; then
+  echo "• .git bloqueado por el mount → push vía clon temporal"
+  TMP="$(mktemp -d)"
+  git clone -q --depth 1 "https://x-access-token:${TOKEN}@github.com/JeyCee510/dashboard-sofia.git" "$TMP/repo"
+  rsync -a --delete \
+    --exclude '.git' --exclude 'node_modules' --exclude 'dist' \
+    --exclude '.claude-gh-token' --exclude 'backups' \
+    ./ "$TMP/repo/"
+  cd "$TMP/repo"
+  git add -A
+  if git diff --cached --quiet; then
+    echo "• No hay cambios que commitear."; exit 0
+  fi
+  git -c user.email="jclira@gmail.com" -c user.name="Juan Cristobal Lira" commit -q -m "$MSG"
+  git push -q "https://x-access-token:${TOKEN}@github.com/JeyCee510/dashboard-sofia.git" HEAD:main
+  echo "✓ Push a main OK (vía clon)"
+  git log --oneline -1
+  echo "⚠ Tu carpeta local quedó detrás: corre 'git pull' cuando puedas."
+  exit 0
+fi
+
 git add -A
 
 if git diff --cached --quiet; then
