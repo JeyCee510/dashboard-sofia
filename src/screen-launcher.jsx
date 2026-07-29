@@ -103,8 +103,11 @@ const LauncherScreen = ({ ownerName = 'Sofía', onAbrirProyecto, onNuevoProyecto
   ];
 
   // Orden: activos primero, archivados al final. Usa fallback si no hay datos.
+  // Se ocultan los proyectos marcados con config.oculto (ej. la formación de
+  // junio, ya cerrada). Siguen existiendo en la base y se pueden reactivar.
   const ordenados = useMemo(() => {
-    const base = proyectos.length ? proyectos : FALLBACK;
+    const base = (proyectos.length ? proyectos : FALLBACK)
+      .filter(p => !(p.config && p.config.oculto));
     const peso = (p) => (p.estado === 'archivado' ? 100 : 0) + (p.orden || 0);
     return [...base].sort((a, b) => peso(a) - peso(b));
   }, [proyectos]);
@@ -134,11 +137,8 @@ const LauncherScreen = ({ ownerName = 'Sofía', onAbrirProyecto, onNuevoProyecto
           );
         })}
 
-        <ProjectCard
-          icon="plus" accent="gold" eyebrow="Empezar algo"
-          title="Nuevo proyecto" subtitle="Define el alcance y obtén un camino a seguir"
-          onClick={onNuevoProyecto}
-        />
+        {/* La tarjeta "Nuevo proyecto" se ocultó del home a pedido de JC.
+            El wizard sigue disponible desde el panel de ajustes (tweaks). */}
 
         <div style={{ marginTop: 18, textAlign: 'center', fontSize: 11, color: 'var(--ink-mute)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic' }}>
           Sofía Lira · Yoga

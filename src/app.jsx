@@ -535,6 +535,7 @@ const App = () => {
         </TweakSection>
         <TweakSection title="Datos rápidos">
           <TweakButton label="Ver actividad del equipo" onClick={() => navigate('actividad')} />
+          <TweakButton label="+ Nuevo proyecto (wizard)" onClick={() => setModuloActivo('wizard')} />
           <TweakButton label="Ir a Ajustes" onClick={() => navigate('ajustes')} />
         </TweakSection>
         <TweakSection title="Atajos creación">

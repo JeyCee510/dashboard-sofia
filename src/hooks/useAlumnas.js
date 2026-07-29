@@ -256,7 +256,11 @@ export function useAlumnas(proyectoId = 2) {
     // 1. Insertar registro en `pagos` (audit trail) — solo si monto > 0
     if (m > 0) {
       const forma = opts.forma || 'transferencia'; // default cuando el caller no especifica
-      await supabase.from('pagos').insert({ alumna_id: alumnaId, monto: m, tipo, forma, proyecto_id: proyectoId });
+      await supabase.from('pagos').insert({
+        alumna_id: alumnaId, monto: m, tipo, forma, proyecto_id: proyectoId,
+        destino: opts.destino || null,   // a qué cuenta entró (Sofía / aliado del retiro)
+        sede_n: opts.sedeN || null,
+      });
       registrarActividad({
         proyectoId, entidad: 'alumna', entidadId: alumnaId, accion: 'pago',
         titulo: `Registró pago de $${m}`,

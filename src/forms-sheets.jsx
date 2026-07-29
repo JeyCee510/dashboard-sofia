@@ -526,6 +526,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const [monto, setMonto] = React.useState(0);
   const [tipo, setTipo] = React.useState('parcial');
   const [forma, setForma] = React.useState('transferencia'); // método: transferencia/efectivo/payphone/canje
+  // Destino del dinero (Seminario Angelo): el abono de reserva de los retiros
+  // se paga DIRECTO al aliado (Izhcayluma / Wisdom Forest); el saldo va a Sofía.
+  const [destino, setDestino] = React.useState('sofia');
+  const reglaPagos = store.state.ajustes?.reglaPagos || null;
+  const destinosCfg = reglaPagos?.destinos || null;
   const [convirtiendo, setConvirtiendo] = React.useState(false);
   // Archivo opcional para subir al validar
   const [archivo, setArchivo] = React.useState(null);
@@ -553,6 +558,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       setMonto(comprobantePreData?.monto || 0);
       setTipo('parcial');
       setForma('transferencia');
+      setDestino('sofia');
       setConvirtiendo(false);
       setArchivo(null);
       setErrorArchivo('');
@@ -692,7 +698,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         await validarExistente(comprobantePreData.id, idNum, montoNum);
       }
       // 3. Registrar el pago (esto crea fila en `pagos` + actualiza alumnas + auto-silla)
-      await store.registrarPago(idNum, montoNum, tipo, forma);
+      await store.registrarPago(idNum, montoNum, tipo, forma, { destino });
       onClose();
       return;
     }
@@ -734,7 +740,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             if (archivo) await subirComprobanteValidado(nuevaId, montoNum, archivo);
             // 3) Registrar pago con forma seleccionada.
             //    skipAutoSilla=true porque Sofía ya decidió silla en el picker.
-            await store.registrarPago(nuevaId, montoNum, tipo, forma, { skipAutoSilla: true });
+            await store.registrarPago(nuevaId, montoNum, tipo, forma, { skipAutoSilla: true, destino });
             // 4) Si fue precio especial, registrar evento en timeline
             if (precioEspecial && productoTotal !== productoTotalBase) {
               await supabase.from('eventos_alumna').insert({
@@ -1069,6 +1075,20 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
               { value: 'payphone', label: 'Payphone' },
               { value: 'canje', label: 'Canje' },
             ]}
+          />
+        </Field>
+      )}
+
+      {/* Destino del dinero — sólo en proyectos con aliados (Seminario Angelo) */}
+      {!soloValidar && tipo !== 'ninguno' && destinosCfg && (
+        <Field
+          label="¿A qué cuenta entró?"
+          hint={reglaPagos?.descripcion || 'El abono de reserva de los retiros va a la sede; el saldo a Sofía.'}
+        >
+          <SelectChips
+            value={destino}
+            onChange={setDestino}
+            options={Object.entries(destinosCfg).map(([value, label]) => ({ value, label }))}
           />
         </Field>
       )}
