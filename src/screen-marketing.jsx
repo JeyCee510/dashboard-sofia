@@ -206,70 +206,8 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
             <div className="eyebrow">Embudo</div>
             <h1>Leads</h1>
           </div>
-          {onNavigate && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-              <button
-                onClick={() => onNavigate('preinscripciones')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  background: 'var(--bg-warm)',
-                  border: '1px solid var(--line-soft)',
-                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}
-              >
-                <Icon name="note" size={12} stroke="var(--terracota)" />
-                Inscripciones
-              </button>
-              <button
-                onClick={() => onNavigate('clase-inscripciones')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  background: 'var(--bg-warm)',
-                  border: '1px solid var(--line-soft)',
-                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink)',
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}
-              >
-                <Icon name="bullhorn" size={12} stroke="var(--gold)" />
-                Inscripciones recibidas
-              </button>
-              <button
-                onClick={() => onNavigate('leads-descartados')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  background: 'var(--bg-warm)',
-                  border: '1px solid var(--line-soft)',
-                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink-soft)',
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}
-              >
-                <Icon name="x" size={12} stroke="var(--ink-mute)" />
-                Descartados {descartadosCount > 0 ? `· ${descartadosCount}` : ''}
-              </button>
-              <button
-                onClick={() => onNavigate('papelera-leads')}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  background: 'var(--bg-warm)',
-                  border: '1px solid var(--line-soft)',
-                  fontFamily: 'inherit', fontSize: 12, color: 'var(--ink-soft)',
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}
-              >
-                <Icon name="x" size={12} stroke="var(--ink-mute)" />
-                Borrados
-              </button>
-            </div>
-          )}
+          {/* Los accesos a Inscripciones / Descartados / Borrados se movieron
+              al pie de la lista (antes tapaban el encabezado). */}
         </div>
       </div>
 
@@ -425,6 +363,44 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
           Registrar lead manual
         </button>
       </div>
+
+      {/* Archivos del proyecto — al pie, discretos. Sólo muestran datos de
+          ESTE proyecto. "Inscripciones recibidas" es exclusivo de la
+          formación de junio (clase abierta), por eso se oculta en el resto. */}
+      {onNavigate && (
+        <div style={{ padding: '4px 22px 0' }}>
+          <div style={{
+            fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: 'var(--ink-mute)', marginBottom: 8,
+          }}>
+            Archivos de {window.PROYECTO_NOMBRE || 'este proyecto'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {[
+              { id: 'preinscripciones', label: 'Inscripciones', icon: 'note', color: 'var(--terracota)' },
+              ...((window.PROYECTO_ID || 2) === 2
+                ? [{ id: 'clase-inscripciones', label: 'Inscripciones recibidas', icon: 'bullhorn', color: 'var(--gold)' }]
+                : []),
+              { id: 'leads-descartados', label: `Descartados${descartadosCount > 0 ? ` · ${descartadosCount}` : ''}`, icon: 'x', color: 'var(--ink-mute)' },
+              { id: 'papelera-leads', label: 'Borrados', icon: 'x', color: 'var(--ink-mute)' },
+            ].map(b => (
+              <button
+                key={b.id}
+                onClick={() => onNavigate(b.id)}
+                style={{
+                  padding: '7px 11px', borderRadius: 999,
+                  background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
+                  fontFamily: 'inherit', fontSize: 11.5, color: 'var(--ink-soft)',
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
+                }}
+              >
+                <Icon name={b.icon} size={11} stroke={b.color} />
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ height: 30 }} />
     </div>

@@ -239,10 +239,24 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.6 }}>
-              {ctx.heroEyebrow}
+              {sedesCfg.length
+                ? (ctx.phase === 'before'
+                    ? `Faltan ${ctx.daysToStart} días para empezar`
+                    : ctx.phase === 'after' ? 'Seminario finalizado' : 'En curso')
+                : ctx.heroEyebrow}
             </div>
             <div className="serif" style={{ fontSize: 28, lineHeight: 1.05, marginTop: 6, fontWeight: 400 }}>
-              {ctx.heroTitle}<br/><em style={{ color: 'var(--terracota-soft)', fontStyle: 'italic' }}>{ctx.heroEmphasis}</em>
+              {sedesCfg.length ? (
+                <>
+                  {tweaks.studioName || 'Seminario'}
+                  <br />
+                  <em style={{ color: 'var(--terracota-soft)', fontStyle: 'italic', fontSize: 20 }}>
+                    {(ajustesProy.profesores || []).map(p => p.nombre).join(' · ') || tweaks.lugar}
+                  </em>
+                </>
+              ) : (
+                <>{ctx.heroTitle}<br/><em style={{ color: 'var(--terracota-soft)', fontStyle: 'italic' }}>{ctx.heroEmphasis}</em></>
+              )}
             </div>
           </div>
           <div style={{

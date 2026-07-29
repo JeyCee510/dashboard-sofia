@@ -16,9 +16,12 @@ export function usePreinscripciones() {
     setLoading(true);
     // Traer todas las preinscripciones; resolvemos nombres en el cliente
     // para evitar JOIN complejo en RLS.
+    // Sólo las inscripciones DEL PROYECTO activo (antes traía las de todos)
+    const pid = window.PROYECTO_ID || 2;
     const { data: pres, error } = await supabase
       .from('preinscripcion')
       .select('*')
+      .eq('proyecto_id', pid)
       .order('created_at', { ascending: false });
     if (error) console.error('[preinscripciones] load', error);
 

@@ -17,9 +17,12 @@ const LeadsDescartadosScreen = ({ onClose, onOpenLead }) => {
 
   const cargar = useCallback(async () => {
     setLoading(true);
+    // Sólo descartados DEL PROYECTO activo (antes traía los de todos).
+    const pid = window.PROYECTO_ID || 2;
     const { data, error } = await supabase
       .from('leads')
       .select('*')
+      .eq('proyecto_id', pid)
       .eq('estado', 'no_interesado')
       .order('updated_at', { ascending: false });
     if (error) console.error('[descartados] load', error);

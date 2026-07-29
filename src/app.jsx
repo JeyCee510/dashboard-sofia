@@ -134,6 +134,8 @@ const App = () => {
   // Config completa del proyecto activo (sedes, matriz de precios, reservas)
   // para que las screens se adapten sin recibir props nuevas.
   window.AJUSTES_PROYECTO = store.state.ajustes;
+  window.PROYECTO_ID = formacionProyectoId;
+  window.PROYECTO_NOMBRE = store.state.ajustes.studioName || '';
 
   const screenTweaks = {
     capacidad: store.state.ajustes.capacidad,
@@ -334,6 +336,7 @@ const App = () => {
     <div className="app">
       {/* Volver al Inicio (home con tarjetas de proyectos). Flotante top-right
           sobre el header de cada screen de la formación. */}
+      {/* Indicador SIEMPRE visible de en qué proyecto estás + volver al inicio */}
       <button
         onClick={() => setModuloActivo('launcher')}
         title="Volver al inicio"
@@ -342,20 +345,27 @@ const App = () => {
           position: 'absolute',
           top: 12, right: 12,
           zIndex: 70,
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '6px 10px',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          maxWidth: 'calc(100% - 24px)',
+          padding: '6px 10px 6px 8px',
           borderRadius: 999,
-          background: 'rgba(255,255,255,0.85)',
+          background: 'rgba(255,255,255,0.9)',
           backdropFilter: 'blur(6px)',
           border: '1px solid var(--line)',
           fontSize: 11,
           color: 'var(--ink)',
-          letterSpacing: '0.04em',
+          letterSpacing: '0.02em',
           cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
         }}
       >
-        ← Inicio
+        <span style={{ opacity: 0.55 }}>←</span>
+        <span style={{
+          fontWeight: 600, maxWidth: 190,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {store.state.ajustes.studioName || 'Proyecto'}
+        </span>
       </button>
 
       <div

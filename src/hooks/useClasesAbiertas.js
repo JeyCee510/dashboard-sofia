@@ -12,6 +12,10 @@ export function useClasesAbiertas() {
   const [loading, setLoading] = useState(true);
 
   const cargar = useCallback(async () => {
+    // "Clase abierta" es una función exclusiva de la formación de junio
+    // (proyecto 2). En los demás proyectos no aplica: devolvemos vacío para
+    // no mostrar datos ajenos en "Inscripciones recibidas".
+    if ((window.PROYECTO_ID || 2) !== 2) { setItems([]); setLoading(false); return; }
     const { data, error } = await supabase
       .from('clases_abiertas')
       .select('*')

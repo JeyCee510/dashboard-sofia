@@ -14,11 +14,13 @@ export function useArchive() {
 
   const cargar = useCallback(async () => {
     setLoading(true);
+    // Papelera DEL PROYECTO activo (antes mezclaba todos los proyectos)
+    const pid = window.PROYECTO_ID || 2;
     const [leadsRes, alumnasRes] = await Promise.all([
       supabase.from('leads_archive')
-        .select('*').order('deleted_at', { ascending: false }).limit(100),
+        .select('*').eq('proyecto_id', pid).order('deleted_at', { ascending: false }).limit(100),
       supabase.from('alumnas_archive')
-        .select('*').order('deleted_at', { ascending: false }).limit(100),
+        .select('*').eq('proyecto_id', pid).order('deleted_at', { ascending: false }).limit(100),
     ]);
     if (leadsRes.error) console.error('[archive] leads', leadsRes.error);
     if (alumnasRes.error) console.error('[archive] alumnas', alumnasRes.error);
