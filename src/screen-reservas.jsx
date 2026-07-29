@@ -18,14 +18,20 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
   const total = MOCK_ALUMNAS.length;
   const cupos = tweaks.capacidad - total;
   const sillas = MOCK_ALUMNAS.filter(a => a.bonoSilla).length;
-  const sillasMax = 6;
+  // El bono silla es exclusivo de la formación: si el proyecto tiene 0 cupos
+  // de silla (taller, seminario), la tarjeta no se muestra.
+  const sillasMax = Number(tweaks.bonoSillaCupos ?? 6);
+  const usaSilla = sillasMax > 0;
+  // Proyectos con sedes (Seminario): los cupos son POR SEDE, no un total.
+  const sedesCfg = Array.isArray(window.AJUSTES_PROYECTO?.sedes) ? window.AJUSTES_PROYECTO.sedes : [];
+  const cuposPorSede = window.AJUSTES_PROYECTO?.cuposPorSede || null;
 
   return (
     <div>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
-            <div className="eyebrow">Formación junio</div>
+            <div className="eyebrow">{window.PROYECTO_NOMBRE || 'Proyecto'}</div>
             <h1>Inscritos</h1>
           </div>
           {total > 0 && onNavigate && (
@@ -50,28 +56,61 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
       </div>
 
       {/* Capacidad */}
-      <div style={{ padding: '0 22px', display: 'flex', gap: 10, marginTop: 8 }}>
-        <div className="card flat" style={{ flex: 1, padding: 16 }}>
-          <div className="kpi-num">{total}<span style={{ fontSize: 18, color: 'var(--ink-mute)' }}>/{tweaks.capacidad}</span></div>
-          <div className="kpi-label" style={{ marginTop: 4 }}>Inscritos</div>
-          <div className="progress" style={{ marginTop: 10 }}>
-            <div style={{ width: `${(total / tweaks.capacidad) * 100}%` }} />
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 8 }}>
-            Quedan <strong style={{ color: 'var(--ink)' }}>{cupos} cupos</strong>
+      {sedesCfg.length > 0 ? (
+        /* Proyecto con sedes: ocupación POR SEDE (no hay un cupo global) */
+        <div style={{ padding: '0 22px', marginTop: 8 }}>
+          <div className="card flat" style={{ padding: 16 }}>
+            <div className="kpi-num">{total}</div>
+            <div className="kpi-label" style={{ marginTop: 4 }}>Personas inscritas</div>
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {sedesCfg.map(s => {
+                const n = MOCK_ALUMNAS.filter(a =>
+                  (a.encuentros_asistir || a.encuentrosAsistir || []).includes(s.n)
+                ).length;
+                const max = cuposPorSede ? Number(cuposPorSede[String(s.n)] || 0) : 0;
+                return (
+                  <div key={s.n}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12 }}>
+                      <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{s.nombre}</span>
+                      <span style={{ color: 'var(--ink-mute)' }}>
+                        {n}{max ? <span style={{ opacity: 0.7 }}>/{max}</span> : null}
+                      </span>
+                    </div>
+                    <div className="progress" style={{ marginTop: 6 }}>
+                      <div style={{ width: `${max ? Math.min(100, (n / max) * 100) : 0}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-        <div className="card flat" style={{ flex: 1, padding: 16 }}>
-          <div className="kpi-num" style={{ color: 'var(--gold)' }}>{sillas}<span style={{ fontSize: 18, color: 'var(--ink-mute)' }}>/{sillasMax}</span></div>
-          <div className="kpi-label" style={{ marginTop: 4 }}>Bono silla</div>
-          <div className="progress" style={{ marginTop: 10 }}>
-            <div style={{ width: `${(sillas / sillasMax) * 100}%`, background: 'var(--gold)' }} />
+      ) : (
+        <div style={{ padding: '0 22px', display: 'flex', gap: 10, marginTop: 8 }}>
+          <div className="card flat" style={{ flex: 1, padding: 16 }}>
+            <div className="kpi-num">{total}<span style={{ fontSize: 18, color: 'var(--ink-mute)' }}>/{tweaks.capacidad}</span></div>
+            <div className="kpi-label" style={{ marginTop: 4 }}>Inscritos</div>
+            <div className="progress" style={{ marginTop: 10 }}>
+              <div style={{ width: `${tweaks.capacidad ? (total / tweaks.capacidad) * 100 : 0}%` }} />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 8 }}>
+              Quedan <strong style={{ color: 'var(--ink)' }}>{cupos} cupos</strong>
+            </div>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 8 }}>
-            {sillas >= sillasMax ? 'Bono cerrado' : `${sillasMax - sillas} sillas disponibles`}
-          </div>
+          {usaSilla && (
+            <div className="card flat" style={{ flex: 1, padding: 16 }}>
+              <div className="kpi-num" style={{ color: 'var(--gold)' }}>{sillas}<span style={{ fontSize: 18, color: 'var(--ink-mute)' }}>/{sillasMax}</span></div>
+              <div className="kpi-label" style={{ marginTop: 4 }}>Bono silla</div>
+              <div className="progress" style={{ marginTop: 10 }}>
+                <div style={{ width: `${(sillas / sillasMax) * 100}%`, background: 'var(--gold)' }} />
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 8 }}>
+                {sillas >= sillasMax ? 'Bono cerrado' : `${sillasMax - sillas} sillas disponibles`}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Search + filters */}
       <div style={{ padding: '20px 22px 10px' }}>

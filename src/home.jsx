@@ -295,30 +295,57 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
           display: 'flex', gap: 10, marginTop: 20, paddingTop: 16,
           borderTop: '1px solid rgba(251,247,240,0.14)',
         }}>
-          <div style={{ flex: 1 }}>
-            <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>
-              {totalAlumnas}<span style={{ fontSize: 14, opacity: 0.5 }}>/{tweaks.capacidad}</span>
-            </div>
-            <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
-              inscritos
-            </div>
-          </div>
-          <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
-          <div style={{ flex: 1 }}>
-            <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>{cupos}</div>
-            <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
-              cupos libres
-            </div>
-          </div>
-          <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
-          <div style={{ flex: 1 }}>
-            <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>
-              {sedesCfg.length ? sedesCfg.length : '50 h'}
-            </div>
-            <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
-              {sedesCfg.length ? 'encuentros' : 'programa'}
-            </div>
-          </div>
+          {sedesCfg.length > 0 ? (
+            <>
+              {/* Seminario: los cupos son por sede (se ven abajo), así que aquí
+                  van métricas que sí tienen sentido a nivel global. */}
+              <div style={{ flex: 1 }}>
+                <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>{totalAlumnas}</div>
+                <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+                  inscritos
+                </div>
+              </div>
+              <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
+              <div style={{ flex: 1 }}>
+                <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>{safeLeads.length}</div>
+                <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+                  leads
+                </div>
+              </div>
+              <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
+              <div style={{ flex: 1 }}>
+                <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>{sedesCfg.length}</div>
+                <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+                  encuentros
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ flex: 1 }}>
+                <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>
+                  {totalAlumnas}<span style={{ fontSize: 14, opacity: 0.5 }}>/{tweaks.capacidad}</span>
+                </div>
+                <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+                  inscritos
+                </div>
+              </div>
+              <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
+              <div style={{ flex: 1 }}>
+                <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>{cupos}</div>
+                <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+                  cupos libres
+                </div>
+              </div>
+              <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
+              <div style={{ flex: 1 }}>
+                <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>50 h</div>
+                <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
+                  programa
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Los encuentros/sedes del proyecto dentro del hero (Seminario Angelo) */}

@@ -41,7 +41,7 @@ const PagosScreen = ({ tweaks, store, onOpenAlumna, onNewPago, onNavigate }) => 
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
-            <div className="eyebrow">Junio · USD</div>
+            <div className="eyebrow">{window.PROYECTO_NOMBRE || 'Proyecto'} · USD</div>
             <h1>Pagos</h1>
           </div>
         </div>
@@ -111,13 +111,13 @@ const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumn
             ${totalCobrado.toLocaleString()}
           </div>
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
-            de ${totalEsperado.toLocaleString()} esperados · {Math.round((totalCobrado / totalEsperado) * 100)}%
+            de ${totalEsperado.toLocaleString()} esperados{totalEsperado > 0 ? ` · ${Math.round((totalCobrado / totalEsperado) * 100)}%` : ''}
           </div>
           <div style={{
             height: 4, background: 'rgba(251,247,240,0.18)', borderRadius: 999,
             marginTop: 14, overflow: 'hidden',
           }}>
-            <div style={{ height: '100%', width: `${(totalCobrado / totalEsperado) * 100}%`, background: 'var(--terracota-soft)' }} />
+            <div style={{ height: '100%', width: `${totalEsperado > 0 ? Math.min(100, (totalCobrado / totalEsperado) * 100) : 0}%`, background: 'var(--terracota-soft)' }} />
           </div>
         </div>
       </div>

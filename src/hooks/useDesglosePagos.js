@@ -17,9 +17,12 @@ export function useDesglosePagos() {
   const [loading, setLoading] = useState(true);
 
   const cargar = useCallback(async () => {
+    // Sólo los pagos DEL PROYECTO activo (antes sumaba los de todos los
+    // proyectos: el Seminario mostraba los $4.640 de la formación).
     const { data, error } = await supabase
       .from('pagos')
-      .select('monto, forma');
+      .select('monto, forma')
+      .eq('proyecto_id', window.PROYECTO_ID || 2);
     if (error) { console.error('[desglose pagos]', error); return; }
     const out = { transferencia: 0, efectivo: 0, payphone: 0, canje: 0, total: 0, count: 0 };
     (data || []).forEach(p => {
