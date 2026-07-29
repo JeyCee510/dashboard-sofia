@@ -58,6 +58,49 @@ export function precioTaller(nEncuentros, ajustes) {
   return Number(tiers[String(nEncuentros)] ?? tiers.default ?? 0);
 }
 
+// ── Precio por SEDE (cada encuentro cuesta distinto) ──
+// Caso Seminario Angelo: Quito $242/$280, Vilcabamba y Tena $525/$590 c/u.
+// Se suma lo elegido. `prontoPago` decide qué columna usar. El descuento por
+// venir a varios encuentros se aplica aparte (config.descuentoMultiple).
+export function tienePreciosPorEncuentro(ajustes) {
+  return !!ajustes?.matrizPrecios
+      || (Array.isArray(ajustes?.preciosPorEncuentro) && ajustes.preciosPorEncuentro.length > 0);
+}
+
+// ── Matriz de precios (Seminario Angelo) ──
+// El precio de CADA sede depende de cuántas sedes toma la persona:
+//   3 sedes → Domo 200, Izhcayluma 400, Wisdom 400  (total 1000)
+//   2 sedes → 222 / 490 / 490
+//   1 sede  → 242 / 525 / 525 (pronto pago) · 280 / 590 / 590 (regular)
+// El "descuento por venir a varios" ya está incorporado en la matriz.
+export function precioSedeSegunCantidad(sedeN, cantidad, ajustes, { prontoPago = false } = {}) {
+  const m = ajustes?.matrizPrecios;
+  if (!m) return 0;
+  const fila = cantidad >= 3 ? m['3']
+             : cantidad === 2 ? m['2']
+             : (prontoPago ? m['1_pp'] : m['1']);
+  return Number(fila?.[String(sedeN)] ?? 0);
+}
+
+export function precioPorEncuentros(encuentrosElegidos, ajustes, { prontoPago = false } = {}) {
+  const sel = encuentrosElegidos || [];
+  // Caso matriz (precio por sede según cuántas toma) — Seminario Angelo
+  if (ajustes?.matrizPrecios) {
+    return sel.reduce((s, n) => s + precioSedeSegunCantidad(n, sel.length, ajustes, { prontoPago }), 0);
+  }
+  const lista = ajustes?.preciosPorEncuentro || [];
+  const bruto = lista
+    .filter(e => sel.includes(e.n))
+    .reduce((s, e) => s + Number(prontoPago ? e.prontoPago : e.regular) || 0, 0);
+  // Descuento por múltiples encuentros (si está configurado)
+  const d = ajustes?.descuentoMultiple || null;
+  if (d && sel.length >= (d.desde || 2)) {
+    if (d.monto) return Math.max(0, bruto - Number(d.monto));
+    if (d.porcentaje) return Math.round(bruto * (1 - Number(d.porcentaje) / 100));
+  }
+  return bruto;
+}
+
 // Calcula el total esperado según tipo + silla. Permite override desde ajustes.
 export function calcularTotal({ tipo, bonoSilla, ajustes }) {
   const precios = (ajustes && ajustes.precios) || PRECIOS_DEFAULT;

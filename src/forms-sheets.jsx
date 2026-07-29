@@ -1,6 +1,6 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
-import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS, esTaller, encuentrosDeAjustes, precioTaller } from './lib/precios.js';
+import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS, esTaller, encuentrosDeAjustes, precioTaller, tienePreciosPorEncuentro, precioPorEncuentros, precioSedeSegunCantidad } from './lib/precios.js';
 import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput, ClaseAbiertaPanel } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
@@ -73,7 +73,11 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
     // Taller: precio por nº de encuentros elegidos (tiers)
     if (taller) {
       const upd = { ...f, encuentros_asistir: next, tipo_inscripcion: 'taller' };
-      if (!f.totalManual) upd.total = precioTaller(next.length, store.state.ajustes);
+      if (!f.totalManual) {
+        upd.total = tienePreciosPorEncuentro(store.state.ajustes)
+          ? precioPorEncuentros(next, store.state.ajustes, { prontoPago: !!f.prontoPago })
+          : precioTaller(next.length, store.state.ajustes);
+      }
       return upd;
     }
     // Formación: mantener consistencia con el tipo
@@ -91,7 +95,9 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   const [precioMotivo, setPrecioMotivo] = React.useState('');
   React.useEffect(() => { setPrecioMotivo(''); }, [alumnaId, open]);
   const totalCalculado = taller
-    ? precioTaller((form.encuentros_asistir || []).length, store.state.ajustes)
+    ? (tienePreciosPorEncuentro(store.state.ajustes)
+        ? precioPorEncuentros(form.encuentros_asistir || [], store.state.ajustes, { prontoPago: !!form.prontoPago })
+        : precioTaller((form.encuentros_asistir || []).length, store.state.ajustes))
     : calcularTotal({ tipo: form.tipo_inscripcion, bonoSilla: form.bonoSilla, ajustes: store.state.ajustes });
   const esPrecioEspecial = form.totalManual && Number(form.total) !== Number(totalCalculado);
 
@@ -154,10 +160,32 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
         <InstaInput value={form.instagram} onChange={v => set('instagram', v)} />
       </Field>
       {taller ? (
-        <Field label="¿Cuáles encuentros?" hint={`El precio depende de cuántos elija (${(form.encuentros_asistir || []).length} seleccionados)`}>
+        <>
+        {tienePreciosPorEncuentro(store.state.ajustes) && (
+          <SwitchToggle
+            label="Precio pronto pago"
+            hint={store.state.ajustes.prontoPagoNota || 'Aplica el precio de pronto pago a los encuentros elegidos'}
+            value={!!form.prontoPago}
+            onChange={v => setForm(f => {
+              const upd = { ...f, prontoPago: v };
+              if (!f.totalManual) upd.total = precioPorEncuentros(f.encuentros_asistir || [], store.state.ajustes, { prontoPago: v });
+              return upd;
+            })}
+          />
+        )}
+        <Field label="¿Cuáles encuentros?" hint={`Puede venir a uno, a varios o a todos (${(form.encuentros_asistir || []).length} seleccionados)`}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {encuentrosProy.map(e => {
               const sel = (form.encuentros_asistir || []).includes(e.num);
+              // Precio de esta sede según cuántas lleva elegidas (matriz) o precio fijo
+              const nSel = (form.encuentros_asistir || []).length || 1;
+              const precioSedeNum = store.state.ajustes.matrizPrecios
+                ? precioSedeSegunCantidad(e.num, sel ? nSel : Math.min(nSel + 1, 3), store.state.ajustes, { prontoPago: !!form.prontoPago })
+                : ((store.state.ajustes.preciosPorEncuentro || []).find(p => p.n === e.num)
+                    ? (form.prontoPago
+                        ? store.state.ajustes.preciosPorEncuentro.find(p => p.n === e.num).prontoPago
+                        : store.state.ajustes.preciosPorEncuentro.find(p => p.n === e.num).regular)
+                    : null);
               return (
                 <button
                   key={e.num} type="button" onClick={() => toggleEncuentro(e.num)}
@@ -172,12 +200,16 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
                   }}
                 >
                   <span>{e.label}</span>
-                  <span style={{ fontSize: 11, opacity: 0.7 }}>{e.fechas}</span>
+                  <span style={{ fontSize: 11, opacity: 0.7 }}>
+                    {e.fechas}
+                    {precioSedeNum ? ` · $${precioSedeNum}` : ''}
+                  </span>
                 </button>
               );
             })}
           </div>
         </Field>
+        </>
       ) : (
         <>
           <Field label="Tipo de inscripción">
