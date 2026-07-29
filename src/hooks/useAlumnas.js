@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '../lib/supabase.js';
+import { registrarActividad } from '../lib/actividad.js';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -129,6 +130,13 @@ export function useAlumnas(proyectoId = 2) {
       .select()
       .single();
     if (error) { console.error('[alumnas] add', error); throw error; }
+    if (inserted) {
+      registrarActividad({
+        proyectoId, entidad: 'alumna', entidadId: inserted.id, accion: 'creo',
+        titulo: `Inscribió a ${inserted.nombre || ''}`.trim(),
+        detalle: { total: inserted.total, tipo: inserted.tipo_inscripcion },
+      });
+    }
     // Optimistic local update: no esperamos al realtime.
     // ALSO: actualizamos el ref inmediatamente para que un registrarPago()
     // llamado en el mismo tick (ej. tras convertir lead) encuentre la alumna.
@@ -249,6 +257,11 @@ export function useAlumnas(proyectoId = 2) {
     if (m > 0) {
       const forma = opts.forma || 'transferencia'; // default cuando el caller no especifica
       await supabase.from('pagos').insert({ alumna_id: alumnaId, monto: m, tipo, forma, proyecto_id: proyectoId });
+      registrarActividad({
+        proyectoId, entidad: 'alumna', entidadId: alumnaId, accion: 'pago',
+        titulo: `Registró pago de $${m}`,
+        detalle: { monto: m, tipo, forma },
+      });
     }
     // 2. Actualizar acumulado + total + (eventualmente) silla en `alumnas`
     await supabase.from('alumnas').update(dbPatch).eq('id', alumnaId);

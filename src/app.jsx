@@ -4,6 +4,7 @@ import { useStore } from './store.jsx';
 import { VoiceButton } from './voice-button.jsx';
 import { executeVoiceCommand } from './lib/voice-executor.js';
 import { usePullToRefresh } from './hooks/usePullToRefresh.js';
+import { setActorActividad } from './lib/actividad.js';
 
 const { useState, useEffect } = React;
 
@@ -117,6 +118,14 @@ const App = () => {
     }
   };
 
+  // Quién firma las entradas de la bitácora (Sofía, JC o Micaela)
+  useEffect(() => {
+    setActorActividad({
+      email: auth.user?.email || null,
+      nombre: auth.usuarioApp?.nombre || auth.user?.user_metadata?.full_name || null,
+    });
+  }, [auth.user?.email, auth.usuarioApp?.nombre]);
+
   // Sync store data into globals para que las screens (que leen window.X) funcionen
   window.MOCK_ALUMNAS = store.state.alumnas;
   window.MOCK_LEADS = store.state.leads;
@@ -143,6 +152,7 @@ const App = () => {
     else if (target === 'preinscripciones') setOverlay('preinscripciones');
     else if (target === 'leads-descartados') setOverlay('leads-descartados');
     else if (target === 'clase-inscripciones') setOverlay('clase-inscripciones');
+    else if (target === 'actividad') setOverlay('actividad');
     else { setTab(target); setOverlay(null); }
   };
 
@@ -448,6 +458,13 @@ const App = () => {
       {overlay === 'clase-inscripciones' && (
         <ClaseInscripcionesScreen onClose={() => setOverlay(null)} store={store} />
       )}
+      {overlay === 'actividad' && window.ActividadScreen && (
+        <window.ActividadScreen
+          proyectoId={formacionProyectoId}
+          nombreProyecto={store.state.ajustes.studioName || 'este proyecto'}
+          onClose={() => setOverlay(null)}
+        />
+      )}
       {overlay && overlay.type === 'alumna' && (
         <FichaAlumna
           alumnaId={overlay.id}
@@ -517,6 +534,7 @@ const App = () => {
           <TweakButton label="Cerrar sesión" onClick={auth.signOut} />
         </TweakSection>
         <TweakSection title="Datos rápidos">
+          <TweakButton label="Ver actividad del equipo" onClick={() => navigate('actividad')} />
           <TweakButton label="Ir a Ajustes" onClick={() => navigate('ajustes')} />
         </TweakSection>
         <TweakSection title="Atajos creación">

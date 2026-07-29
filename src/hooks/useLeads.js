@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '../lib/supabase.js';
+import { registrarActividad } from '../lib/actividad.js';
 
 const { useState, useEffect, useCallback } = React;
 
@@ -78,17 +79,45 @@ export function useLeads(proyectoId = 2) {
     // Optimistic local update: no esperamos al realtime
     if (inserted) {
       setLeads(prev => prev.some(l => l.id === inserted.id) ? prev : [fromDb(inserted), ...prev]);
+      registrarActividad({
+        proyectoId, entidad: 'lead', entidadId: inserted.id, accion: 'creo',
+        titulo: `Creó el lead ${inserted.nombre || ''}`.trim(),
+        detalle: { fuente: inserted.fuente || null },
+      });
     }
     return inserted.id;
-  }, []);
+  }, [proyectoId]);
 
   const updateLead = useCallback(async (id, patch) => {
+    const antes = leads.find(l => l.id === id);
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
     const dbPatch = toDb(patch);
     if (Object.keys(dbPatch).length === 0) return;
     const { error } = await supabase.from('leads').update(dbPatch).eq('id', id);
-    if (error) console.error('[leads] update', error);
-  }, []);
+    if (error) { console.error('[leads] update', error); return; }
+    // Bitácora: distinguir cambio de estado (lo que Sofía quiere ver) de una
+    // edición cualquiera, y guardar la nota/mensaje si cambió.
+    const nombre = antes?.nombre || '';
+    if ('estado' in patch && antes && patch.estado !== antes.estado) {
+      registrarActividad({
+        proyectoId, entidad: 'lead', entidadId: id, accion: 'cambio_estado',
+        titulo: `${nombre}: ${antes.estado || '—'} → ${patch.estado}`,
+        detalle: { de: antes.estado, a: patch.estado },
+      });
+    } else if ('mensaje' in patch && patch.mensaje && patch.mensaje !== antes?.mensaje) {
+      registrarActividad({
+        proyectoId, entidad: 'lead', entidadId: id, accion: 'nota',
+        titulo: `Nota sobre ${nombre}`.trim(),
+        detalle: { nota: patch.mensaje },
+      });
+    } else {
+      registrarActividad({
+        proyectoId, entidad: 'lead', entidadId: id, accion: 'actualizo',
+        titulo: `Actualizó ${nombre}`.trim(),
+        detalle: { campos: Object.keys(patch) },
+      });
+    }
+  }, [leads, proyectoId]);
 
   const deleteLead = useCallback(async (id) => {
     setLeads(prev => prev.filter(l => l.id !== id));
