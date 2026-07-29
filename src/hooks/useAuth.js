@@ -1,5 +1,5 @@
 import React from 'react';
-import { supabase, isEmailAllowed } from '../lib/supabase.js';
+import { supabase, isEmailAllowed, fetchUsuarioApp } from '../lib/supabase.js';
 
 const { useState, useEffect } = React;
 
@@ -7,6 +7,9 @@ export function useAuth() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
+  // Ficha del usuario en `app_usuarios` (rol admin | colaborador). Se usa para
+  // adaptar la UI: los colaboradores (ej. Micaela) sólo ven su módulo.
+  const [usuarioApp, setUsuarioApp] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -22,7 +25,7 @@ export function useAuth() {
   }, []);
 
   function handleSession(sess) {
-    if (!sess) { setSession(null); setAuthError(null); return; }
+    if (!sess) { setSession(null); setAuthError(null); setUsuarioApp(null); return; }
     const email = sess?.user?.email;
     if (!isEmailAllowed(email)) {
       // Email no autorizado → cerrar sesión inmediatamente
@@ -33,6 +36,8 @@ export function useAuth() {
     }
     setSession(sess);
     setAuthError(null);
+    // Cargar rol desde app_usuarios (no bloquea el login)
+    fetchUsuarioApp(email).then(u => setUsuarioApp(u)).catch(() => {});
   }
 
   const signInWithGoogle = async () => {
@@ -55,5 +60,10 @@ export function useAuth() {
     setSession(null);
   };
 
-  return { session, loading, authError, signInWithGoogle, signOut, user: session?.user };
+  return {
+    session, loading, authError, signInWithGoogle, signOut,
+    user: session?.user,
+    usuarioApp,
+    esAdmin: (usuarioApp?.rol || 'admin') === 'admin',
+  };
 }

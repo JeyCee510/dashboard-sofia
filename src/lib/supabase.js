@@ -22,14 +22,39 @@ export const supabase = createClient(url || 'http://placeholder.local', anonKey 
 });
 
 // Whitelist de emails autorizados a entrar al dashboard.
-// El RLS en la base de datos también valida esto, pero validamos en el frontend
-// para mostrar un mensaje claro y no dejar al usuario con sesión "huérfana".
+// Desde la migración 037 la fuente de verdad es la tabla `app_usuarios`
+// (con roles y acceso por proyecto). Esta lista queda como RESPALDO para el
+// caso en que la consulta falle (sin red / DB fría): así los admin nunca se
+// quedan fuera. El RLS en la base es quien realmente restringe los datos.
 export const ALLOWED_EMAILS = [
   'sofilira@gmail.com',
   'jclira@gmail.com',
+  'micaela@educacionparalapaz.net', // colaboradora · solo Seminario Angelo
 ];
 
 export const isEmailAllowed = (email) => {
   if (!email) return false;
   return ALLOWED_EMAILS.includes(email.toLowerCase().trim());
 };
+
+// Validación contra `app_usuarios` (fuente de verdad). Devuelve el usuario
+// {email, nombre, rol} si está activo; null si no. Si la consulta falla,
+// cae al respaldo de arriba para no bloquear el acceso.
+export async function fetchUsuarioApp(email) {
+  if (!email) return null;
+  const mail = email.toLowerCase().trim();
+  try {
+    const { data, error } = await supabase
+      .from('app_usuarios')
+      .select('email, nombre, rol, activo')
+      .eq('email', mail)
+      .maybeSingle();
+    if (error) throw error;
+    if (data && data.activo) return data;
+    // Sin fila (o inactivo): permitir sólo si está en el respaldo
+    return isEmailAllowed(mail) ? { email: mail, nombre: null, rol: 'admin' } : null;
+  } catch (e) {
+    console.warn('[auth] no se pudo leer app_usuarios, usando respaldo', e);
+    return isEmailAllowed(mail) ? { email: mail, nombre: null, rol: 'admin' } : null;
+  }
+}
