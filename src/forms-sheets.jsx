@@ -531,6 +531,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const [destino, setDestino] = React.useState('sofia');
   const reglaPagos = store.state.ajustes?.reglaPagos || null;
   const destinosCfg = reglaPagos?.destinos || null;
+  // Proyecto tipo taller/seminario: se eligen encuentros/sedes y el precio sale
+  // de la matriz del proyecto. No hay "pronto pago único" ni bono silla.
+  const esTallerProy = esTaller(store.state.ajustes);
+  const encuentrosProyPago = encuentrosDeAjustes(store.state.ajustes);
+  const sedesPago = store.state.ajustes?.sedes || [];
   const [convirtiendo, setConvirtiendo] = React.useState(false);
   // Archivo opcional para subir al validar
   const [archivo, setArchivo] = React.useState(null);
@@ -562,11 +567,13 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       setConvirtiendo(false);
       setArchivo(null);
       setErrorArchivo('');
-      // Reset del producto (lead path)
-      setEsProntoPago(false);
-      setProdTipo('completa');
-      setProdEncuentros([1, 2, 3]);
-      setProdSilla(true);
+      // Reset del producto (lead path). En taller/seminario se arranca con el
+      // primer encuentro y en etapa pronto pago (lo más común al inscribir).
+      const esT = esTaller(store.state.ajustes);
+      setEsProntoPago(esT ? true : false);
+      setProdTipo(esT ? 'taller' : 'completa');
+      setProdEncuentros(esT ? [1] : [1, 2, 3]);
+      setProdSilla(esT ? false : true);
       setSoloValidar(false);
       setPrecioEspecial(false);
       setPrecioEspecialMonto(0);
@@ -585,15 +592,23 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const precioProntoPago = store.state.ajustes.precioProntoPago || 484;
   const precioRegular = store.state.ajustes.precioRegular || 640;
 
-  // Total del producto (lead path) — depende de tipo + silla. Pronto pago es fijo.
-  const productoTotalBase = esProntoPago
-    ? precioProntoPago
-    : calcularTotal({ tipo: prodTipo, bonoSilla: prodSilla, ajustes: store.state.ajustes });
+  // Total del producto (lead path).
+  // Taller/Seminario: suma de los encuentros elegidos según la matriz del
+  // proyecto (el precio por sede cambia según cuántas tome) + etapa del precio.
+  // Formación: depende de tipo + silla; pronto pago es fijo.
+  const productoTotalBase = esTallerProy
+    ? precioPorEncuentros(prodEncuentros, store.state.ajustes, { prontoPago: esProntoPago })
+    : (esProntoPago
+        ? precioProntoPago
+        : calcularTotal({ tipo: prodTipo, bonoSilla: prodSilla, ajustes: store.state.ajustes }));
   // Si precioEspecial está activo, usamos el monto custom como total real
   const productoTotal = precioEspecial ? (Number(precioEspecialMonto) || 0) : productoTotalBase;
 
   // Helper: cambia el producto y normaliza encuentros_asistir.
   const setProducto = (nextTipo, isProntoPago = false) => {
+    // Taller/Seminario: el "producto" son los encuentros elegidos; este helper
+    // sólo cambia la etapa del precio (pronto pago vs regular).
+    if (esTallerProy) { setEsProntoPago(!!isProntoPago); return; }
     if (isProntoPago) {
       setEsProntoPago(true);
       setProdTipo('completa');
@@ -609,6 +624,16 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   };
 
   const toggleEncuentro = (num) => {
+    // Taller/Seminario: selección libre (uno, varios o todos). El precio se
+    // recalcula solo según cuántos queden elegidos.
+    if (esTallerProy) {
+      const checked = prodEncuentros.includes(num);
+      const next = checked
+        ? prodEncuentros.filter(x => x !== num)
+        : [...prodEncuentros, num].sort((a, b) => a - b);
+      setProdEncuentros(next);
+      return;
+    }
     if (prodTipo === 'un_encuentro') {
       setProdEncuentros([num]);
       return;
@@ -900,6 +925,64 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             </div>
           </div>
 
+          {esTallerProy ? (
+            <>
+              {/* Taller / Seminario: se eligen los encuentros (sedes) y el
+                  precio sale de la matriz del proyecto. Sin silla. */}
+              <Field
+                label="① ¿A cuáles encuentros viene?"
+                hint={store.state.ajustes.prontoPagoNota || 'El precio cambia según cuántos tome'}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {encuentrosProyPago.map(e => {
+                    const checked = prodEncuentros.includes(e.num);
+                    const sede = sedesPago.find(s => s.n === e.num);
+                    return (
+                      <button key={e.num} type="button" onClick={() => toggleEncuentro(e.num)} style={{
+                        background: checked ? 'var(--terracota-tint)' : 'var(--surface)',
+                        border: `1px solid ${checked ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                        borderRadius: 10, padding: '10px 13px', fontFamily: 'inherit',
+                        fontSize: 13, color: 'var(--ink)', cursor: 'pointer', textAlign: 'left',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                      }}>
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ fontWeight: checked ? 600 : 400 }}>{e.label}</span>
+                          <span style={{ display: 'block', fontSize: 11, color: 'var(--ink-mute)' }}>
+                            {[e.fechas, sede?.lugar].filter(Boolean).join(' · ')}
+                          </span>
+                        </span>
+                        {checked && <span style={{ color: 'var(--terracota)', fontWeight: 700 }}>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+
+              {store.state.ajustes.matrizPrecios && (
+                <Field label="② Etapa del precio">
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {[
+                      { v: true,  l: `Pronto pago` },
+                      { v: false, l: 'Precio regular' },
+                    ].map(o => {
+                      const sel = esProntoPago === o.v;
+                      return (
+                        <button key={String(o.v)} type="button"
+                          onClick={() => setProducto(prodTipo, o.v)}
+                          style={{
+                            flex: 1, padding: '9px 10px', borderRadius: 10,
+                            background: sel ? 'var(--terracota-tint)' : 'var(--surface)',
+                            border: `1px solid ${sel ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                            fontFamily: 'inherit', fontSize: 12, fontWeight: sel ? 600 : 400,
+                            color: 'var(--ink)', cursor: 'pointer',
+                          }}>{o.l}</button>
+                      );
+                    })}
+                  </div>
+                </Field>
+              )}
+            </>
+          ) : (
           <Field label="① Producto que compra">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {[
@@ -921,8 +1004,9 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
               ))}
             </div>
           </Field>
+          )}
 
-          {!esProntoPago && (prodTipo === 'dos_encuentros' || prodTipo === 'un_encuentro') && (
+          {!esTallerProy && !esProntoPago && (prodTipo === 'dos_encuentros' || prodTipo === 'un_encuentro') && (
             <Field label={prodTipo === 'dos_encuentros' ? '¿Cuáles 2 encuentros?' : '¿Cuál encuentro?'}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {ENCUENTROS.map(e => {
@@ -944,7 +1028,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             </Field>
           )}
 
-          {!esProntoPago && (
+          {!esTallerProy && !esProntoPago && (
             <Field label="② Bono silla ($40)">
               <div style={{ display: 'flex', gap: 6 }}>
                 {[
