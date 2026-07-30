@@ -54,51 +54,115 @@ const AjustesScreen = ({ store, onClose }) => {
           />
         </Section>
 
-        {/* Precios */}
-        <Section title="Precios">
-          <RowEdit
-            label="Precio regular"
-            value={a.precioRegular}
-            type="number"
-            prefix="$"
-            onChange={v => updateAjustes({ precioRegular: Number(v) })}
-          />
-          <RowEdit
-            label="Pronto pago"
-            value={a.precioProntoPago}
-            type="number"
-            prefix="$"
-            onChange={v => updateAjustes({ precioProntoPago: Number(v) })}
-          />
-          <RowEdit
-            label="Reserva"
-            value={a.precioReserva}
-            type="number"
-            prefix="$"
-            onChange={v => updateAjustes({ precioReserva: Number(v) })}
-          />
-          <RowEdit
-            label="Fecha límite pronto pago"
-            value={a.fechaProntoPago}
-            onChange={v => updateAjustes({ fechaProntoPago: v })}
-          />
-        </Section>
+        {/* Precios — en proyectos por sede (Seminario) la estructura es una
+            matriz, no tres números sueltos: se muestra en modo lectura para no
+            dar la falsa impresión de que editando aquí cambia algo. */}
+        {a.matrizPrecios ? (
+          <Section title="Precios por encuentro">
+            <div style={{ padding: '12px 16px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '0 4px 6px', fontSize: 10, color: 'var(--ink-mute)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500 }}>Viene a</th>
+                    {(a.sedes || []).map(s => (
+                      <th key={s.n} style={{ textAlign: 'right', padding: '0 4px 6px', fontSize: 10, color: 'var(--ink-mute)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500 }}>
+                        {(s.lugar || s.nombre).split(',')[0].split('·')[0].trim()}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { k: '3', l: 'los 3' }, { k: '2', l: '2' },
+                    { k: '1_pp', l: '1 · pronto pago' }, { k: '1', l: '1 · regular' },
+                  ].map(f => (
+                    <tr key={f.k} style={{ borderTop: '1px solid var(--line-soft)' }}>
+                      <td style={{ padding: '6px 4px', color: 'var(--ink)' }}>{f.l}</td>
+                      {(a.sedes || []).map(s => (
+                        <td key={s.n} style={{ padding: '6px 4px', textAlign: 'right', color: 'var(--ink-soft)' }}>
+                          ${(a.matrizPrecios[f.k] || {})[String(s.n)] ?? '—'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ marginTop: 10, fontSize: 11, color: 'var(--ink-mute)', lineHeight: 1.5 }}>
+                Pronto pago hasta {a.fechaProntoPago || '—'}.
+                {a.reservaPorSede && (
+                  <> · Apartar cupo: {Object.entries(a.reservaPorSede).filter(([, v]) => v).map(([k, v]) => {
+                    const s = (a.sedes || []).find(x => String(x.n) === k);
+                    return `${s ? (s.lugar || s.nombre).split(',')[0].split('·')[0].trim() : k} $${v}`;
+                  }).join(' · ')}</>
+                )}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--ink-mute)', fontStyle: 'italic' }}>
+                Para cambiar estos valores, pídeselo a Juan Cristóbal.
+              </div>
+            </div>
+          </Section>
+        ) : (
+          <Section title="Precios">
+            <RowEdit
+              label="Precio regular"
+              value={a.precioRegular}
+              type="number"
+              prefix="$"
+              onChange={v => updateAjustes({ precioRegular: Number(v) })}
+            />
+            <RowEdit
+              label="Pronto pago"
+              value={a.precioProntoPago}
+              type="number"
+              prefix="$"
+              onChange={v => updateAjustes({ precioProntoPago: Number(v) })}
+            />
+            <RowEdit
+              label="Reserva"
+              value={a.precioReserva}
+              type="number"
+              prefix="$"
+              onChange={v => updateAjustes({ precioReserva: Number(v) })}
+            />
+            <RowEdit
+              label="Fecha límite pronto pago"
+              value={a.fechaProntoPago}
+              onChange={v => updateAjustes({ fechaProntoPago: v })}
+            />
+          </Section>
+        )}
 
-        {/* Capacidad */}
-        <Section title="Capacidad y bonos">
-          <RowEdit
-            label="Cupos totales"
-            value={a.capacidad}
-            type="number"
-            onChange={v => updateAjustes({ capacidad: Number(v) })}
-          />
-          <RowEdit
-            label="Cupos bono silla"
-            value={a.bonoSillaCupos}
-            type="number"
-            onChange={v => updateAjustes({ bonoSillaCupos: Number(v) })}
-          />
-        </Section>
+        {/* Capacidad — por sede si el proyecto las tiene */}
+        {a.cuposPorSede ? (
+          <Section title="Cupos por encuentro">
+            {(a.sedes || []).map(s => (
+              <RowEdit
+                key={s.n}
+                label={(s.lugar || s.nombre).split(',')[0].split('·')[0].trim()}
+                value={a.cuposPorSede[String(s.n)] ?? 0}
+                type="number"
+                onChange={v => updateAjustes({
+                  cuposPorSede: { ...a.cuposPorSede, [String(s.n)]: Number(v) },
+                })}
+              />
+            ))}
+          </Section>
+        ) : (
+          <Section title="Capacidad y bonos">
+            <RowEdit
+              label="Cupos totales"
+              value={a.capacidad}
+              type="number"
+              onChange={v => updateAjustes({ capacidad: Number(v) })}
+            />
+            <RowEdit
+              label="Cupos bono silla"
+              value={a.bonoSillaCupos}
+              type="number"
+              onChange={v => updateAjustes({ bonoSillaCupos: Number(v) })}
+            />
+          </Section>
+        )}
 
         {/* Días */}
         <Section title="Días del programa">
