@@ -1,6 +1,8 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
 import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS, esTaller, encuentrosDeAjustes, precioTaller, tienePreciosPorEncuentro, precioPorEncuentros, precioSedeSegunCantidad } from './lib/precios.js';
+import { destinatariosAviso, mensajeTraspasoLead, abrirAvisoWhatsApp } from './lib/avisos.js';
+import { registrarActividad } from './lib/actividad.js';
 import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput, ClaseAbiertaPanel } from './forms.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
@@ -416,6 +418,49 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
                 tel={form.tel}
               />
             </div>
+            {/* Traspaso del lead al equipo (Sofía → Micaela) por WhatsApp */}
+            {leadId && destinatariosAviso(store.state.ajustes).length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{
+                  fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  color: 'var(--ink-mute)', marginBottom: 8,
+                }}>
+                  Pasar a
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {destinatariosAviso(store.state.ajustes).map(p => (
+                    <button
+                      key={p.tel}
+                      type="button"
+                      onClick={() => {
+                        const ok = abrirAvisoWhatsApp(
+                          p,
+                          mensajeTraspasoLead({ ...form, id: leadId }, store.state.ajustes)
+                        );
+                        if (!ok) { alert(`${p.nombre} no tiene WhatsApp configurado.`); return; }
+                        // Queda registrado en la bitácora para que Sofía lo vea
+                        registrarActividad({
+                          proyectoId: store.state.proyectoId,
+                          entidad: 'lead', entidadId: leadId, accion: 'mensaje',
+                          titulo: `Pasó ${form.nombre || 'el lead'} a ${p.nombre}`,
+                          detalle: { via: 'whatsapp', para: p.nombre },
+                        });
+                      }}
+                      style={{
+                        padding: '9px 14px', borderRadius: 999,
+                        background: 'var(--whatsapp)', border: 'none',
+                        color: '#fff', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      <Icon name="whatsapp" size={13} stroke="#fff" />
+                      Pasar a {p.nombre}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Historial del lead: qué pasó y quién lo hizo (bitácora) */}
             {leadId && window.ActividadDeFicha && (
               <div style={{ marginBottom: 14 }}>
