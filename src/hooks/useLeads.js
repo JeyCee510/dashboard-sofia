@@ -1,6 +1,7 @@
 import React from 'react';
 import { supabase } from '../lib/supabase.js';
 import { registrarActividad } from '../lib/actividad.js';
+import { enviarAvisoPush } from '../lib/push.js';
 
 const { useState, useEffect, useCallback } = React;
 
@@ -83,6 +84,12 @@ export function useLeads(proyectoId = 2) {
         proyectoId, entidad: 'lead', entidadId: inserted.id, accion: 'creo',
         titulo: `Creó el lead ${inserted.nombre || ''}`.trim(),
         detalle: { fuente: inserted.fuente || null },
+      });
+      // Aviso push al resto del equipo (a quien lo creó no se le notifica)
+      enviarAvisoPush({
+        titulo: 'Nuevo lead 🌿',
+        cuerpo: `${inserted.nombre || 'Alguien'}${inserted.fuente ? ` · vía ${inserted.fuente}` : ''}`,
+        proyectoId, tag: 'lead',
       });
     }
     return inserted.id;

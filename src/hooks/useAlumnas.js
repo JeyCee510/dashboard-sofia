@@ -1,6 +1,7 @@
 import React from 'react';
 import { supabase } from '../lib/supabase.js';
 import { registrarActividad } from '../lib/actividad.js';
+import { enviarAvisoPush } from '../lib/push.js';
 
 const { useState, useEffect, useCallback, useRef } = React;
 
@@ -264,7 +265,13 @@ export function useAlumnas(proyectoId = 2) {
       registrarActividad({
         proyectoId, entidad: 'alumna', entidadId: alumnaId, accion: 'pago',
         titulo: `Registró pago de $${m}`,
-        detalle: { monto: m, tipo, forma },
+        detalle: { monto: m, tipo, forma, destino: opts.destino || null },
+      });
+      const quien = alumnasRef.current.find(x => x.id === alumnaId)?.nombre || '';
+      enviarAvisoPush({
+        titulo: `Pago de $${m} 💚`,
+        cuerpo: quien ? `${quien} · ${forma}` : forma,
+        proyectoId, tag: 'pago',
       });
     }
     // 2. Actualizar acumulado + total + (eventualmente) silla en `alumnas`

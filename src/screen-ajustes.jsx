@@ -1,6 +1,67 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
+import { estadoPush, activarPush, desactivarPush } from './lib/push.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
+
+// ── Notificaciones push del dispositivo ──
+// Cada persona la activa en SU teléfono. En iPhone sólo funciona si la app
+// está instalada en la pantalla de inicio (limitación de iOS, no de la app).
+const PushRow = () => {
+  const [estado, setEstado] = React.useState('cargando');
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => { estadoPush().then(setEstado).catch(() => setEstado('no-soportado')); }, []);
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      if (estado === 'activo') setEstado(await desactivarPush());
+      else {
+        const { data } = await supabase.auth.getUser();
+        setEstado(await activarPush(data?.user?.email, window.PROYECTO_ID || null));
+      }
+    } catch (e) {
+      alert(e.message || 'No se pudo cambiar la configuración.');
+      setEstado(await estadoPush());
+    } finally { setBusy(false); }
+  };
+
+  const textos = {
+    cargando:            { t: 'Comprobando…',                sub: '' },
+    'no-soportado':      { t: 'No disponible',               sub: 'Este navegador no soporta notificaciones.' },
+    'requiere-instalar': { t: 'Instala la app primero',      sub: 'En iPhone: Compartir → Agregar a inicio, y activa desde ahí.' },
+    denegado:            { t: 'Bloqueadas',                  sub: 'Actívalas en los ajustes del navegador para este sitio.' },
+    activo:              { t: 'Activadas en este dispositivo', sub: 'Recibirás avisos de leads, pagos y comprobantes.' },
+    disponible:          { t: 'Activar en este dispositivo', sub: 'Te avisamos aunque no tengas la app abierta.' },
+  };
+  const info = textos[estado] || textos.cargando;
+  const accionable = estado === 'activo' || estado === 'disponible';
+
+  return (
+    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, color: 'var(--ink)' }}>{info.t}</div>
+        {info.sub && <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 2, lineHeight: 1.4 }}>{info.sub}</div>}
+      </div>
+      {accionable && (
+        <button
+          onClick={toggle}
+          disabled={busy}
+          style={{
+            flexShrink: 0, padding: '7px 14px', borderRadius: 999,
+            background: estado === 'activo' ? 'var(--bg-warm)' : 'var(--terracota)',
+            color: estado === 'activo' ? 'var(--ink-soft)' : '#fff',
+            border: estado === 'activo' ? '1px solid var(--line)' : 'none',
+            fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          {busy ? '…' : (estado === 'activo' ? 'Desactivar' : 'Activar')}
+        </button>
+      )}
+    </div>
+  );
+};
 
 // ──────────────────────────────────────────
 // Ajustes — pantalla de mantenimiento
@@ -34,6 +95,11 @@ const AjustesScreen = ({ store, onClose }) => {
             Cambios persisten automáticamente.
           </div>
         </div>
+
+        {/* Notificaciones */}
+        <Section title="Notificaciones">
+          <PushRow />
+        </Section>
 
         {/* Estudio */}
         <Section title="Estudio">
