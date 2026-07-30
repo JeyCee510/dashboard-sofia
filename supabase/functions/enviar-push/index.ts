@@ -5,8 +5,13 @@
 // relevante: lead nuevo, pago registrado, comprobante recibido.
 //
 // Secrets necesarios (Supabase → Edge Functions → Secrets):
-//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:...)
+//   VAPID_PUBLIC_KEY_YOGA, VAPID_PRIVATE_KEY_YOGA, VAPID_SUBJECT_YOGA
 //   SUPABASE_URL y SERVICE_ROLE_KEY ya vienen inyectados.
+//
+// ⚠ Este proyecto Supabase lo comparten varias apps de JC. Los secretos
+// genéricos VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY YA EXISTEN y los usa otra
+// función (`push-on-new-movement`, de otra app). NO reutilizarlos ni
+// sobrescribirlos: por eso aquí van con sufijo _YOGA.
 //
 // Deploy:  supabase functions deploy enviar-push
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
