@@ -123,6 +123,8 @@ async function initApp() {
     import('./screen-launcher.jsx'),          // Home provisional (selector de proyectos, dinámico)
     import('./screen-proyecto.jsx'),          // Shell genérico de proyecto (convergido)
     import('./screen-actividad.jsx'),         // Bitácora: quién hizo qué (Seminario Angelo)
+    import('./push-banner.jsx'),              // Aviso en el inicio para activar notificaciones
+    import('./notif-bell.jsx'),               // Campana de novedades en el inicio
     import('./screen-proyecto-wizard.jsx'),   // Wizard de alcance de nuevo proyecto
     import('./screen-taller.jsx'),            // Módulo Taller drop-in modular ("Refinar la Práctica")
     import('./home.jsx'),

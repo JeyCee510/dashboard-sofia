@@ -119,15 +119,25 @@ const LauncherScreen = ({ ownerName = 'Sofía', esAdmin = true, onAbrirProyecto,
   return (
     <div className="app-scroll fade-in" style={{ padding: '0' }}>
       <div style={{ padding: '64px 22px 22px' }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 6 }}>
-          {saludo}, {ownerName}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 6 }}>
+              {saludo}, {ownerName}
+            </div>
+            <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, lineHeight: 1.05, margin: '0 0 6px', color: 'var(--ink)', fontWeight: 600 }}>
+              Tus proyectos
+            </h1>
+          </div>
+          {/* Campana de novedades (leads, pagos, notas del equipo) */}
+          {window.NotifBell ? <window.NotifBell /> : null}
         </div>
-        <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, lineHeight: 1.05, margin: '0 0 6px', color: 'var(--ink)', fontWeight: 600 }}>
-          Tus proyectos
-        </h1>
         <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', margin: '0 0 28px', maxWidth: 320 }}>
           Elige dónde quieres trabajar hoy, o define un proyecto nuevo.
         </p>
+
+        {/* Aviso para activar notificaciones (se auto-oculta si ya están
+            activas, si las bloquearon o si la persona lo descarta) */}
+        {window.PushBanner ? <window.PushBanner /> : null}
 
         {ordenados.map(p => {
           const v = presentar(p);
