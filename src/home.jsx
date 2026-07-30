@@ -557,45 +557,81 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
       </div>
       <div style={{ padding: '0 22px' }}>
         <div className="card flat" style={{ padding: 16 }}>
-          {sedesCfg.length > 0 ? (
+          {sedesCfg.length > 0 && matriz ? (
             <>
-              {/* Proyecto con SEDES (Seminario Angelo): precio por sede y por combinación */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
+              {/* Tabla COMPLETA: el precio de cada sede según cuántas toma.
+                  Es la misma tabla que maneja Sofía al negociar. */}
+              <div style={{ overflowX: 'auto', margin: '-2px -4px 0' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '0 4px 8px', fontWeight: 500, color: 'var(--ink-mute)', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Viene a</th>
+                      {sedesCfg.map(s => (
+                        <th key={s.n} style={{ textAlign: 'right', padding: '0 4px 8px', fontWeight: 500, color: 'var(--ink-mute)', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                          {(s.lugar || s.nombre).split(',')[0].split('·')[0].trim()}
+                        </th>
+                      ))}
+                      <th style={{ textAlign: 'right', padding: '0 4px 8px', fontWeight: 600, color: 'var(--terracota)', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { k: '3',    label: 'los 3',            destacado: true },
+                      { k: '2',    label: '2 encuentros',     destacado: false },
+                      { k: '1_pp', label: '1 · pronto pago',  destacado: false },
+                      { k: '1',    label: '1 · regular',      destacado: false },
+                    ].map(fila => {
+                      const row = matriz[fila.k] || {};
+                      const suma = fila.k === '3'
+                        ? Object.values(row).reduce((a, b) => a + Number(b || 0), 0)
+                        : null;
+                      return (
+                        <tr key={fila.k} style={{ borderTop: '1px solid var(--line-soft)' }}>
+                          <td style={{ padding: '7px 4px', color: fila.destacado ? 'var(--terracota)' : 'var(--ink)', fontWeight: fila.destacado ? 600 : 500 }}>
+                            {fila.label}
+                          </td>
+                          {sedesCfg.map(s => (
+                            <td key={s.n} style={{ padding: '7px 4px', textAlign: 'right', color: fila.destacado ? 'var(--terracota)' : 'var(--ink-soft)', fontWeight: fila.destacado ? 600 : 400 }}>
+                              ${row[String(s.n)] ?? '—'}
+                            </td>
+                          ))}
+                          <td style={{ padding: '7px 4px', textAlign: 'right', fontWeight: 700, color: fila.destacado ? 'var(--terracota)' : 'var(--ink-mute)' }}>
+                            {suma ? `$${suma}` : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Referencia de sedes (fechas y lugar) */}
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line-soft)', fontSize: 10.5, color: 'var(--ink-mute)', lineHeight: 1.6 }}>
                 {sedesCfg.map(s => (
-                  <React.Fragment key={s.n}>
-                    <div style={{ color: 'var(--ink)', fontWeight: 500 }}>
-                      {s.nombre}
-                      <span style={{ display: 'block', fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400 }}>
-                        {[s.fechas, s.lugar].filter(Boolean).join(' · ')}
-                      </span>
-                    </div>
-                    <div className="serif" style={{ fontSize: 17, color: 'var(--ink)', textAlign: 'right' }}>
-                      ${s.prontoPago || s.regular}
-                    </div>
-                  </React.Fragment>
+                  <div key={s.n}>
+                    <strong style={{ color: 'var(--ink-soft)', fontWeight: 600 }}>
+                      {(s.lugar || s.nombre).split(',')[0].split('·')[0].trim()}
+                    </strong>
+                    {' · '}{s.fechas}{s.hospedaje ? ' · con hospedaje' : ''}
+                  </div>
                 ))}
               </div>
-              {matriz && (
-                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)', display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, fontSize: 12, alignItems: 'baseline' }}>
-                  <div style={{ color: 'var(--terracota)', fontWeight: 500 }}>Los 3 encuentros</div>
-                  <div className="serif" style={{ fontSize: 18, color: 'var(--terracota)', textAlign: 'right' }}>
-                    ${Object.values(matriz['3'] || {}).reduce((a, b) => a + Number(b || 0), 0)}
-                  </div>
-                  <div style={{ color: 'var(--ink-soft)', fontWeight: 500 }}>Pronto pago</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'right' }}>
-                    hasta {tweaks.fechaProntoPago || '13 de septiembre'}
-                  </div>
+
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line-soft)', fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+                <div>
+                  <span style={{ color: 'var(--terracota)', fontWeight: 600 }}>Pronto pago</span>{' '}
+                  hasta {tweaks.fechaProntoPago || '13 de septiembre'} (o hasta agotar cupos de etapa 1).
                 </div>
-              )}
-              {reservasCfg && (
-                <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line-soft)', fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.45 }}>
-                  Apartar cupo (solo retiros):{' '}
-                  {Object.entries(reservasCfg).filter(([, v]) => v).map(([k, v]) => {
-                    const s = sedesCfg.find(x => String(x.n) === k);
-                    return `${s ? s.nombre.split('·')[0].trim() : k} $${v}`;
-                  }).join(' · ')}
-                </div>
-              )}
+                {reservasCfg && (
+                  <div style={{ marginTop: 4 }}>
+                    Apartar cupo (solo retiros):{' '}
+                    {Object.entries(reservasCfg).filter(([, v]) => v).map(([k, v]) => {
+                      const s = sedesCfg.find(x => String(x.n) === k);
+                      return `${s ? (s.lugar || s.nombre).split(',')[0].split('·')[0].trim() : k} $${v}`;
+                    }).join(' · ')}
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
