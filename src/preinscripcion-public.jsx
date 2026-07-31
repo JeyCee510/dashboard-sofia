@@ -140,11 +140,18 @@ export const PreinscripcionPublic = ({ token }) => {
     })();
   }, [token]);
 
+  // Preguntas del PROYECTO si las define (`config.formulario`); si no, el
+  // cuestionario clásico de la formación. Así cada proyecto pregunta lo suyo.
+  const formCfg = meta?.formulario || null;
+  const preguntas = Array.isArray(formCfg?.preguntas) && formCfg.preguntas.length
+    ? formCfg.preguntas
+    : PREGUNTAS;
+
   const set = (id, val) => setRespuestas(r => ({ ...r, [id]: val }));
 
   const submit = async () => {
     // Validar requeridos
-    for (const p of PREGUNTAS) {
+    for (const p of preguntas) {
       if (p.required && !respuestas[p.id]) {
         setError(`Falta responder: ${p.label}`);
         return;
@@ -219,15 +226,17 @@ export const PreinscripcionPublic = ({ token }) => {
           </div>
           <h1 className="serif" style={{ fontSize: 30, marginTop: 18, fontWeight: 500, lineHeight: 1.15 }}>
             Hola{meta?.lead_nombre ? ` ${meta.lead_nombre.split(' ')[0]}` : ''},<br/>
-            <em style={{ color: 'var(--terracota-soft)' }}>cuéntame de ti</em>
+            <em style={{ color: 'var(--terracota-soft)' }}>{formCfg?.titulo || 'cuéntame de ti'}</em>
           </h1>
           <p style={{ color: 'var(--ink-soft)', marginTop: 14, fontSize: 14, lineHeight: 1.55 }}>
-            Esta inscripción me ayuda a conocerte antes de que empecemos juntos. Toma 5 minutos y todo es opcional excepto lo marcado con <span style={{ color: 'var(--terracota)' }}>*</span>.
+            {formCfg?.intro
+              || 'Esta inscripción me ayuda a conocerte antes de que empecemos juntos. Toma 5 minutos.'}
+            {' '}Todo es opcional excepto lo marcado con <span style={{ color: 'var(--terracota)' }}>*</span>.
           </p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {PREGUNTAS.map(p => (
+          {preguntas.map(p => (
             <FieldPublic key={p.id} pregunta={p} value={respuestas[p.id]} onChange={v => set(p.id, v)} />
           ))}
         </div>
