@@ -347,7 +347,12 @@ async function copyAndOpenIg(handle, mensaje) {
 // con generación de tokens/links). Se ocultan del selector genérico de
 // ContactPanel para que Sofía no las use ahí por accidente y termine
 // con placeholders sin reemplazar.
-const PLANTILLAS_ESPECIALES = new Set(['followup_clase', 'recordatorio_clase']);
+// Plantillas que NO deben aparecer en el selector genérico de WhatsApp:
+// necesitan un dato que sólo puede generar su botón dedicado (un token/link).
+// Si se enviaran desde aquí, saldrían con el placeholder sin reemplazar.
+//  · followup_clase / recordatorio_clase → botones de "Inscripciones recibidas"
+//  · inscripcion → panel "Inscripción" de la ficha (genera el link único)
+const PLANTILLAS_ESPECIALES = new Set(['followup_clase', 'recordatorio_clase', 'inscripcion']);
 
 const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago }) => {
   const [showPlantillas, setShowPlantillas] = React.useState(false);
@@ -593,8 +598,17 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
     setCopiado(true); setTimeout(() => setCopiado(false), 1800);
   };
 
-  // Plantilla automática para enviar el link por WhatsApp
-  const mensajeWa = `Hola ${(leadNombre || '').split(' ')[0]}! Para empezar tu inscripción a la formación, te paso este link (5 min):\n\n${link}\n\nCualquier duda, por aquí 🌿`;
+  // Mensaje para enviar el link por WhatsApp.
+  // Sale de la plantilla `inscripcion` del PROYECTO (editable desde Ajustes),
+  // sustituyendo [Nombre] y [LINK_INSCRIPCION]. Antes estaba escrito a mano y
+  // decía "a la formación" en todos los proyectos.
+  const primerNombre = (leadNombre || '').split(' ')[0];
+  const plantillaIns = (plantillas || []).find(p => p?.id === 'inscripcion');
+  const mensajeWa = plantillaIns?.cuerpo
+    ? plantillaIns.cuerpo
+        .replace(/\[Nombre\]/gi, primerNombre)
+        .replace(/\[LINK_INSCRIPCION\]/gi, link)
+    : `Hola ${primerNombre}! Para empezar tu inscripción, te paso este link (5 min):\n\n${link}\n\nCualquier duda, por aquí 🌿`;
   const waUrl = leadTel && link ? buildWaUrl(leadTel, mensajeWa) : null;
 
   if (loading) {
