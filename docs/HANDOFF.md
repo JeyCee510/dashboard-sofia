@@ -1,9 +1,20 @@
-# Handoff · Dashboard Sofía — 28 julio 2026
+# Handoff · Dashboard Sofía — 5 agosto 2026
 
 Estado del proyecto para quien retome (persona o agente). Complementa `AGENTS.md`
 (convenciones y stack) y `docs/arquitectura-multiproyecto.md` (el modelo objetivo).
 
 Producción: https://dashboard-sofia.vercel.app · Supabase: `orceickorgdynlsbskvx`
+
+> **Si eres un agente empezando aquí (Claude Code u otro): lee este archivo
+> completo antes de tocar nada.** El contexto de las sesiones anteriores vivía en
+> la memoria de Cowork y NO viaja: este documento es la única fuente de verdad.
+> Presta especial atención a la sección 3 (trampas) — son errores ya cometidos.
+
+## Estado en una línea
+
+El foco vivo es **Seminario Angelo** (nov–dic 2026), operado por Sofía (primer
+contacto) y Micaela (gestión, con acceso restringido). Está **completo y en
+producción**; lo que falta es pulido y validación en uso real (sección 5).
 
 ---
 
@@ -85,6 +96,19 @@ Primer caso de la app con dos usuarias de distinto nivel.
    y el trigger `archive_lead()` lo copia.
 5. `git` sobre el mount de Cowork deja `.git/*.lock` huérfanos y rompe los
    comandos siguientes. Usar `scripts/claude-push.sh`, que los limpia.
+6. **Los datos "que faltan" suelen ya existir.** La dirección de la Casita del
+   Yoga se dio por perdida y estaba en `ajustes.plantillasWA` (formación).
+   Antes de pedirle un dato a JC, buscar en `ajustes.data` y en
+   `proyectos.config` de los otros proyectos:
+   `select … where config::text ilike '%loquesea%'`.
+7. **Un texto puede estar hardcodeado aunque exista la plantilla.** El panel de
+   inscripción tenía el mensaje "…inscripción a la formación" escrito en el
+   código y lo mandaba en TODOS los proyectos. Hoy sale de la plantilla
+   `inscripcion` del proyecto. Si algo suena a otro proyecto, buscar el string
+   literal en `src/` antes de suponer que es config.
+8. **Secretos compartidos entre apps.** Este proyecto Supabase lo usan varias
+   apps de JC (schemas `quinche`, `platas_casa`). Antes de crear o reemplazar
+   un secreto o una Edge Function, verificar que no exista ya para otra app.
 
 ---
 
@@ -119,19 +143,61 @@ descuento por varios ya está incorporado en la matriz, `config.matrizPrecios`):
   Sofía. Por eso `pagos` tiene `destino` y `sede_n`, y el formulario pregunta
   "¿A qué cuenta entró?".
 - El monto del pago es **abierto** (hay muchas combinaciones posibles).
-- **12 plantillas de WhatsApp** en `config.plantillasWA`, ordenadas por el flujo
-  real: primer contacto e info (Sofía) → detalle por sede → recordar pronto
-  pago, cómo apartar cupo, seguimiento, becas (Micaela) → bienvenida y saldo.
-  Se personalizan con `[Nombre]`.
+- **20 plantillas de WhatsApp** en `config.plantillasWA`, ordenadas por el flujo
+  real: link de inscripción, primer contacto, info completa, precios especiales,
+  cómo llegar a Vilcabamba, biografías, clases regulares, ubicaciones (Domo y
+  Casita del Yoga), 4 botones de pago (uno por cuenta), brochure, seguimiento,
+  becas, bienvenida y saldo. Se personalizan con `[Nombre]`.
+- **Cuentas** (`config.cuentasPorSede`): Sofía (Produbanco Ahorro 12054049429,
+  céd 1709369225) · Izhcayluma (Paladino Vanesa Elines, Guayaquil Ahorro
+  0016243820, céd 1754146536) · Wisdom Forest (Benjamin Munro, Pichincha
+  Ahorros 3874124900, céd 1500962608).
+  ⚠ La cuenta del Domo **cambiará**: Sofía abrirá una cuenta nueva exclusiva
+  para los eventos. Hoy apunta a la suya.
+- **Formulario de inscripción propio** (`config.formulario`): 9 preguntas
+  distintas a las de la formación. El público lo lee vía RPC
+  `obtener_preinscripcion`, que devuelve el formulario del proyecto; si un
+  proyecto no define `config.formulario`, cae al cuestionario clásico.
+- **Brochure oficial**: `public/seminario-angelo-2026.pdf` (14 págs). Su portada
+  es ahora `public/og-image.jpg` → la vista previa al compartir cualquier link.
+- Ubicaciones: Domo https://maps.app.goo.gl/WrauzvKJot5NbNZF7 ·
+  Casita del Yoga https://maps.app.goo.gl/vHP5keN2w66HgTap9
 - Operación acordada: **Sofía hace el primer contacto y crea el lead; Micaela
   retoma pagos y logística, con supervisión de Sofía** (de ahí la bitácora).
 
 ---
 
+## 4b. Avisos al equipo (WhatsApp + push)
+
+Dos capas, deliberadamente distintas:
+
+1. **Traspaso por WhatsApp** (`src/lib/avisos.js`): en la ficha del lead hay un
+   botón "Pasar a Micaela" que abre WhatsApp con el resumen del lead ya armado
+   y lo registra en la bitácora. Los destinatarios salen de `config.avisos.equipo`
+   (Micaela: +593 98 789 2841). No envía solo: eso exigiría la API de WhatsApp
+   Business.
+2. **Notificaciones push** (Web Push): `public/sw.js` (handler `push` y
+   `notificationclick`), `src/lib/push.js` (suscripción), tabla
+   `push_subscriptions`, Edge Function **`enviar-push`**. Se disparan al crear
+   un lead y al registrar un pago.
+   - ⚠ **Secretos con sufijo `_YOGA`** (`VAPID_PUBLIC_KEY_YOGA`,
+     `VAPID_PRIVATE_KEY_YOGA`, `VAPID_SUBJECT_YOGA`). Los genéricos
+     `VAPID_*` ya existen y los usa **otra app** de JC (`push-on-new-movement`)
+     en el mismo proyecto Supabase: **no tocarlos**.
+   - En iPhone sólo funcionan con la PWA instalada en la pantalla de inicio.
+3. **UI**: `src/push-banner.jsx` (aviso en el inicio para activar, descartable
+   30 días) y `src/notif-bell.jsx` (campana con contador de novedades, lee la
+   tabla `actividad`).
+
+---
+
 ## 5. Lo que falta
 
-- **Datos bancarios de Izhcayluma y Wisdom Forest** → único pendiente que
-  depende de Sofía/JC; completa la plantilla "cómo apartar el cupo".
+- **Cuenta bancaria nueva del Domo** cuando Sofía la abra → actualizar
+  `config.cuentasPorSede.1` y la plantilla `pago_domo`.
+- **Validar en uso real con Micaela**: que entre, vea sólo el Seminario, cree un
+  lead y registre un pago. Es la prueba pendiente más importante.
+- Probar el push de punta a punta (nunca se validó con un dispositivo suscrito).
 - Auditar `screen-detail.jsx` (ficha individual) y el flujo de comprobantes:
   probablemente con lenguaje/lógica de formación y sin filtro por proyecto.
 - `comprobantes` no tiene `proyecto_id` (Micaela no los ve; denegado por
@@ -142,7 +208,8 @@ descuento por varios ya está incorporado en la matriz, `config.matrizPrecios`):
   personas backfilleadas y deduplicadas) existe, pero el motor de la formación
   sigue usando `alumnas`/`leads` con `proyecto_id`. Hay que decidir si se
   unifica o se deja así deliberadamente.
-- Probar en vivo con Micaela: que entre y confirme que sólo ve el Seminario.
+- La vista previa de links (og-image) es **una sola para toda la app**: hoy
+  muestra el seminario. Si se quiere una por proyecto, hace falta prerender.
 
 ---
 
