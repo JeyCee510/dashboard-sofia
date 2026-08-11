@@ -159,7 +159,10 @@ export function useAlumnas(proyectoId = 2) {
       });
     }
     return inserted.id;
-  }, []);
+    // proyectoId EN LAS DEPS: sin esto el callback congela el proyecto del
+    // primer render (app.jsx arranca en 2 y cambia a 4 al abrir el Seminario)
+    // y las inscritas del Seminario se guardaban en la formación.
+  }, [proyectoId]);
 
   const updateAlumna = useCallback(async (id, patch) => {
     // Optimistic update
@@ -295,7 +298,7 @@ export function useAlumnas(proyectoId = 2) {
     }
 
     return { asignoSilla: asignarSilla, nuevoTotal, nuevoPagado, nuevoEstado };
-  }, [alumnas]);
+  }, [alumnas, proyectoId]);
 
   return { alumnas, loading, error, addAlumna, updateAlumna, deleteAlumna, registrarPago };
 }

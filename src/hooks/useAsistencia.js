@@ -97,7 +97,7 @@ export function useAsistencia(proyectoId = 2) {
       const { error } = await supabase.from('asistencia').delete().eq('id', rowId);
       if (error) console.error('[asistencia] delete', error);
     }
-  }, [asistencia, rowMap]);
+  }, [asistencia, rowMap, proyectoId]);
 
   // Marcar todas las alumnas como presente para un día
   const marcarTodosDia = useCallback(async (diaIdx, alumnasIds) => {
@@ -118,7 +118,7 @@ export function useAsistencia(proyectoId = 2) {
         return next;
       });
     }
-  }, []);
+  }, [proyectoId]);  // ver nota en useAlumnas.addAlumna: sin esto escribe al proyecto viejo
 
   return { asistencia, loading, toggleAsistencia, marcarTodosDia };
 }

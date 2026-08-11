@@ -114,7 +114,14 @@ Primer caso de la app con dos usuarias de distinto nivel.
    `tipo_inscripcion='taller'` y el CHECK de `alumnas` sólo aceptaba los tres
    productos de la formación. Migración 040. Al reusar el motor de la
    formación en un proyecto nuevo: revisar constraints, no sólo filtros.
-10. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
+10. **`useCallback` con deps vacías congela el `proyectoId`.** `app.jsx` arranca
+    en `formacionProyectoId = 2` y recién cambia a 4 al abrir el Seminario. Un
+    `useCallback(..., [])` guarda el 2 para siempre: `addAlumna` guardó a un
+    inscrito del Seminario dentro de la formación (su pago sí fue al 4, porque
+    `registrarPago` tenía deps y se recreaba). Síntoma: "lo convertí y ahora no
+    está en ningún lado". Arreglado en `useAlumnas` y `useAsistencia`.
+    **Cualquier callback que use `proyectoId` tiene que llevarlo en las deps.**
+11. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
     `catch` de la conversión sólo hacía `console.error` y el `finally` cerraba
     la hoja igual: para Sofía parecía que había funcionado. Si una acción
     falla, avisar en pantalla y NO cerrar.

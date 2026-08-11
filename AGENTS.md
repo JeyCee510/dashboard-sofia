@@ -202,6 +202,10 @@ Triggers `updated_at` en alumnas/leads/ajustes. RLS habilitado en todas, políti
 - **NO instalar Tailwind** ni reformatear el CSS a utilities. El estilo es deliberadamente serif/editorial con OKLCH.
 - **NO refactorizar `window.X` → imports puros** en las screens. Funciona, es estable, y romperlo gratis cuesta tiempo.
 - **NO confiar en `localStorage`** para datos persistentes — todo va a Supabase ahora. Solo el panel de Tweaks usa localStorage para preferencias de UI.
+- **NO dejar `proyectoId` fuera de las deps de un `useCallback`.** El proyecto
+  activo cambia DESPUÉS del primer render (app.jsx arranca en 2), así que un
+  callback con `[]` escribe siempre al proyecto viejo. Bug real: un inscrito
+  del Seminario guardado dentro de la formación (11 ago 2026).
 - **NO tragarse errores en las acciones del usuario.** Un `catch` con sólo
   `console.error` + un `finally` que cierra la hoja hace que una operación
   fallida parezca exitosa. Pasó con la conversión lead → inscrito del
