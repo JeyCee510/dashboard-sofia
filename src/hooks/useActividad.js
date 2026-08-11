@@ -11,7 +11,7 @@ const { useState, useEffect, useCallback } = React;
 // Acciones que le importan a Sofía en la vista global. Las ediciones menores
 // ('actualizo') se registran igual, pero sólo se ven dentro de cada ficha —
 // si no, el registro global se vuelve ruido y deja de leerse.
-export const ACCIONES_RELEVANTES = ['creo', 'pago', 'cambio_estado', 'nota', 'mensaje', 'elimino'];
+export const ACCIONES_RELEVANTES = ['creo', 'pago', 'cambio_estado', 'nota', 'mensaje', 'asigno', 'elimino'];
 
 export function useActividad({ proyectoId, entidad = null, entidadId = null, limit = 100, soloRelevantes = false } = {}) {
   const [eventos, setEventos] = useState([]);

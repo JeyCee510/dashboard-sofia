@@ -144,11 +144,21 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
             const precioPP = tweaks.precioProntoPago || 484;
             // Paquete = lo que compró Sofía. Derivado de tipo_inscripcion + total.
             const esPP = esProntoPagoProducto(a, precioPP);
+            // En proyectos por sedes (Seminario) el paquete son los encuentros
+            // que tomó: se nombran por sede en vez de "completo / 2 / 1".
+            const sedesProy = (window.AJUSTES_PROYECTO && window.AJUSTES_PROYECTO.sedes) || [];
             const paqueteLabel =
-              esPP ? 'Pronto pago' :
-              a.tipo_inscripcion === 'completa' ? 'Completo' :
-              a.tipo_inscripcion === 'dos_encuentros' ? '2 encuentros' :
-              a.tipo_inscripcion === 'un_encuentro' ? '1 encuentro' : '';
+              a.tipo_inscripcion === 'taller'
+                ? (a.encuentros_asistir || [])
+                    .map(n => {
+                      const s = sedesProy.find(x => x && x.n === n);
+                      return s ? String(s.nombre || `Sede ${n}`).split(' ')[0] : `E${n}`;
+                    })
+                    .join(' · ')
+                : esPP ? 'Pronto pago' :
+                  a.tipo_inscripcion === 'completa' ? 'Completo' :
+                  a.tipo_inscripcion === 'dos_encuentros' ? '2 encuentros' :
+                  a.tipo_inscripcion === 'un_encuentro' ? '1 encuentro' : '';
             return (
               <div key={a.id} className="row" onClick={() => onOpenAlumna(a.id)} style={{ cursor: 'pointer' }}>
                 <div className="avatar" style={{ background: a.avatar }}>{a.iniciales}</div>

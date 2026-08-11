@@ -18,6 +18,21 @@ export function destinatariosAviso(ajustes) {
   return Array.isArray(eq) ? eq.filter(p => p && p.tel) : [];
 }
 
+// Nombres legibles de las sedes que le interesan al lead ("Quito · Acción").
+// `interesSedes` son los números de `proyectos.config.sedes[].n`.
+export function etiquetasInteres(interesSedes, ajustes) {
+  const nums = Array.isArray(interesSedes) ? interesSedes : [];
+  if (!nums.length) return [];
+  const sedes = ajustes?.sedes || [];
+  return nums
+    .slice()
+    .sort((a, b) => a - b)
+    .map(n => {
+      const s = sedes.find(x => x?.n === n);
+      return s ? (s.nombre || `Sede ${n}`) : `Encuentro ${n}`;
+    });
+}
+
 // Mensaje de traspaso de un lead
 export function mensajeTraspasoLead(lead, ajustes) {
   const proyecto = ajustes?.studioName || 'el proyecto';
@@ -29,6 +44,9 @@ export function mensajeTraspasoLead(lead, ajustes) {
   if (lead?.tel) partes.push(`· WhatsApp: ${lead.tel}`);
   if (lead?.instagram) partes.push(`· Instagram: ${lead.instagram}`);
   if (lead?.fuente) partes.push(`· Llegó por: ${lead.fuente}`);
+  const interes = etiquetasInteres(lead?.interesSedes, ajustes);
+  if (interes.length) partes.push(`· Le interesa: ${interes.join(' · ')}`);
+  if (lead?.estado) partes.push(`· Estado: ${lead.estado}`);
   if (lead?.mensaje) partes.push('', `Contexto: ${lead.mensaje}`);
   partes.push('', '¿Lo tomas desde aquí? Cualquier cosa me dices 🙏');
   return partes.join('\n');

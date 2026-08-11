@@ -83,11 +83,12 @@ export async function desactivarPush() {
   return 'disponible';
 }
 
-// Envía un aviso al equipo (lo hace la Edge Function, que tiene la clave privada)
-export async function enviarAvisoPush({ titulo, cuerpo, url, excluirEmail, proyectoId, tag }) {
+// Envía un aviso al equipo (lo hace la Edge Function, que tiene la clave privada).
+// `paraEmail` lo dirige a UNA sola persona (caso: pasar la posta de un lead).
+export async function enviarAvisoPush({ titulo, cuerpo, url, excluirEmail, paraEmail, proyectoId, tag }) {
   try {
     const { error } = await supabase.functions.invoke('enviar-push', {
-      body: { titulo, cuerpo, url, excluirEmail, proyectoId, tag },
+      body: { titulo, cuerpo, url, excluirEmail, paraEmail, proyectoId, tag },
     });
     if (error) throw error;
     return true;

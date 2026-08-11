@@ -15,7 +15,7 @@ const { useState, useEffect, useCallback } = React;
 // ──────────────────────────────────────────────────────────────
 
 const KEY_VISTO = 'notifUltimaVista';
-const ACCIONES = ['creo', 'pago', 'cambio_estado', 'nota', 'mensaje'];
+const ACCIONES = ['creo', 'pago', 'cambio_estado', 'nota', 'mensaje', 'asigno'];
 
 const fechaCorta = (iso) => {
   try {

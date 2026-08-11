@@ -1,9 +1,10 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
 import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS, esTaller, encuentrosDeAjustes, precioTaller, tienePreciosPorEncuentro, precioPorEncuentros, precioSedeSegunCantidad } from './lib/precios.js';
-import { destinatariosAviso, mensajeTraspasoLead, abrirAvisoWhatsApp } from './lib/avisos.js';
-import { registrarActividad } from './lib/actividad.js';
+import { destinatariosAviso, mensajeTraspasoLead, abrirAvisoWhatsApp, etiquetasInteres } from './lib/avisos.js';
+import { registrarActividad, actorActividad } from './lib/actividad.js';
 import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput, ClaseAbiertaPanel } from './forms.jsx';
+import { MaterialPanel } from './material.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // Perf · monta children DESPUÉS del primer paint del padre. Sirve para
@@ -315,18 +316,149 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   );
 };
 
+// ──────────────────────────────────────────────────────────────
+// ResponsablesLead — quién trajo el lead y quién lo tiene hoy.
+//
+// Sofía hace el primer contacto y crea el lead; Micaela retoma pagos y
+// logística. Antes el traspaso era sólo un WhatsApp: no quedaba en ningún
+// lado quién estaba a cargo. Ahora el botón hace las tres cosas a la vez:
+// abre el WhatsApp con el resumen, deja el lead asignado y le manda un push
+// a quien lo recibe.
+// ──────────────────────────────────────────────────────────────
+const ResponsablesLead = ({ form, leadId, store }) => {
+  const [pasando, setPasando] = React.useState(null);
+  const equipo = destinatariosAviso(store.state.ajustes);
+  const yo = actorActividad();
+  const aCargo = form.asignadoANombre || form.asignadoAEmail;
+  const creador = form.creadoPorNombre || form.creadoPorEmail;
+
+  const pasarA = (p) => {
+    // window.open SÍNCRONO antes de cualquier await: iOS/PWA lo bloquea si
+    // se dispara después de una promesa.
+    const ok = abrirAvisoWhatsApp(
+      p,
+      mensajeTraspasoLead({ ...form, id: leadId }, store.state.ajustes)
+    );
+    if (!ok) { alert(`${p.nombre} no tiene WhatsApp configurado.`); return; }
+    setPasando(p.nombre);
+    Promise.resolve(store.asignarLead(leadId, p)).finally(() => setPasando(null));
+  };
+
+  const tomarloYo = () => {
+    if (!yo.email && !yo.nombre) return;
+    store.asignarLead(leadId, { nombre: yo.nombre || yo.email, email: yo.email });
+  };
+
+  const soyLaResponsable = !!yo.email && form.asignadoAEmail === yo.email;
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{
+        fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+        color: 'var(--ink-mute)', marginBottom: 8,
+      }}>
+        Responsables
+      </div>
+
+      <div className="card flat" style={{
+        padding: 12, marginBottom: 8,
+        background: 'var(--bg-warm)', borderColor: 'transparent',
+        display: 'flex', flexDirection: 'column', gap: 6,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12 }}>
+          <span style={{ color: 'var(--ink-mute)' }}>Creó el lead</span>
+          <span style={{ color: 'var(--ink)', fontWeight: 500, textAlign: 'right' }}>
+            {creador || 'Sin registro'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12 }}>
+          <span style={{ color: 'var(--ink-mute)' }}>A cargo</span>
+          <span style={{ textAlign: 'right' }}>
+            <span style={{
+              color: aCargo ? 'var(--ink)' : 'var(--ink-mute)',
+              fontWeight: aCargo ? 600 : 400,
+            }}>
+              {aCargo || 'Nadie todavía'}
+            </span>
+            {form.asignadoAt && (
+              <span style={{ display: 'block', fontSize: 10, color: 'var(--ink-mute)' }}>
+                desde el {new Date(form.asignadoAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}
+              </span>
+            )}
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {equipo.map(p => (
+          <button
+            key={p.tel}
+            type="button"
+            onClick={() => pasarA(p)}
+            disabled={!!pasando}
+            style={{
+              padding: '9px 14px', borderRadius: 999,
+              background: 'var(--whatsapp)', border: 'none',
+              color: '#fff', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
+              cursor: pasando ? 'default' : 'pointer', opacity: pasando ? 0.6 : 1,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <Icon name="whatsapp" size={13} stroke="#fff" />
+            {pasando === p.nombre ? 'Pasando…' : `Pasar a ${p.nombre}`}
+          </button>
+        ))}
+        {(yo.email || yo.nombre) && !soyLaResponsable && (
+          <button
+            type="button"
+            onClick={tomarloYo}
+            style={{
+              padding: '9px 14px', borderRadius: 999,
+              background: 'transparent', border: '1px solid var(--line-soft)',
+              color: 'var(--ink-soft)', fontFamily: 'inherit', fontSize: 12.5,
+              cursor: 'pointer',
+            }}
+          >
+            Me lo quedo yo
+          </button>
+        )}
+      </div>
+      {equipo.length === 0 && (
+        <div style={{ marginTop: 6, fontSize: 11, color: 'var(--ink-mute)', lineHeight: 1.4 }}>
+          Para pasar leads al equipo, agrega a las personas en la configuración
+          del proyecto (avisos → equipo).
+        </div>
+      )}
+    </div>
+  );
+};
+
+const LEAD_VACIO = {
+  nombre: '', tel: '', instagram: '', mensaje: '', fuente: 'instagram', estado: 'nuevo',
+  interesSedes: [],
+};
+
 const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
   const editing = leadId && store.state.leads.find(l => l.id === leadId);
-  const [form, setForm] = React.useState(() => editing || {
-    nombre: '', tel: '', instagram: '', mensaje: '', fuente: 'instagram', estado: 'nuevo',
-  });
+  const [form, setForm] = React.useState(() => editing || LEAD_VACIO);
 
   React.useEffect(() => {
-    if (editing) setForm(editing);
-    else setForm({ nombre: '', tel: '', instagram: '', mensaje: '', fuente: 'instagram', estado: 'nuevo' });
+    if (editing) setForm({ ...editing, interesSedes: editing.interesSedes || [] });
+    else setForm(LEAD_VACIO);
   }, [leadId, open]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Sedes del proyecto (Seminario: 3 encuentros independientes). Si el
+  // proyecto no las define (formación, estudio), el bloque no se muestra.
+  const sedesProy = store.state.ajustes?.sedes || [];
+  const toggleInteres = (n) => {
+    const actual = form.interesSedes || [];
+    const next = actual.includes(n)
+      ? actual.filter(x => x !== n)
+      : [...actual, n].sort((a, b) => a - b);
+    set('interesSedes', next);
+  };
 
   const guardar = () => {
     if (!form.nombre.trim()) return;
@@ -395,6 +527,15 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
                 fechaProntoPago={store.state.ajustes.fechaProntoPago}
               />
             </div>
+            {/* Brochure, flyers y posts del proyecto — se envían por WhatsApp
+                o por la hoja de compartir del teléfono. */}
+            <div style={{ marginBottom: 14 }}>
+              <MaterialPanel
+                ajustes={store.state.ajustes}
+                nombre={form.nombre}
+                tel={form.tel}
+              />
+            </div>
             <div style={{ marginBottom: 14 }}>
               <PreinscripcionAdminPanel
                 leadId={leadId}
@@ -418,48 +559,10 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
                 tel={form.tel}
               />
             </div>
-            {/* Traspaso del lead al equipo (Sofía → Micaela) por WhatsApp */}
-            {leadId && destinatariosAviso(store.state.ajustes).length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{
-                  fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
-                  color: 'var(--ink-mute)', marginBottom: 8,
-                }}>
-                  Pasar a
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {destinatariosAviso(store.state.ajustes).map(p => (
-                    <button
-                      key={p.tel}
-                      type="button"
-                      onClick={() => {
-                        const ok = abrirAvisoWhatsApp(
-                          p,
-                          mensajeTraspasoLead({ ...form, id: leadId }, store.state.ajustes)
-                        );
-                        if (!ok) { alert(`${p.nombre} no tiene WhatsApp configurado.`); return; }
-                        // Queda registrado en la bitácora para que Sofía lo vea
-                        registrarActividad({
-                          proyectoId: store.state.proyectoId,
-                          entidad: 'lead', entidadId: leadId, accion: 'mensaje',
-                          titulo: `Pasó ${form.nombre || 'el lead'} a ${p.nombre}`,
-                          detalle: { via: 'whatsapp', para: p.nombre },
-                        });
-                      }}
-                      style={{
-                        padding: '9px 14px', borderRadius: 999,
-                        background: 'var(--whatsapp)', border: 'none',
-                        color: '#fff', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
-                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-                      }}
-                    >
-                      <Icon name="whatsapp" size={13} stroke="#fff" />
-                      Pasar a {p.nombre}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Responsables: quién trajo el lead y quién lo tiene hoy.
+                El traspaso (Sofía → Micaela) abre WhatsApp con el resumen y
+                además deja asignado el lead + avisa por push a quien lo recibe. */}
+            {leadId && <ResponsablesLead form={form} leadId={leadId} store={store} />}
 
             {/* Historial del lead: qué pasó y quién lo hizo (bitácora) */}
             {leadId && window.ActividadDeFicha && (
@@ -548,6 +651,35 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
           ]}
         />
       </Field>
+      {sedesProy.length > 0 && (
+        <Field
+          label="¿A qué encuentro(s) quiere venir?"
+          hint="Puedes marcar varios o ninguno si todavía no lo define."
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {sedesProy.map(s => {
+              const checked = (form.interesSedes || []).includes(s.n);
+              return (
+                <button key={s.n} type="button" onClick={() => toggleInteres(s.n)} style={{
+                  background: checked ? 'var(--terracota-tint)' : 'var(--surface)',
+                  border: `1px solid ${checked ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                  borderRadius: 10, padding: '10px 13px', fontFamily: 'inherit',
+                  fontSize: 13, color: 'var(--ink)', cursor: 'pointer', textAlign: 'left',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontWeight: checked ? 600 : 400 }}>{s.nombre || `Sede ${s.n}`}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--ink-mute)' }}>
+                      {[s.fechas, s.lugar].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  {checked && <span style={{ color: 'var(--terracota)', fontWeight: 700 }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+      )}
       <Field label="Mensaje / contexto">
         <TextArea value={form.mensaje} onChange={v => set('mensaje', v)} placeholder="¿Qué te dijo? ¿Qué necesita?" rows={3} />
       </Field>
@@ -755,8 +887,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       onClose();
       return;
     }
-    if (!sinPago && !monto) return;
+    // El monto $0 es válido y deliberado (beca completa, canje, cortesía):
+    // deja registro en `pagos` de que la persona entró sin dinero de por medio.
+    // Sólo se bloquea un monto negativo.
     const montoNum = Number(monto) || 0;
+    if (!sinPago && montoNum < 0) return;
 
     if (tipoSel === 'alumna') {
       // 1. Si hay archivo Y NO hay comprobante existente → subir comprobante validado
@@ -778,8 +913,9 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         alert('Falta el motivo del precio especial.');
         return;
       }
-      if (precioEspecial && (Number(precioEspecialMonto) || 0) <= 0) {
-        alert('El precio especial debe ser mayor a $0.');
+      // $0 es un precio especial legítimo (beca completa): sólo se rechaza negativo.
+      if (precioEspecial && (Number(precioEspecialMonto) || 0) < 0) {
+        alert('El precio especial no puede ser negativo.');
         return;
       }
       setConvirtiendo(true);
@@ -824,11 +960,20 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
           }
         }
       } catch (e) {
+        // NO cerrar la hoja si falló: antes se cerraba igual y la conversión
+        // se perdía en silencio (el lead seguía ahí y no aparecía inscrito).
         console.error('[pago lead → alumna]', e);
+        setConvirtiendo(false);
+        alert(
+          `No se pudo inscribir a ${lead.nombre}.\n\n` +
+          `${e?.message || e}\n\n` +
+          'No se guardó nada. Vuelve a intentar; si sigue igual, avísale a Juan Cristóbal con este mensaje.'
+        );
+        return;
       } finally {
         setConvirtiendo(false);
-        onClose();
       }
+      onClose();
     }
   };
 
@@ -861,6 +1006,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       t: 'completo',
     },
     { label: 'Otro monto', v: 0, t: 'parcial' },
+    { label: 'Sin costo · $0 (beca / canje)', v: 0, t: 'cortesia' },
   ] : esLead ? [
     { label: `Reserva $${precioReserva}`, v: precioReserva, t: 'reserva' },
     {
@@ -871,6 +1017,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       t: esProntoPago ? 'pronto-pago' : 'completo',
     },
     { label: 'Otro monto', v: 0, t: 'parcial' },
+    { label: 'Sin costo · $0 (beca / canje)', v: 0, t: 'cortesia' },
     { label: 'Convertir sin pago aún', v: 0, t: 'ninguno' },
   ] : [];
 
@@ -883,13 +1030,15 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         <button
           className="btn btn-primary btn-block"
           onClick={guardar}
-          disabled={!selection || (!soloValidar && tipo !== 'ninguno' && !monto) || convirtiendo}
+          disabled={!selection || (!soloValidar && (Number(monto) || 0) < 0) || convirtiendo}
         >
           {convirtiendo ? 'Convirtiendo…' :
            soloValidar ? 'Validar sin sumar al pago' :
            esLead && tipo === 'ninguno' ? 'Inscribir sin pago' :
-           esLead ? `Inscribir y registrar $${monto || 0}` :
-           `Registrar $${monto || 0}`}
+           // $0 explícito: beca completa, canje o cortesía. Queda registrado.
+           (Number(monto) || 0) === 0 ? (esLead ? 'Inscribir sin costo ($0)' : 'Registrar sin costo ($0)') :
+           esLead ? `Inscribir y registrar $${monto}` :
+           `Registrar $${monto}`}
         </button>
       }
     >
@@ -1142,7 +1291,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
                   }}
                 >Quitar</button>
               </div>
-              <NumberInput value={precioEspecialMonto} onChange={setPrecioEspecialMonto} prefix="$" min={1} />
+              <NumberInput value={precioEspecialMonto} onChange={setPrecioEspecialMonto} prefix="$" min={0} />
               <textarea
                 value={precioEspecialMotivo}
                 onChange={(e) => setPrecioEspecialMotivo(e.target.value)}
@@ -1166,7 +1315,12 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       )}
 
       {!soloValidar && (
-      <Field label={esLead ? '③ ¿Cuánto paga ahora?' : 'Monto del pago'}>
+      <Field
+        label={esLead ? '③ ¿Cuánto paga ahora?' : 'Monto del pago'}
+        hint={(Number(monto) || 0) === 0 && tipo !== 'ninguno'
+          ? 'En $0 queda el registro de una beca, canje o cortesía.'
+          : undefined}
+      >
         <NumberInput value={monto} onChange={setMonto} prefix="$" min={0} />
       </Field>
       )}

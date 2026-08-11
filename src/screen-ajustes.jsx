@@ -1,6 +1,7 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
 import { estadoPush, activarPush, desactivarPush } from './lib/push.js';
+import { MaterialAdminCard } from './material.jsx';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ── Notificaciones push del dispositivo ──
@@ -257,9 +258,11 @@ const AjustesScreen = ({ store, onClose }) => {
           </div>
         </Section>
 
-        {/* Material compartible (PDF programa) */}
+        {/* Material compartible: brochure, flyers, posts. Se envía desde la
+            ficha de cada lead o inscrita. Reemplaza al card antiguo de un
+            único "programa.pdf" (que además pisaba el archivo entre proyectos). */}
         <Section title="Material para compartir">
-          <MaterialPdfCard store={store} />
+          <MaterialAdminCard store={store} />
         </Section>
 
         {/* Plantillas WhatsApp */}
@@ -601,135 +604,6 @@ const ComprobanteLinkCard = () => {
           background: '#25D366', color: '#fff',
           border: 'none', fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer',
         }}>Compartir por WhatsApp</button>
-      </div>
-    </div>
-  );
-};
-
-// ──────────────────────────────────────────
-// MaterialPdfCard — sube el PDF del programa a Supabase Storage
-// (bucket `material`) y guarda la URL pública en ajustes.materialProgramaUrl.
-// La plantilla "Programa PDF" usa esa URL automáticamente.
-// ──────────────────────────────────────────
-const MaterialPdfCard = ({ store }) => {
-  const url = store.state.ajustes.materialProgramaUrl || '';
-  const nombre = store.state.ajustes.materialProgramaNombre || '';
-  const [uploading, setUploading] = React.useState(false);
-  const [error, setError] = React.useState('');
-  const [copiado, setCopiado] = React.useState(false);
-  const fileRef = React.useRef(null);
-
-  const subir = async (file) => {
-    if (!file) return;
-    if (!file.type.includes('pdf')) {
-      setError('Solo se aceptan PDFs.');
-      return;
-    }
-    if (file.size > 25 * 1024 * 1024) {
-      setError('El PDF supera los 25 MB. Comprímelo antes de subir.');
-      return;
-    }
-    setUploading(true);
-    setError('');
-    try {
-      // Path fijo para que la URL no cambie cuando se actualiza el archivo.
-      const path = 'programa.pdf';
-      const { error: upErr } = await supabase.storage
-        .from('material')
-        .upload(path, file, { upsert: true, contentType: 'application/pdf' });
-      if (upErr) throw upErr;
-      // Obtener URL pública (bucket es público de lectura)
-      const { data } = supabase.storage.from('material').getPublicUrl(path);
-      // Cache-buster para que las plantillas siempre traigan la última versión
-      const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
-      store.updateAjustes({
-        materialProgramaUrl: publicUrl,
-        materialProgramaNombre: file.name,
-      });
-    } catch (e) {
-      console.error('[material upload]', e);
-      setError(e.message || 'Error al subir el archivo.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const copiar = async () => {
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 1800);
-    } catch {}
-  };
-
-  return (
-    <div style={{ padding: '6px 16px 0' }}>
-      <div className="card flat" style={{ padding: 14 }}>
-        {url ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 8,
-                background: 'var(--terracota-tint)', color: '#8A3D26',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700, letterSpacing: '0.04em',
-              }}>PDF</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
-                  {nombre || 'Programa de la formación'}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--ink-mute)' }}>
-                  Disponible en la plantilla "Programa PDF"
-                </div>
-              </div>
-            </div>
-            <div style={{
-              fontFamily: 'monospace', fontSize: 11, color: 'var(--ink-soft)',
-              padding: '8px 10px', background: 'var(--bg-warm)', borderRadius: 8,
-              wordBreak: 'break-all', lineHeight: 1.4,
-            }}>{url}</div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-              <button onClick={copiar} style={{
-                flex: 1, padding: '9px 12px', borderRadius: 10,
-                background: copiado ? 'var(--oliva)' : 'var(--surface)',
-                color: copiado ? '#fff' : 'var(--ink)',
-                border: '1px solid ' + (copiado ? 'transparent' : 'var(--line-soft)'),
-                fontFamily: 'inherit', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-              }}>{copiado ? 'Copiado ✓' : 'Copiar link'}</button>
-              <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
-                flex: 1, padding: '9px 12px', borderRadius: 10,
-                background: 'var(--surface)', color: 'var(--ink)',
-                border: '1px solid var(--line-soft)',
-                fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
-                cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.6 : 1,
-              }}>{uploading ? 'Subiendo…' : 'Reemplazar'}</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 13, color: 'var(--ink)', marginBottom: 4 }}>Sin PDF cargado.</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginBottom: 12, lineHeight: 1.4 }}>
-              Sube el PDF del programa para activar la plantilla automática que envía el link a leads e inscritos.
-            </div>
-            <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
-              width: '100%', padding: '10px 14px', borderRadius: 10,
-              background: 'var(--terracota)', color: '#fff', border: 'none',
-              fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
-              cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.6 : 1,
-            }}>{uploading ? 'Subiendo…' : 'Subir PDF'}</button>
-          </>
-        )}
-        {error && (
-          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--rojo)' }}>{error}</div>
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/pdf,.pdf"
-          style={{ display: 'none' }}
-          onChange={(e) => { subir(e.target.files?.[0]); e.target.value = ''; }}
-        />
       </div>
     </div>
   );

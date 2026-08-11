@@ -17,6 +17,12 @@ export function setActorActividad({ email, nombre } = {}) {
   _actor = { email: email || null, nombre: nombre || null };
 }
 
+// Quién está operando la app ahora mismo. Lo usan los hooks para sellar
+// `creado_por` / `asignado_a` en los leads (no sólo la bitácora).
+export function actorActividad() {
+  return { ..._actor };
+}
+
 /**
  * Registra un evento en la bitácora.
  * @param {object} p
@@ -54,5 +60,6 @@ export const ETIQUETA_ACCION = {
   cambio_estado: 'cambió el estado de',
   pago: 'registró un pago de',
   mensaje: 'contactó a',
+  asigno: 'pasó la posta de',
   elimino: 'eliminó',
 };

@@ -142,7 +142,10 @@ export function alumnaAsisteDia(alumna, diaIdx, encuentros = ENCUENTROS) {
 export function estadoPago(a) {
   const total = Number(a?.total) || 0;
   const pagado = Number(a?.pagado) || 0;
-  if (total === 0) return 'pendiente';
+  // Total $0 = beca completa / canje / cortesía: no hay saldo que perseguir.
+  // (Antes devolvía 'pendiente'; hoy el precio especial permite $0 y esa
+  // persona no debe quedar listada como deudora para siempre.)
+  if (total <= 0) return 'completo';
   if (pagado >= total) return 'completo';
   if (pagado > 0) return 'parcial';
   return 'pendiente';

@@ -165,6 +165,7 @@ function useStore(proyectoId = 2) {
   const addLead = (data) => leadsHook.addLead(data);
   const updateLead = (id, patch) => leadsHook.updateLead(id, patch);
   const deleteLead = (id) => leadsHook.deleteLead(id);
+  const asignarLead = (id, persona) => leadsHook.asignarLead(id, persona);
   // Convertir lead → alumna SIN asumir pago. Caller debe pasar `pagado` en extra
   // (puede ser 0 si "convertir sin pago aún"). El PagoForm es quien maneja
   // los flujos con pago. Esta función queda como helper bajo nivel.
@@ -297,7 +298,7 @@ function useStore(proyectoId = 2) {
     state,
     loading,
     addAlumna, updateAlumna, deleteAlumna,
-    addLead, updateLead, deleteLead, convertLeadToAlumna,
+    addLead, updateLead, deleteLead, asignarLead, convertLeadToAlumna,
     registrarPago,
     asignarSilla, renunciarSilla, ajustarPrecioAlumna,
     toggleAsistencia, marcarTodosDia,

@@ -1,17 +1,14 @@
-// Edge Function `enviar-push`
+// Edge Function `enviar-push` (Dashboard Sofía)
+// Envía notificaciones Web Push al equipo (Sofía / Micaela).
 //
-// Envía una notificación Web Push a las suscripciones del equipo.
-// La llama el frontend (lib/push.js → enviarAvisoPush) cuando ocurre algo
-// relevante: lead nuevo, pago registrado, comprobante recibido.
+// OJO: este proyecto Supabase lo comparten varias apps. Otra app ya usa
+// VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY (función push-on-new-movement), así que
+// aquí se leen secretos con nombre propio (_YOGA) para no interferir.
 //
-// Secrets necesarios (Supabase → Edge Functions → Secrets):
-//   VAPID_PUBLIC_KEY_YOGA, VAPID_PRIVATE_KEY_YOGA, VAPID_SUBJECT_YOGA
-//   SUPABASE_URL y SERVICE_ROLE_KEY ya vienen inyectados.
-//
-// ⚠ Este proyecto Supabase lo comparten varias apps de JC. Los secretos
-// genéricos VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY YA EXISTEN y los usa otra
-// función (`push-on-new-movement`, de otra app). NO reutilizarlos ni
-// sobrescribirlos: por eso aquí van con sufijo _YOGA.
+// Destinatarios:
+//   · por defecto → todo el equipo del proyecto (menos `excluirEmail`)
+//   · `paraEmail` → SÓLO esa persona. Se usa al pasar la posta de un lead:
+//     el aviso es para quien queda a cargo, no para todos.
 //
 // Deploy:  supabase functions deploy enviar-push
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -26,13 +23,13 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const { titulo, cuerpo, url, excluirEmail, proyectoId, tag } = await req.json();
+    const { titulo, cuerpo, url, excluirEmail, paraEmail, proyectoId, tag } = await req.json();
 
-    const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY');
-    const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY');
-    const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:jclira@gmail.com';
+    const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY_YOGA');
+    const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY_YOGA');
+    const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT_YOGA') ?? 'mailto:jclira@gmail.com';
     if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
-      return new Response(JSON.stringify({ error: 'Faltan las claves VAPID' }), {
+      return new Response(JSON.stringify({ error: 'Faltan VAPID_PUBLIC_KEY_YOGA / VAPID_PRIVATE_KEY_YOGA' }), {
         status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
@@ -43,11 +40,15 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Destinatarios: suscripciones activas del proyecto (o todas si no se
-    // especifica), excluyendo a quien disparó la acción.
     let q = admin.from('push_subscriptions').select('*').eq('activo', true);
-    if (proyectoId) q = q.or(`proyecto_id.eq.${proyectoId},proyecto_id.is.null`);
-    if (excluirEmail) q = q.neq('email', String(excluirEmail).toLowerCase());
+    if (paraEmail) {
+      // Aviso dirigido: ignora el filtro por proyecto (si la persona tiene la
+      // app instalada, hay que alcanzarla igual) y manda sólo a ella.
+      q = q.eq('email', String(paraEmail).toLowerCase().trim());
+    } else {
+      if (proyectoId) q = q.or(`proyecto_id.eq.${proyectoId},proyecto_id.is.null`);
+      if (excluirEmail) q = q.neq('email', String(excluirEmail).toLowerCase());
+    }
     const { data: subs, error } = await q;
     if (error) throw error;
 
@@ -61,7 +62,7 @@ Deno.serve(async (req) => {
     let enviadas = 0;
     const caducadas: number[] = [];
 
-    await Promise.all((subs ?? []).map(async (s) => {
+    await Promise.all((subs ?? []).map(async (s: any) => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -69,7 +70,6 @@ Deno.serve(async (req) => {
         );
         enviadas++;
       } catch (e: any) {
-        // 404/410 = el navegador invalidó la suscripción: se limpia sola
         if (e?.statusCode === 404 || e?.statusCode === 410) caducadas.push(s.id);
         else console.error('[push] fallo', e?.statusCode, e?.message);
       }

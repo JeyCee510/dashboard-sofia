@@ -12,3 +12,9 @@ backups/
 
 # Token de GitHub para que Claude pueda hacer push (NUNCA se sube al repo)
 .claude-gh-token
+
+# Material fuente en la raíz (piezas de diseño en alta, decenas de MB).
+# Lo que la app usa vive en `public/` o se sube desde Ajustes al bucket
+# Storage `material`; los originales no tienen por qué pesar en el repo.
+/Post Lanzamiento-*.png
+docs/material/

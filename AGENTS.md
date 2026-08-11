@@ -202,6 +202,10 @@ Triggers `updated_at` en alumnas/leads/ajustes. RLS habilitado en todas, políti
 - **NO instalar Tailwind** ni reformatear el CSS a utilities. El estilo es deliberadamente serif/editorial con OKLCH.
 - **NO refactorizar `window.X` → imports puros** en las screens. Funciona, es estable, y romperlo gratis cuesta tiempo.
 - **NO confiar en `localStorage`** para datos persistentes — todo va a Supabase ahora. Solo el panel de Tweaks usa localStorage para preferencias de UI.
+- **NO tragarse errores en las acciones del usuario.** Un `catch` con sólo
+  `console.error` + un `finally` que cierra la hoja hace que una operación
+  fallida parezca exitosa. Pasó con la conversión lead → inscrito del
+  Seminario (11 ago 2026): nadie lo notó hasta que faltaron inscritas.
 - **NO usar `SECURITY DEFINER` en funciones SQL llamadas desde RLS policies** (como `is_authorized()`). Bajo SECURITY DEFINER, `auth.jwt()` no devuelve el JWT del caller real y la función retorna NULL → todos los inserts/updates fallan silenciosamente. Usar `SECURITY INVOKER` (default) + `STABLE`. Ver `migration-003-fix-rls-security-invoker.sql` para el incidente del 2026-04-29.
 - **NO llamar hooks de React después de un early return.** Todos los `use*` deben ir antes de cualquier `if (cond) return ...`. Una violación rompe el render entero (root vacío, sin error visible). Bug histórico: `usePullToRefresh` puesto después del auth gate, root quedó en blanco. Ver app.jsx líneas iniciales.
 - **Patrón `window.X` → cuando un componente A registrado en window es consumido por un archivo B**, hay que declararlo explícito al inicio de B con `const X = window.X` — NO funciona como variable global automática en módulos ES (strict mode). Si olvidas, ReferenceError silencioso al renderizar. Aplica también a hooks: `const useX = window.useX` antes de usar dentro de otro componente.

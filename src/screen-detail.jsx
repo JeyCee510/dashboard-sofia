@@ -1,5 +1,6 @@
 import React from 'react';
 import { ContactPanel, ComprobanteTokenAdminPanel, PreinscripcionAdminPanel, ClaseAbiertaPanel } from './forms.jsx';
+import { MaterialPanel } from './material.jsx';
 import { useEventosAlumna } from './hooks/useEventosAlumna.js';
 import { useComprobantesAlumna } from './hooks/useComprobantesAlumna.js';
 
@@ -149,6 +150,13 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               plantillas={store.state.ajustes.plantillasWA}
               nombre={a.nombre}
               fechaProntoPago={store.state.ajustes.fechaProntoPago}
+            />
+          </div>
+          <div style={{ marginTop: 12, textAlign: 'left' }}>
+            <MaterialPanel
+              ajustes={store.state.ajustes}
+              nombre={a.nombre}
+              tel={a.tel}
             />
           </div>
           <div style={{ marginTop: 12, textAlign: 'left' }}>

@@ -109,6 +109,15 @@ Primer caso de la app con dos usuarias de distinto nivel.
 8. **Secretos compartidos entre apps.** Este proyecto Supabase lo usan varias
    apps de JC (schemas `quinche`, `platas_casa`). Antes de crear o reemplazar
    un secreto o una Edge Function, verificar que no exista ya para otra app.
+9. **Los CHECK viejos también hay que auditarlos** (no sólo el `proyecto_id`).
+   Convertir un lead del Seminario en inscrito no hacía NADA: `PagoForm` manda
+   `tipo_inscripcion='taller'` y el CHECK de `alumnas` sólo aceptaba los tres
+   productos de la formación. Migración 040. Al reusar el motor de la
+   formación en un proyecto nuevo: revisar constraints, no sólo filtros.
+10. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
+    `catch` de la conversión sólo hacía `console.error` y el `finally` cerraba
+    la hoja igual: para Sofía parecía que había funcionado. Si una acción
+    falla, avisar en pantalla y NO cerrar.
 
 ---
 
@@ -189,6 +198,31 @@ Dos capas, deliberadamente distintas:
    30 días) y `src/notif-bell.jsx` (campana con contador de novedades, lee la
    tabla `actividad`).
 
+### Traspaso con responsable (11 ago 2026)
+
+El botón "Pasar a Micaela" ya no sólo abre WhatsApp: **deja el lead asignado**
+(`leads.asignado_a_email/nombre/at`), lo registra en la bitácora (`accion
+'asigno'`) y le manda un **push dirigido sólo a esa persona** (parámetro
+`paraEmail` nuevo en la Edge Function `enviar-push`, v6).
+
+La ficha del lead muestra un bloque **Responsables**: quién lo creó
+(`leads.creado_por_*`, sellado al crear y backfilleado desde `actividad`) y
+quién lo tiene hoy, con botón "Me lo quedo yo". En la lista de leads aparece
+un chip `→ Micaela`.
+
+### Material compartible por proyecto
+
+`src/material.jsx` — `ajustes.material` es una lista
+`[{id,titulo,url,tipo,path}]`. Se sube desde Ajustes → "Material para
+compartir" al bucket `material` bajo `proyecto-<id>/` (el card viejo subía
+siempre a `programa.pdf`, compartido entre proyectos: reemplazado). Se envía
+desde la ficha del lead o de la inscrita por WhatsApp, hoja de compartir del
+sistema o copiando el link. El Seminario tiene cargado el brochure final.
+
+⚠ Los **posts de lanzamiento** (PNG en la raíz del repo) NO están cargados:
+tienen las fechas de Tena y Vilcabamba cruzadas. Cuando estén corregidos se
+suben desde Ajustes, sin tocar código.
+
 ---
 
 ## 5. Lo que falta
@@ -225,8 +259,26 @@ Vercel despliega solo. El build local en el sandbox de Cowork falla por
 permisos del mount: verificar copiando el proyecto a `/tmp` y corriendo
 `npm install && npx vite build` allí.
 
+## Cambios del 11 de agosto 2026
+
+- **Fix crítico del funnel**: convertir lead → inscrito en el Seminario fallaba
+  en silencio (migración 040 + el `catch` ahora avisa). Ver trampas 9 y 10.
+- **Pago en $0**: monto 0 y precio especial 0 son válidos (beca completa,
+  canje, cortesía). Deja fila en `pagos` para que quede constancia, sin
+  mandar push. `estadoPago()` y `registrarPago()` tratan total 0 como
+  "completo" en vez de "pendiente".
+- **Interés por sede** en el lead (`leads.interes_sedes`): chips en la ficha,
+  chips en la lista y línea en el mensaje de traspaso.
+- **Responsables del lead** y **material compartible** (arriba).
+- `restaurar_lead` ya devuelve el `proyecto_id` (antes un lead del Seminario
+  restaurado desde la papelera reaparecía en la formación).
+- Brochure reemplazado por la versión final; `og-image.jpg` regenerada de esa
+  portada (la anterior decía "SIDDHARTA", la final corrige a "SIDDHARTHA").
+
 ## Migraciones de esta etapa
 `031` proyectos_borradores · `032` taller drop-in · `033` personas+participaciones ·
 `034` backfill dedup · `035` sync taller→personas · `036` formación por proyecto ·
 `037` usuarios/roles/actividad + seminario · `038` RLS por proyecto ·
-`fix_recursion_es_admin` · `pagos_destino` · `archives_por_proyecto`
+`fix_recursion_es_admin` · `pagos_destino` · `archives_por_proyecto` ·
+`039` leads interés/creador/asignado (+ fix `restaurar_lead`) ·
+`040` `alumnas.tipo_inscripcion` acepta 'taller'

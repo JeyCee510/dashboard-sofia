@@ -217,7 +217,10 @@ export function useAlumnas(proyectoId = 2) {
     const nuevoTotal = a.total;
     const nuevoPagado = (a.pagado || 0) + m;
     let nuevoEstado;
-    if (Number(nuevoTotal) > 0 && nuevoPagado >= Number(nuevoTotal)) nuevoEstado = 'completo';
+    // Total $0 (beca completa, canje, cortesía): no hay nada que cobrar, así
+    // que la persona no debe quedar listada como pendiente de pago.
+    if (Number(nuevoTotal) <= 0) nuevoEstado = 'completo';
+    else if (nuevoPagado >= Number(nuevoTotal)) nuevoEstado = 'completo';
     else if (nuevoPagado > 0) nuevoEstado = 'parcial';
     else nuevoEstado = 'pendiente';
 
@@ -254,8 +257,11 @@ export function useAlumnas(proyectoId = 2) {
     // Optimistic
     setAlumnas(prev => prev.map(x => x.id === alumnaId ? { ...x, ...localPatch } : x));
 
-    // 1. Insertar registro en `pagos` (audit trail) — solo si monto > 0
-    if (m > 0) {
+    // 1. Insertar registro en `pagos` (audit trail).
+    //    El monto $0 SÍ se registra: es la constancia de una beca completa,
+    //    un canje o una cortesía. Lo que no se hace es avisar al equipo por
+    //    push (no entró plata, no hay nada que revisar).
+    if (m >= 0) {
       const forma = opts.forma || 'transferencia'; // default cuando el caller no especifica
       await supabase.from('pagos').insert({
         alumna_id: alumnaId, monto: m, tipo, forma, proyecto_id: proyectoId,
@@ -264,15 +270,17 @@ export function useAlumnas(proyectoId = 2) {
       });
       registrarActividad({
         proyectoId, entidad: 'alumna', entidadId: alumnaId, accion: 'pago',
-        titulo: `Registró pago de $${m}`,
+        titulo: m > 0 ? `Registró pago de $${m}` : `Registró ingreso sin costo ($0)`,
         detalle: { monto: m, tipo, forma, destino: opts.destino || null },
       });
-      const quien = alumnasRef.current.find(x => x.id === alumnaId)?.nombre || '';
-      enviarAvisoPush({
-        titulo: `Pago de $${m} 💚`,
-        cuerpo: quien ? `${quien} · ${forma}` : forma,
-        proyectoId, tag: 'pago',
-      });
+      if (m > 0) {
+        const quien = alumnasRef.current.find(x => x.id === alumnaId)?.nombre || '';
+        enviarAvisoPush({
+          titulo: `Pago de $${m} 💚`,
+          cuerpo: quien ? `${quien} · ${forma}` : forma,
+          proyectoId, tag: 'pago',
+        });
+      }
     }
     // 2. Actualizar acumulado + total + (eventualmente) silla en `alumnas`
     await supabase.from('alumnas').update(dbPatch).eq('id', alumnaId);

@@ -20,6 +20,7 @@ const COLOR_ACCION = {
   actualizo: 'var(--ink-mute)',
   elimino: 'var(--rojo)',
   mensaje: 'var(--terracota)',
+  asigno: 'var(--terracota)',
 };
 
 const fechaCorta = (iso) => {

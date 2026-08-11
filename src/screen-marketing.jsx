@@ -158,6 +158,42 @@ const ClaseBadge = ({ confirmado, linkEnviado }) => {
   );
 };
 
+// Línea compacta bajo el nombre: a qué encuentro(s) quiere venir y quién lo
+// tiene a cargo. Sólo aparece cuando hay algo que decir, para no engordar la
+// lista con filas vacías.
+const LeadMeta = ({ lead }) => {
+  const sedes = (window.AJUSTES_PROYECTO && window.AJUSTES_PROYECTO.sedes) || [];
+  const nums = Array.isArray(lead.interesSedes) ? lead.interesSedes : [];
+  // En la lista el nombre completo no cabe: se usa la primera palabra
+  // ("Quito · Acción" → "Quito").
+  const interes = nums
+    .slice().sort((a, b) => a - b)
+    .map(n => {
+      const s = sedes.find(x => x && x.n === n);
+      return s ? String(s.nombre || `Sede ${n}`).split(' ')[0] : `E${n}`;
+    });
+  const aCargo = lead.asignadoANombre || null;
+  if (!interes.length && !aCargo) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+      {interes.map(t => (
+        <span key={t} style={{
+          fontSize: 9.5, padding: '2px 7px', borderRadius: 999,
+          background: 'var(--terracota-tint)', color: '#8A3D26', fontWeight: 600,
+          letterSpacing: '0.03em',
+        }}>{t}</span>
+      ))}
+      {aCargo && (
+        <span style={{
+          fontSize: 9.5, padding: '2px 7px', borderRadius: 999,
+          background: 'var(--bg-warm)', color: 'var(--ink-soft)',
+          border: '1px solid var(--line-soft)',
+        }}>→ {aCargo}</span>
+      )}
+    </div>
+  );
+};
+
 const MarketingScreen = ({ onOpenLead, onNavigate }) => {
   const [filter, setFilter] = React.useState('todos');
   const [search, setSearch] = React.useState('');
@@ -341,6 +377,7 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
                   {l.mensaje && l.mensaje.trim() && (
                     <div className="t2" style={{ fontStyle: 'italic' }}>"{l.mensaje}"</div>
                   )}
+                  <LeadMeta lead={l} />
                   <PreBadge pre={pre} />
                   <ClaseBadge
                     confirmado={claseEstado.confirmadosIds.has(l.id)}
