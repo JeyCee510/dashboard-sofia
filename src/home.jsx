@@ -1,6 +1,7 @@
 import React from 'react';
 import { alumnaAsisteDia, PRECIOS_DEFAULT } from './lib/precios.js';
 import { supabase as sbClient } from './lib/supabase.js';
+import { usaClasesAbiertas } from './lib/proyecto.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -135,6 +136,13 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   useEffect(() => {
     let cancelled = false;
     const cargar = async () => {
+      // Sólo la formación tiene clase abierta (sus tablas no llevan
+      // proyecto_id). En el Seminario esta tarjeta mostraba la clase de
+      // mayo y contaba respuestas de leads de otro módulo.
+      if (!usaClasesAbiertas()) {
+        if (!cancelled) { setClaseActiva(null); setClaseInscritos(0); setRespuestasFormCount(0); }
+        return;
+      }
       const { data: clases } = await sbClient.from('clases_abiertas').select('*').eq('activa', true).order('fecha', { ascending: true }).limit(1);
       const clase = clases?.[0] || null;
       if (cancelled) return;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
+import { usaClasesAbiertas, proyectoActivoId } from './lib/proyecto.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // Hook local: trae estado de preinscripción de cada lead.
@@ -10,6 +11,7 @@ function usePreinscripcionesPorLead() {
     const { data, error } = await supabase
       .from('preinscripcion')
       .select('lead_id, estado, completed_at, created_at')
+      .eq('proyecto_id', proyectoActivoId())
       .not('lead_id', 'is', null)
       .order('created_at', { ascending: false });
     if (error) { console.error('[preinscripciones por lead]', error); return; }
@@ -36,6 +38,13 @@ function useClaseEstadoPorLead(leads) {
   const [estado, setEstado] = useState({ linkEnviadoIds: new Set(), confirmadosIds: new Set() });
   const cargar = useCallback(async () => {
     if (!leads || leads.length === 0) return;
+    // La clase abierta es de la formación y sus tablas no llevan proyecto_id:
+    // fuera de ese proyecto no hay nada que mostrar (si no, el Seminario
+    // marcaba "vino a la clase" cruzando por nombre con una clase de mayo).
+    if (!usaClasesAbiertas()) {
+      setEstado({ linkEnviadoIds: new Set(), confirmadosIds: new Set() });
+      return;
+    }
     // 1) Clase activa
     const { data: clases } = await supabase
       .from('clases_abiertas').select('id').eq('activa', true).limit(1);

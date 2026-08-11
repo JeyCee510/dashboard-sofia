@@ -70,9 +70,13 @@ const RESPUESTAS_CONSULTA = {
     return `Recibido $${Math.round(totalRecibido)} de $${Math.round(totalVendido)} vendidos. ${cobrado}% cobrado.`;
   },
   preinscripciones_pendientes: async () => {
+    // Del proyecto activo: si no, en el Seminario respondía con las
+    // preinscripciones de la formación.
+    const pid = window.PROYECTO_ID || 2;
     const { count, error } = await supabase
       .from('preinscripcion')
       .select('*', { count: 'exact', head: true })
+      .eq('proyecto_id', pid)
       .eq('estado', 'pendiente');
     if (error) return 'No pude consultar preinscripciones.';
     return (count || 0) === 0
@@ -80,9 +84,10 @@ const RESPUESTAS_CONSULTA = {
       : `${count} ${count === 1 ? 'preinscripción enviada sin responder' : 'preinscripciones enviadas sin responder'}.`;
   },
   papelera_total: async () => {
+    const pid = window.PROYECTO_ID || 2;
     const [leadsRes, alumnasRes] = await Promise.all([
-      supabase.from('leads_archive').select('*', { count: 'exact', head: true }),
-      supabase.from('alumnas_archive').select('*', { count: 'exact', head: true }),
+      supabase.from('leads_archive').select('*', { count: 'exact', head: true }).eq('proyecto_id', pid),
+      supabase.from('alumnas_archive').select('*', { count: 'exact', head: true }).eq('proyecto_id', pid),
     ]);
     const leads = leadsRes.count || 0;
     const alumnas = alumnasRes.count || 0;

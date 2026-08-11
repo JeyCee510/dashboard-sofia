@@ -11,9 +11,14 @@ export function useComprobantes() {
 
   const cargar = useCallback(async () => {
     setLoading(true);
+    // Comprobantes DE ESTE proyecto. Los que entran por el link público
+    // anónimo llegan sin proyecto (nadie sabe a qué módulo son): se
+    // muestran en todos para que alguien los asigne al validarlos.
+    const pid = window.PROYECTO_ID || 2;
     const { data, error } = await supabase
       .from('comprobantes_pago')
       .select('*')
+      .or(`proyecto_id.eq.${pid},proyecto_id.is.null`)
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) console.error('[comprobantes] load', error);

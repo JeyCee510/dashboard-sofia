@@ -4,6 +4,10 @@ import { supabase } from '../lib/supabase.js';
 const { useState, useEffect, useCallback } = React;
 
 // Lee leads_archive (papelera). Permite restaurar y purgar definitivamente.
+//
+// NOTA: hoy la papelera de la app usa `useArchive` (leads + alumnas juntos).
+// Este hook quedó sin consumidores; se le deja el filtro por proyecto para que
+// no reviva como fuga de datos entre módulos si alguien lo reengancha.
 export function useLeadsArchive() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,6 +17,7 @@ export function useLeadsArchive() {
     const { data, error } = await supabase
       .from('leads_archive')
       .select('*')
+      .eq('proyecto_id', window.PROYECTO_ID || 2)
       .order('deleted_at', { ascending: false })
       .limit(100);
     if (error) console.error('[leads_archive] load', error);

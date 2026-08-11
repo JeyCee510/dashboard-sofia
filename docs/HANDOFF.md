@@ -121,7 +121,14 @@ Primer caso de la app con dos usuarias de distinto nivel.
     `registrarPago` tenía deps y se recreaba). Síntoma: "lo convertí y ahora no
     está en ningún lado". Arreglado en `useAlumnas` y `useAsistencia`.
     **Cualquier callback que use `proyectoId` tiene que llevarlo en las deps.**
-11. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
+11. **Hay tablas que NO tienen `proyecto_id` y nunca lo tendrán.**
+    `clases_abiertas` / `clase_inscripciones` son de la clase regalo de la
+    formación y son globales. La lista de leads las consultaba sin filtro y
+    cruzaba **por nombre**: en el Seminario, Gabriela Moyano y Karina Pinto
+    aparecían marcadas como "vino a la clase" por una clase de mayo de otro
+    módulo. Para estos casos no sirve filtrar: hay que **gatear la feature**
+    por proyecto → `lib/proyecto.js` (`usaClasesAbiertas()`).
+12. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
     `catch` de la conversión sólo hacía `console.error` y el `finally` cerraba
     la hoja igual: para Sofía parecía que había funcionado. Si una acción
     falla, avisar en pantalla y NO cerrar.
@@ -241,8 +248,6 @@ suben desde Ajustes, sin tocar código.
 - Probar el push de punta a punta (nunca se validó con un dispositivo suscrito).
 - Auditar `screen-detail.jsx` (ficha individual) y el flujo de comprobantes:
   probablemente con lenguaje/lógica de formación y sin filtro por proyecto.
-- `comprobantes` no tiene `proyecto_id` (Micaela no los ve; denegado por
-  defecto, aceptable hoy).
 - Refinar sigue en su motor `taller_*`, con trigger (mig 035) que espeja sus
   inscritos a `personas`. Convergerlo del todo quedó pendiente.
 - **Dos modelos coexisten:** `personas` + `participaciones` (mig 033/034, 35
@@ -288,4 +293,5 @@ permisos del mount: verificar copiando el proyecto a `/tmp` y corriendo
 `037` usuarios/roles/actividad + seminario · `038` RLS por proyecto ·
 `fix_recursion_es_admin` · `pagos_destino` · `archives_por_proyecto` ·
 `039` leads interés/creador/asignado (+ fix `restaurar_lead`) ·
-`040` `alumnas.tipo_inscripcion` acepta 'taller'
+`040` `alumnas.tipo_inscripcion` acepta 'taller' ·
+`041` `comprobantes_pago.proyecto_id` + trigger que lo deriva

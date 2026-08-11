@@ -848,6 +848,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         monto: montoNum,
         estado: 'validado',
         validado_at: new Date().toISOString(),
+        proyecto_id: store.state.proyectoId,
       };
       const { data, error } = await supabase
         .from('comprobantes_pago').insert(insertRow).select().single();

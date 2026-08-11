@@ -12,9 +12,14 @@ export function useComprobantesPendientes() {
   useEffect(() => {
     let cancelled = false;
     const cargar = async () => {
+      // Comprobantes DE ESTE proyecto. Los que entran por el link público
+      // anónimo llegan sin proyecto (nadie sabe a qué módulo son): se
+      // muestran en todos para que alguien los asigne al validarlos.
+      const pid = window.PROYECTO_ID || 2;
       const { count: c } = await supabase
         .from('comprobantes_pago')
         .select('*', { count: 'exact', head: true })
+        .or(`proyecto_id.eq.${pid},proyecto_id.is.null`)
         .eq('estado', 'pendiente');
       if (cancelled) return;
       setCount(c || 0);
@@ -23,6 +28,7 @@ export function useComprobantesPendientes() {
       const { data } = await supabase
         .from('comprobantes_pago')
         .select('nombre_cliente, monto, created_at')
+        .or(`proyecto_id.eq.${pid},proyecto_id.is.null`)
         .eq('estado', 'pendiente')
         .order('created_at', { ascending: false })
         .limit(1);

@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase.js';
 import { cleanPhone, cleanInstagram, buildWaUrl, buildIgUrl } from './lib/wa.js';
 import { useComprobanteToken } from './hooks/useComprobanteToken.js';
 import { usePreinscripcion } from './hooks/usePreinscripcion.js';
+import { usaClasesAbiertas } from './lib/proyecto.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -983,6 +984,9 @@ const ClaseAbiertaPanel = ({ leadId, alumnaId, leadNombre, leadTel, fechaProntoP
 
   React.useEffect(() => {
     if (!personaId) { setLoading(false); return; }
+    // La clase abierta es sólo de la formación: sus tablas no tienen
+    // proyecto_id, así que en otro proyecto mostraría una clase ajena.
+    if (!usaClasesAbiertas()) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
       // 1) Clase activa
