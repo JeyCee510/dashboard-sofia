@@ -145,10 +145,22 @@ export function useLeads(proyectoId = 2) {
         detalle: { nota: patch.mensaje },
       });
     } else {
+      // Guardamos VALOR ANTES → DESPUÉS de lo que cambió, no sólo el nombre del
+      // campo: con `campos: ['interesSedes']` era imposible reconstruir qué
+      // había marcado Sofía si algo salía mal.
+      const cambios = {};
+      Object.keys(patch).forEach(k => {
+        const antesV = antes ? antes[k] : undefined;
+        const ahoraV = patch[k];
+        if (JSON.stringify(antesV) !== JSON.stringify(ahoraV)) {
+          cambios[k] = { de: antesV ?? null, a: ahoraV ?? null };
+        }
+      });
+      if (Object.keys(cambios).length === 0) return; // guardó sin tocar nada
       registrarActividad({
         proyectoId, entidad: 'lead', entidadId: id, accion: 'actualizo',
         titulo: `Actualizó ${nombre}`.trim(),
-        detalle: { campos: Object.keys(patch) },
+        detalle: { cambios },
       });
     }
   }, [leads, proyectoId]);

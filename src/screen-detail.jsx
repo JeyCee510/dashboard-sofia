@@ -150,6 +150,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               plantillas={store.state.ajustes.plantillasWA}
               nombre={a.nombre}
               fechaProntoPago={store.state.ajustes.fechaProntoPago}
+              alumnaId={a.id}
             />
           </div>
           <div style={{ marginTop: 12, textAlign: 'left' }}>
@@ -157,6 +158,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               ajustes={store.state.ajustes}
               nombre={a.nombre}
               tel={a.tel}
+              alumnaId={a.id}
             />
           </div>
           <div style={{ marginTop: 12, textAlign: 'left' }}>

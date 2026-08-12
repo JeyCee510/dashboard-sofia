@@ -65,10 +65,16 @@ Primer caso de la app con dos usuarias de distinto nivel.
   proyecto 4**. Verificado simulando su JWT: ve 1 proyecto, 0 alumnas de la
   formación, 0 del estudio.
 - Bitácora: tabla `actividad` + `lib/actividad.js` (`registrarActividad`,
-  `setActorActividad`) + `hooks/useActividad.js` + `screen-actividad.jsx`
-  (`ActividadScreen` global, filtrada a lo relevante; `ActividadDeFicha`
-  embebida en la ficha del lead). Se registra: crear lead, cambio de estado,
-  nota, alta de inscrito y pagos.
+  `registrarMovimiento`, `setActorActividad`) + `hooks/useActividad.js` +
+  `screen-actividad.jsx` (`ActividadScreen` global; `ActividadDeFicha`
+  embebida en la ficha del lead).
+  **Es la caja negra de la app: si una acción no se registra, no se puede
+  reconstruir después.** Se registra: crear lead, cambio de estado, nota,
+  edición (con valor **antes → después**), alta de inscrito, pagos, traspaso
+  (`asigno`), generación de links (`link_inscripcion`, `link_pago`) y cada
+  envío por WhatsApp o compartir (`envio_wa`, con qué plantilla o material).
+  Al agregar una acción nueva: sumarla a `ETIQUETA_ACCION`,
+  `ACCIONES_RELEVANTES` y `COLOR_ACCION`.
 
 ---
 
@@ -128,7 +134,15 @@ Primer caso de la app con dos usuarias de distinto nivel.
     aparecían marcadas como "vino a la clase" por una clase de mayo de otro
     módulo. Para estos casos no sirve filtrar: hay que **gatear la feature**
     por proyecto → `lib/proyecto.js` (`usaClasesAbiertas()`).
-12. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
+12. **Un dato que se crea solo NO es evidencia de nada.** El panel de
+    comprobantes auto-generaba el token al ABRIR la ficha, así que
+    `comprobante_tokens` tenía 14 filas de gente a la que nunca se le mandó
+    el link: al investigar "¿a quién le mandó Sofía qué?", esas filas
+    llevaron a una conclusión falsa. Hoy el token se crea sólo al apretar el
+    botón, y cada envío queda en la bitácora (`envio_wa`, `link_pago`,
+    `link_inscripcion`). Regla: **si una acción importa, se registra
+    explícitamente; no se deduce cruzando timestamps.**
+13. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
     `catch` de la conversión sólo hacía `console.error` y el `finally` cerraba
     la hoja igual: para Sofía parecía que había funcionado. Si una acción
     falla, avisar en pantalla y NO cerrar.

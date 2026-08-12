@@ -52,6 +52,26 @@ export async function registrarActividad({ proyectoId, entidad, entidadId, accio
   }
 }
 
+/**
+ * Atajo para registrar un movimiento sobre una persona desde una pantalla que
+ * no tiene el store a mano (paneles de la ficha). Toma el proyecto del global
+ * que setea app.jsx.
+ *
+ * Existe porque el 11-ago no pudimos reconstruir qué había hecho Sofía: los
+ * links generados y los WhatsApp enviados no dejaban ningún rastro, y hubo que
+ * deducirlo cruzando timestamps de tablas que no eran para eso.
+ */
+export function registrarMovimiento({ leadId, alumnaId, accion, titulo, detalle }) {
+  return registrarActividad({
+    proyectoId: window.PROYECTO_ID || 2,
+    entidad: alumnaId ? 'alumna' : 'lead',
+    entidadId: alumnaId || leadId || null,
+    accion,
+    titulo,
+    detalle,
+  });
+}
+
 // Texto legible por acción (para la UI)
 export const ETIQUETA_ACCION = {
   creo: 'creó',
@@ -61,5 +81,8 @@ export const ETIQUETA_ACCION = {
   pago: 'registró un pago de',
   mensaje: 'contactó a',
   asigno: 'pasó la posta de',
+  link_inscripcion: 'generó el link de inscripción de',
+  link_pago: 'generó el link de pago de',
+  envio_wa: 'le escribió a',
   elimino: 'eliminó',
 };

@@ -1,6 +1,7 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
 import { buildWaUrl } from './lib/wa.js';
+import { registrarMovimiento } from './lib/actividad.js';
 
 // ──────────────────────────────────────────────────────────────
 // Material compartible del proyecto (brochure, flyers, posts).
@@ -47,7 +48,7 @@ const iconoTipo = (tipo) => (tipo === 'imagen' ? 'IMG' : 'PDF');
 // ──────────────────────────────────────────────────────────────
 // MaterialPanel — se muestra en la ficha del lead / de la inscrita.
 // ──────────────────────────────────────────────────────────────
-export const MaterialPanel = ({ ajustes, nombre, tel }) => {
+export const MaterialPanel = ({ ajustes, nombre, tel, leadId, alumnaId }) => {
   const items = materialDeAjustes(ajustes);
   const [copiado, setCopiado] = React.useState(null);
   const [abierto, setAbierto] = React.useState(false);
@@ -63,7 +64,16 @@ export const MaterialPanel = ({ ajustes, nombre, tel }) => {
     } catch { /* navegador sin clipboard: queda el botón de compartir */ }
   };
 
+  // Toda pieza que sale queda anotada: sin esto no hay forma de saber a quién
+  // se le mandó el brochure.
+  const anotarEnvio = (item, via) => registrarMovimiento({
+    leadId, alumnaId, accion: 'envio_wa',
+    titulo: `Le mandó ${item.titulo} a ${nombre || 'la persona'}`,
+    detalle: { via, material: item.titulo, url: item.url },
+  });
+
   const compartir = (item) => {
+    anotarEnvio(item, 'compartir');
     // navigator.share debe dispararse en el gesto del usuario, sin await previo.
     if (!navigator.share) { copiar(item); return; }
     navigator.share({
@@ -121,7 +131,9 @@ export const MaterialPanel = ({ ajustes, nombre, tel }) => {
                 </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                   {waUrl && (
-                    <a href={waUrl} target="_blank" rel="noopener noreferrer" style={{
+                    <a href={waUrl} target="_blank" rel="noopener noreferrer"
+                      onClick={() => anotarEnvio(item, 'whatsapp')}
+                      style={{
                       flex: 1, padding: '7px 10px', borderRadius: 8,
                       background: '#25D366', color: '#fff',
                       fontFamily: 'inherit', fontSize: 11, fontWeight: 500,

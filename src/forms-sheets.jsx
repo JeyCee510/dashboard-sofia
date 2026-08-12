@@ -525,6 +525,7 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
                 plantillas={store.state.ajustes.plantillasWA}
                 nombre={form.nombre}
                 fechaProntoPago={store.state.ajustes.fechaProntoPago}
+                leadId={leadId}
               />
             </div>
             {/* Brochure, flyers y posts del proyecto — se envían por WhatsApp
@@ -534,6 +535,7 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
                 ajustes={store.state.ajustes}
                 nombre={form.nombre}
                 tel={form.tel}
+                leadId={leadId}
               />
             </div>
             <div style={{ marginBottom: 14 }}>

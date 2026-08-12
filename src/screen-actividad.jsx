@@ -21,6 +21,9 @@ const COLOR_ACCION = {
   elimino: 'var(--rojo)',
   mensaje: 'var(--terracota)',
   asigno: 'var(--terracota)',
+  link_inscripcion: 'var(--gold)',
+  link_pago: 'var(--gold)',
+  envio_wa: 'var(--whatsapp)',
 };
 
 const fechaCorta = (iso) => {

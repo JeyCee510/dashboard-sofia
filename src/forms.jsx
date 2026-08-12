@@ -4,6 +4,7 @@ import { cleanPhone, cleanInstagram, buildWaUrl, buildIgUrl } from './lib/wa.js'
 import { useComprobanteToken } from './hooks/useComprobanteToken.js';
 import { usePreinscripcion } from './hooks/usePreinscripcion.js';
 import { usaClasesAbiertas } from './lib/proyecto.js';
+import { registrarMovimiento } from './lib/actividad.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -355,7 +356,7 @@ async function copyAndOpenIg(handle, mensaje) {
 //  · inscripcion → panel "Inscripción" de la ficha (genera el link único)
 const PLANTILLAS_ESPECIALES = new Set(['followup_clase', 'recordatorio_clase', 'inscripcion']);
 
-const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago }) => {
+const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago, leadId, alumnaId }) => {
   const [showPlantillas, setShowPlantillas] = React.useState(false);
   const [igCopiado, setIgCopiado] = React.useState(false);
   const waUrl = buildWaUrl(tel);
@@ -423,6 +424,11 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago }) =
         {waUrl && (
           <a
             href={waUrl} target="_blank" rel="noopener noreferrer"
+            onClick={() => registrarMovimiento({
+              leadId, alumnaId, accion: 'envio_wa',
+              titulo: `Le escribió por WhatsApp a ${nombre || 'la persona'}`,
+              detalle: { via: 'whatsapp', plantilla: null },
+            })}
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '12px 14px', borderRadius: 12,
@@ -506,6 +512,11 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago }) =
                     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                       {waPlantillaUrl && (
                         <a href={waPlantillaUrl} target="_blank" rel="noopener noreferrer"
+                          onClick={() => registrarMovimiento({
+                            leadId, alumnaId, accion: 'envio_wa',
+                            titulo: `Le mandó "${p.titulo}" a ${nombre || 'la persona'}`,
+                            detalle: { via: 'whatsapp', plantilla: p.id, plantilla_titulo: p.titulo },
+                          })}
                           style={{
                             flex: 1, padding: '7px 10px', borderRadius: 8,
                             background: '#25D366', color: '#fff',
@@ -587,7 +598,13 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
     setGenerando(true);
     const token = await generar();
     setGenerando(false);
-    if (token) setLink(`${window.location.origin}/preinscripcion/${token}`);
+    if (token) {
+      setLink(`${window.location.origin}/preinscripcion/${token}`);
+      registrarMovimiento({
+        leadId, alumnaId, accion: 'link_inscripcion',
+        titulo: `Generó el link de inscripción de ${leadNombre || 'la persona'}`,
+      });
+    }
   };
 
   const copiar = async () => {
@@ -726,6 +743,11 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
         {waUrl && (
           <a
             href={waUrl} target="_blank" rel="noopener noreferrer"
+            onClick={() => registrarMovimiento({
+              leadId, alumnaId, accion: 'envio_wa',
+              titulo: `Le mandó el link de inscripción a ${leadNombre || 'la persona'}`,
+              detalle: { via: 'whatsapp', link: 'inscripción' },
+            })}
             style={{
               flex: 1, padding: '9px 12px', borderRadius: 10,
               background: '#25D366', color: '#fff',
@@ -750,7 +772,6 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
   const [link, setLink] = React.useState('');
   const [copiado, setCopiado] = React.useState(false);
   const [generando, setGenerando] = React.useState(false);
-  const triedRef = React.useRef(false);
 
   // Subida manual por Sofía: caso cuando la persona manda el comprobante
   // por WA/IG y no usa el link. Inserta directo a comprobantes_pago en
@@ -805,23 +826,21 @@ const ComprobanteTokenAdminPanel = ({ leadId, alumnaId, nombre, tel }) => {
     else setLink('');
   }, [token]);
 
-  // Auto-generar el token la primera vez que se carga el panel sin uno existente
-  React.useEffect(() => {
-    if (loading || token || triedRef.current) return;
-    if (!leadId && !alumnaId) return;
-    triedRef.current = true;
-    setGenerando(true);
-    generar().then(t => {
-      if (t) setLink(`${window.location.origin}/comprobante/${t}`);
-      setGenerando(false);
-    }).catch(() => setGenerando(false));
-  }, [loading, token, leadId, alumnaId, generar]);
-
+  // El token se crea SÓLO cuando Sofía lo pide. Antes se auto-generaba al
+  // abrir la ficha, así que `comprobante_tokens` acababa lleno de tokens de
+  // gente a la que nunca se le mandó nada: imposible saber a quién sí. Ahora
+  // una fila = una acción deliberada, y queda en la bitácora.
   const onGenerar = async () => {
     setGenerando(true);
     const t = await generar();
     setGenerando(false);
-    if (t) setLink(`${window.location.origin}/comprobante/${t}`);
+    if (t) {
+      setLink(`${window.location.origin}/comprobante/${t}`);
+      registrarMovimiento({
+        leadId, alumnaId, accion: 'link_pago',
+        titulo: `Generó el link de pago de ${nombre || 'la persona'}`,
+      });
+    }
   };
 
   const copiar = async () => {
@@ -863,7 +882,8 @@ Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿
     return (
       <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
         <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
-          Link personal para que esta persona suba sus comprobantes.
+          Link personal para que esta persona suba sus comprobantes. Se crea
+          cuando lo pides, y queda anotado en el historial.
         </div>
         <button
           type="button" onClick={onGenerar} disabled={generando}
@@ -874,7 +894,7 @@ Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿
             opacity: generando ? 0.6 : 1,
           }}
         >
-          {generando ? 'Generando…' : 'Reintentar'}
+          {generando ? 'Generando…' : 'Generar link de pago'}
         </button>
       </div>
     );
@@ -908,6 +928,11 @@ Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿
         {waUrl && (
           <a
             href={waUrl} target="_blank" rel="noopener noreferrer"
+            onClick={() => registrarMovimiento({
+              leadId, alumnaId, accion: 'envio_wa',
+              titulo: `Le mandó el link de pago a ${nombre || 'la persona'}`,
+              detalle: { via: 'whatsapp', link: 'pago' },
+            })}
             style={{
               flex: 1, padding: '9px 12px', borderRadius: 10,
               background: '#25D366', color: '#fff',
