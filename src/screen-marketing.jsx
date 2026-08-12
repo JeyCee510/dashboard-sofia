@@ -31,38 +31,6 @@ function usePreinscripcionesPorLead() {
   return map;
 }
 
-// Hook local: ¿a qué leads ya se les mandó el link de comprobante (el de
-// "súbeme tu pago")? Devuelve un Set de lead_id.
-//
-// Sofía mandó 14 de estos links el 11-ago y en la lista no se veía NADA:
-// el único badge que existía era el del link de inscripción, así que parecía
-// que no se habían registrado. Sí estaban en `comprobante_tokens`.
-//
-// La tabla no tiene proyecto_id, pero se consulta por los lead_id del
-// proyecto activo, así que no hay fuga entre módulos.
-function useComprobanteLinkPorLead(leads) {
-  const [ids, setIds] = useState(new Set());
-  const leadIdsKey = (leads || []).map(l => l.id).join(',');
-  const cargar = useCallback(async () => {
-    const listaIds = leadIdsKey ? leadIdsKey.split(',').map(Number) : [];
-    if (listaIds.length === 0) { setIds(new Set()); return; }
-    const { data, error } = await supabase
-      .from('comprobante_tokens')
-      .select('lead_id')
-      .in('lead_id', listaIds);
-    if (error) { console.error('[comprobante_tokens por lead]', error); return; }
-    setIds(new Set((data || []).map(r => r.lead_id).filter(Boolean)));
-  }, [leadIdsKey]);
-  useEffect(() => {
-    cargar();
-    const ch = supabase.channel('comprobante-tokens-by-lead')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comprobante_tokens' }, cargar)
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [cargar]);
-  return ids;
-}
-
 // Hook local: estado de clase abierta por lead. Devuelve dos sets:
 // - linkEnviado: ids de leads con clase_link_enviada_at != null
 // - confirmados: ids de leads cuyo nombre matchea con clase_inscripciones
@@ -181,21 +149,6 @@ const PreBadge = ({ pre }) => {
   );
 };
 
-// Badge del link de comprobante ("súbeme tu pago").
-const PagoLinkBadge = ({ enviado }) => {
-  if (!enviado) return null;
-  return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      marginTop: 4, marginLeft: 4, padding: '2px 8px', borderRadius: 999,
-      background: 'rgba(122, 143, 168, 0.16)', color: '#41597A',
-      fontSize: 10, letterSpacing: '0.04em', fontWeight: 500,
-    }}>
-      Pago: link enviado
-    </div>
-  );
-};
-
 // Badge para clase abierta: confirmó / link enviado / nada.
 const ClaseBadge = ({ confirmado, linkEnviado }) => {
   if (!confirmado && !linkEnviado) return null;
@@ -257,7 +210,6 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
   const [orden, setOrden] = React.useState('nombre');
   const preMap = usePreinscripcionesPorLead();
   const claseEstado = useClaseEstadoPorLead(MOCK_LEADS);
-  const pagoLinkIds = useComprobanteLinkPorLead(MOCK_LEADS);
 
   // Excluir descartados del embudo activo (siguen en DB, accesibles desde "Descartados")
   const leadsActivos = MOCK_LEADS.filter(l => l.estado !== 'no_interesado');
@@ -436,7 +388,6 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
                   )}
                   <LeadMeta lead={l} />
                   <PreBadge pre={pre} />
-                  <PagoLinkBadge enviado={pagoLinkIds.has(l.id)} />
                   <ClaseBadge
                     confirmado={claseEstado.confirmadosIds.has(l.id)}
                     linkEnviado={claseEstado.linkEnviadoIds.has(l.id)}
