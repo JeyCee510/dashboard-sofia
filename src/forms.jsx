@@ -633,22 +633,13 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
     return <div style={{ fontSize: 12, color: 'var(--ink-mute)', padding: 8 }}>Cargando inscripción…</div>;
   }
 
-  // Caso: alumna ya inscrita pero sin inscripción registrada → solo info
-  if (!pre && alumnaId && !leadId) {
-    return (
-      <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
-        <div style={{ fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
-          Sin inscripción registrada para esta persona.
-        </div>
-      </div>
-    );
-  }
-
   if (!pre) {
     return (
       <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)' }}>
         <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10, lineHeight: 1.4 }}>
-          Genera un link único de inscripción. El cliente lo abre sin cuenta y llena un formulario que queda vinculado a su ficha.
+          {alumnaId
+            ? 'Esta persona todavía no llenó el formulario. Puedes mandárselo ahora aunque ya esté inscrita y haya pagado.'
+            : 'Genera un link único de inscripción. El cliente lo abre sin cuenta y llena un formulario que queda vinculado a su ficha.'}
         </div>
         <button
           type="button" onClick={onGenerar} disabled={generando}
@@ -714,7 +705,7 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
     <div style={{ padding: 14, borderRadius: 12, background: 'var(--terracota-tint)', border: '1px solid transparent' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A3D26', fontWeight: 600 }}>
-          Inscripción pendiente
+          Inscripción · enviada, sin responder
         </div>
         <div style={{ fontSize: 11, color: '#8A3D26' }}>
           {pre.created_at ? new Date(pre.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: 'short' }) : ''}
@@ -758,6 +749,10 @@ const PreinscripcionAdminPanel = ({ leadId, alumnaId, leadNombre, leadTel, plant
             Enviar por WhatsApp
           </a>
         )}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 10, color: '#8A3D26', fontStyle: 'italic', lineHeight: 1.4 }}>
+        Es el mismo link de siempre: puedes reenviarlo las veces que haga falta
+        y cada envío queda anotado en el historial.
       </div>
     </div>
   );

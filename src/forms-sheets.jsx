@@ -928,7 +928,10 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
           tipo_inscripcion: prodTipo,
           encuentros_asistir: prodEncuentros,
           total: productoTotal,
-          bonoSilla: esProntoPago ? true : prodSilla, // pronto-pago siempre incluye silla
+          // El bono silla es de la formación. En proyectos por sedes NUNCA se
+          // asigna: como allí 'pronto pago' es sólo una etapa de precio, la
+          // regla vieja marcaba con silla a TODO inscrito del Seminario.
+          bonoSilla: esTallerProy ? false : (esProntoPago ? true : prodSilla),
         };
         if (sinPago) {
           // Convertir sin pago: crea alumna con el producto definido, pagado=0

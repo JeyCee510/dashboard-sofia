@@ -23,14 +23,18 @@ export function usePreinscripcion(leadId, alumnaId) {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  // Crear (o recuperar la pendiente existente) — usa RPC
+  // Crear (o recuperar la pendiente existente) — usa RPC.
+  // Sirve para un lead o para alguien ya inscrito: el formulario puede hacer
+  // falta en cualquier momento del proceso, no sólo antes de pagar (mig 042).
   const generar = useCallback(async () => {
-    if (!leadId) return null;
-    const { data, error } = await supabase.rpc('crear_preinscripcion', { p_lead_id: leadId });
+    if (!leadId && !alumnaId) return null;
+    const { data, error } = alumnaId
+      ? await supabase.rpc('crear_preinscripcion_alumna', { p_alumna_id: alumnaId })
+      : await supabase.rpc('crear_preinscripcion', { p_lead_id: leadId });
     if (error) { console.error('[preinscripcion] generar', error); return null; }
     await cargar();
     return data; // token uuid
-  }, [leadId, cargar]);
+  }, [leadId, alumnaId, cargar]);
 
   return { pre, loading, generar, recargar: cargar };
 }

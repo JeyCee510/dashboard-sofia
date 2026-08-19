@@ -79,7 +79,11 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
   const wa = a.tel ? `https://wa.me/${a.tel.replace(/[^\d]/g, '')}` : '#';
 
   // ── Silla: estado global y elegibilidad de esta alumna ──
-  const sillasMax = store.state.ajustes.bonoSillaCupos || 6;
+  // El bono silla es una regla de la FORMACIÓN. Los proyectos por sedes
+  // (Seminario) traen bonoSillaCupos = 0 y no deben ver nada de silla:
+  // el inicio y la lista ya lo respetaban, la ficha no.
+  const sillasMax = Number(store.state.ajustes.bonoSillaCupos ?? 6);
+  const usaSilla = sillasMax > 0;
   const sillasOtorgadas = store.state.alumnas.filter(x => x.bonoSilla).length;
   const sillasLibres = Math.max(0, sillasMax - sillasOtorgadas);
   const esCompleta = (a.tipo_inscripcion || 'completa') === 'completa';
@@ -140,7 +144,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
             {a.tel && a.instagram && <span>·</span>}
             {a.instagram && <span>@{a.instagram.replace(/^@/, '')}</span>}
             {!a.tel && !a.instagram && <span>sin contacto</span>}
-            {a.bonoSilla && <><span>·</span><span style={{ color: 'var(--gold)' }}>bono silla</span></>}
+            {usaSilla && a.bonoSilla && <><span>·</span><span style={{ color: 'var(--gold)' }}>bono silla</span></>}
           </div>
           <DeferMount>
           <div style={{ marginTop: 14 }}>
@@ -233,7 +237,9 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
           </div>
         </div>
 
-        {/* Bono silla */}
+        {/* Bono silla — sólo en proyectos que lo usan (formación) */}
+        {usaSilla && (
+        <>
         <div className="section-title">
           <h2>Bono silla</h2>
           <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>{sillasOtorgadas}/{sillasMax} asignadas</span>
@@ -286,6 +292,8 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
             )}
           </div>
         </div>
+        </>
+        )}
 
         {/* Comprobantes de esta alumna */}
         <div className="section-title">

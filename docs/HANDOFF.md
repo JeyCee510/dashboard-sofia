@@ -142,7 +142,13 @@ Primer caso de la app con dos usuarias de distinto nivel.
     botón, y cada envío queda en la bitácora (`envio_wa`, `link_pago`,
     `link_inscripcion`). Regla: **si una acción importa, se registra
     explícitamente; no se deduce cruzando timestamps.**
-13. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
+13. **Las reglas de la formación se cuelan por la puerta de atrás.** El bono
+    silla se apagaba con `bonoSillaCupos = 0` en el inicio y la lista, pero la
+    FICHA no lo miraba, y `PagoForm` marcaba `bonoSilla: esProntoPago ? true…`
+    — y en proyectos por sedes "pronto pago" es sólo una etapa de precio, así
+    que TODOS los inscritos del Seminario quedaron con silla. Apagar una
+    feature es apagarla en los tres lados: dato, UI y escritura.
+14. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
     `catch` de la conversión sólo hacía `console.error` y el `finally` cerraba
     la hoja igual: para Sofía parecía que había funcionado. Si una acción
     falla, avisar en pantalla y NO cerrar.
@@ -308,4 +314,5 @@ permisos del mount: verificar copiando el proyecto a `/tmp` y corriendo
 `fix_recursion_es_admin` · `pagos_destino` · `archives_por_proyecto` ·
 `039` leads interés/creador/asignado (+ fix `restaurar_lead`) ·
 `040` `alumnas.tipo_inscripcion` acepta 'taller' ·
-`041` `comprobantes_pago.proyecto_id` + trigger que lo deriva
+`041` `comprobantes_pago.proyecto_id` + trigger que lo deriva ·
+`042` `crear_preinscripcion_alumna` (formulario para quien ya está inscrito)
