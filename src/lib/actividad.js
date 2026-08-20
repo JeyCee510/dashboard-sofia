@@ -84,5 +84,6 @@ export const ETIQUETA_ACCION = {
   link_inscripcion: 'generó el link de inscripción de',
   link_pago: 'generó el link de pago de',
   envio_wa: 'le escribió a',
+  verifico: 'verificó en la cuenta',
   elimino: 'eliminó',
 };

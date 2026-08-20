@@ -23,3 +23,11 @@ export function proyectoActivoId() {
 export function usaClasesAbiertas() {
   return proyectoActivoId() === PROYECTO_FORMACION;
 }
+
+// ¿Este proyecto lleva asistencia por día?
+// El Seminario son 3 encuentros en sedes distintas y Sofía no la toma: la
+// tarjeta y la grilla sólo ensuciaban la ficha. Se apaga por configuración
+// (`config.usaAsistencia = false`) para no atarlo a un id de proyecto.
+export function usaAsistencia(ajustes) {
+  return (ajustes && ajustes.usaAsistencia === false) ? false : true;
+}

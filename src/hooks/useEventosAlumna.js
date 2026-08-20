@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '../lib/supabase.js';
+import { registrarActividad, actorActividad } from '../lib/actividad.js';
 
 const { useState, useEffect, useCallback } = React;
 
@@ -36,14 +37,27 @@ export function useEventosAlumna(alumnaId) {
           payphone: 'Payphone',
           canje: 'Canje',
         }[p.forma] || p.forma || '';
+        const monto = Number(p.monto) || 0;
+        const destinoLabel = {
+          sofia: 'a Sofía',
+          izhcayluma: 'a Izhcayluma',
+          wisdom_forest: 'a Wisdom Forest',
+        }[p.destino] || (p.destino ? `a ${p.destino}` : '');
         return {
           id: `pago-${p.id}`,
           source: 'pago',
           rawId: p.id,
           tipo: 'pago',
-          titulo: `Pagó $${Number(p.monto).toLocaleString('en-US')}`,
-          subtitulo: [p.tipo, formaLabel].filter(Boolean).join(' · '),
-          monto: Number(p.monto) || 0,
+          // $0 es deliberado (beca, canje, cortesía): decir "Pagó $0" hacía
+          // pensar que la acción no se había registrado.
+          titulo: monto > 0
+            ? `Pagó $${monto.toLocaleString('en-US')}`
+            : 'Sin costo · beca o cortesía',
+          subtitulo: [monto > 0 ? p.tipo : null, formaLabel, destinoLabel]
+            .filter(Boolean).join(' · '),
+          monto,
+          verificadoAt: p.verificado_at || null,
+          verificadoPor: p.verificado_por || null,
           created_at: p.fecha,
         };
       }),
@@ -117,7 +131,33 @@ export function useEventosAlumna(alumnaId) {
     await supabase.from('eventos_alumna').delete().eq('id', eventoId);
   }, []);
 
-  return { eventos, loading, eliminarPago, eliminarEvento };
+  // Marcar / desmarcar "ya revisé que esta plata entró a la cuenta".
+  // Registrar un pago y verificarlo son dos momentos distintos: uno lo anota
+  // quien atiende, el otro lo confirma quien revisa el banco.
+  const verificarPago = useCallback(async (pagoId, verificar = true) => {
+    const actor = actorActividad();
+    const patch = verificar
+      ? { verificado_at: new Date().toISOString(), verificado_por: actor.nombre || actor.email || null }
+      : { verificado_at: null, verificado_por: null };
+    // Optimista: la UI responde al toque, sin esperar al round-trip.
+    setEventos(prev => prev.map(e => e.id === `pago-${pagoId}`
+      ? { ...e, verificadoAt: patch.verificado_at, verificadoPor: patch.verificado_por }
+      : e));
+    const { error } = await supabase.from('pagos').update(patch).eq('id', pagoId);
+    if (error) { console.error('[pagos] verificar', error); await cargar(); return; }
+    const pago = eventos.find(e => e.id === `pago-${pagoId}`);
+    registrarActividad({
+      proyectoId: window.PROYECTO_ID || 2,
+      entidad: 'alumna', entidadId: alumnaId,
+      accion: verificar ? 'verifico' : 'actualizo',
+      titulo: verificar
+        ? `Verificó en la cuenta ${pago?.monto ? `$${pago.monto}` : 'un pago'}`
+        : `Quitó la verificación de un pago`,
+      detalle: { pago_id: pagoId, monto: pago?.monto ?? null },
+    });
+  }, [alumnaId, eventos, cargar]);
+
+  return { eventos, loading, eliminarPago, eliminarEvento, verificarPago };
 }
 
 window.useEventosAlumna = useEventosAlumna;

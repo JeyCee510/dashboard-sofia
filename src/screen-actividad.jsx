@@ -24,6 +24,7 @@ const COLOR_ACCION = {
   link_inscripcion: 'var(--gold)',
   link_pago: 'var(--gold)',
   envio_wa: 'var(--whatsapp)',
+  verifico: 'var(--oliva)',
 };
 
 const fechaCorta = (iso) => {

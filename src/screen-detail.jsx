@@ -1,6 +1,7 @@
 import React from 'react';
 import { ContactPanel, ComprobanteTokenAdminPanel, PreinscripcionAdminPanel, ClaseAbiertaPanel } from './forms.jsx';
 import { MaterialPanel } from './material.jsx';
+import { usaAsistencia } from './lib/proyecto.js';
 import { useEventosAlumna } from './hooks/useEventosAlumna.js';
 import { useComprobantesAlumna } from './hooks/useComprobantesAlumna.js';
 
@@ -67,7 +68,7 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComprobantes, onValidarComprobante }) => {
   const a = store.state.alumnas.find(x => x.id === alumnaId);
-  const { eventos, eliminarPago, eliminarEvento } = useEventosAlumna(alumnaId);
+  const { eventos, eliminarPago, eliminarEvento, verificarPago } = useEventosAlumna(alumnaId);
   const { items: comprobantes, obtenerUrl } = useComprobantesAlumna(alumnaId);
   if (!a) return null;
   const dias = store.state.ajustes.diasFormacion;
@@ -82,6 +83,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
   // El bono silla es una regla de la FORMACIÓN. Los proyectos por sedes
   // (Seminario) traen bonoSillaCupos = 0 y no deben ver nada de silla:
   // el inicio y la lista ya lo respetaban, la ficha no.
+  const verAsistencia = usaAsistencia(store.state.ajustes);
   const sillasMax = Number(store.state.ajustes.bonoSillaCupos ?? 6);
   const usaSilla = sillasMax > 0;
   const sillasOtorgadas = store.state.alumnas.filter(x => x.bonoSilla).length;
@@ -220,6 +222,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               />
             )}
           </div>
+          {verAsistencia && (
           <div className="card flat" style={{ flex: 1, padding: 14 }}>
             <div className="kpi-label">Asistencia</div>
             <div className="serif" style={{ fontSize: 22, marginTop: 4 }}>{diasAsistidos.length}<span style={{ fontSize: 12, color: 'var(--ink-mute)' }}>/{dias.length}</span></div>
@@ -235,6 +238,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               })}
             </div>
           </div>
+          )}
         </div>
 
         {/* Bono silla — sólo en proyectos que lo usan (formación) */}
@@ -400,6 +404,8 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
         </div>
 
         {/* Asistencia detalle (toca para marcar/desmarcar) */}
+        {verAsistencia && (
+        <>
         <div className="section-title">
           <h2>Asistencia</h2>
           <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>toca un día</span>
@@ -435,6 +441,8 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
             </div>
           </div>
         </div>
+        </>
+        )}
 
         {/* Notas */}
         <div className="section-title">
@@ -467,6 +475,12 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
                   title={ev.titulo}
                   subtitle={ev.subtitulo}
                   last={i === eventos.length - 1}
+                  esPago={ev.source === 'pago'}
+                  verificadoAt={ev.verificadoAt}
+                  verificadoPor={ev.verificadoPor}
+                  onVerificar={ev.source === 'pago'
+                    ? () => verificarPago(ev.rawId, !ev.verificadoAt)
+                    : null}
                   onDelete={() => {
                     const labelTipo = ev.source === 'pago' ? 'pago' : 'evento';
                     const msg = ev.source === 'pago'
@@ -498,7 +512,7 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
   );
 };
 
-const TimelineRow = ({ icon, date, title, subtitle, last, onDelete }) => (
+const TimelineRow = ({ icon, date, title, subtitle, last, onDelete, esPago, verificadoAt, verificadoPor, onVerificar }) => (
   <div style={{
     display: 'flex', gap: 12, padding: '12px 0',
     borderBottom: last ? 'none' : '1px solid var(--line-soft)',
@@ -515,6 +529,27 @@ const TimelineRow = ({ icon, date, title, subtitle, last, onDelete }) => (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{title}</div>
       {subtitle && <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 1 }}>{subtitle}</div>}
+      {esPago && onVerificar && (
+        <button
+          type="button"
+          onClick={onVerificar}
+          title={verificadoAt
+            ? 'Quitar la verificación'
+            : 'Marcar que ya revisaste que este dinero entró a la cuenta'}
+          style={{
+            marginTop: 6, padding: '3px 10px', borderRadius: 999,
+            background: verificadoAt ? 'rgba(116, 142, 78, 0.16)' : 'transparent',
+            border: verificadoAt ? '1px solid transparent' : '1px dashed var(--line-soft)',
+            color: verificadoAt ? '#4D5230' : 'var(--ink-mute)',
+            fontFamily: 'inherit', fontSize: 10, fontWeight: verificadoAt ? 600 : 400,
+            cursor: 'pointer', letterSpacing: '0.03em',
+          }}
+        >
+          {verificadoAt
+            ? `✓ Verificado${verificadoPor ? ` · ${String(verificadoPor).split(' ')[0]}` : ''}`
+            : 'Marcar como verificado'}
+        </button>
+      )}
     </div>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
       <div style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{date}</div>

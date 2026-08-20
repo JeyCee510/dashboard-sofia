@@ -14,7 +14,7 @@ const { useState, useEffect, useCallback } = React;
 // El historial es la caja negra de la app: si una acción no está acá, no se
 // puede reconstruir después. Ante la duda, incluirla.
 export const ACCIONES_RELEVANTES = ['creo', 'pago', 'cambio_estado', 'nota', 'mensaje', 'asigno',
-  'link_inscripcion', 'link_pago', 'envio_wa', 'actualizo', 'elimino'];
+  'link_inscripcion', 'link_pago', 'envio_wa', 'verifico', 'actualizo', 'elimino'];
 
 export function useActividad({ proyectoId, entidad = null, entidadId = null, limit = 100, soloRelevantes = false } = {}) {
   const [eventos, setEventos] = useState([]);

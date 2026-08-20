@@ -865,6 +865,45 @@ ${link}
 Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿`;
   const waUrl = tel && link ? buildWaUrl(tel, mensajeWa) : null;
 
+  // Subir el comprobante a mano NO depende de que exista el link: la persona
+  // pudo mandarlo por WhatsApp, o ya estar inscrita desde antes. Se define acá
+  // arriba para poder mostrarlo en los dos estados del panel (con y sin link).
+  const bloqueSubidaManual = (
+    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(212,138,110,0.3)' }}>
+      <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginBottom: 8, lineHeight: 1.4 }}>
+        ¿Te mandó el comprobante por otro canal? Súbelo aquí:
+      </div>
+      <button
+        type="button"
+        onClick={() => fileRefManual.current?.click()}
+        disabled={subiendoManual}
+        style={{
+          width: '100%', padding: '8px 12px', borderRadius: 10,
+          background: okManual ? 'var(--oliva)' : 'var(--surface)',
+          color: okManual ? '#fff' : 'var(--ink)',
+          border: '1px solid ' + (okManual ? 'transparent' : 'var(--line-soft)'),
+          fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+          cursor: subiendoManual ? 'not-allowed' : 'pointer',
+          opacity: subiendoManual ? 0.6 : 1,
+        }}
+      >
+        {subiendoManual ? 'Subiendo…' :
+         okManual ? 'Comprobante subido ✓ — pendiente de validar' :
+         'Subir comprobante manual'}
+      </button>
+      {errorManual && (
+        <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{errorManual}</div>
+      )}
+      <input
+        ref={fileRefManual}
+        type="file"
+        accept="image/*,application/pdf,.pdf"
+        style={{ display: 'none' }}
+        onChange={(e) => { subirManual(e.target.files?.[0]); e.target.value = ''; }}
+      />
+    </div>
+  );
+
   if (loading || (!token && generando)) {
     return (
       <div style={{ padding: 14, borderRadius: 12, background: 'var(--bg-warm)', border: '1px solid var(--line-soft)', fontSize: 12, color: 'var(--ink-mute)', textAlign: 'center' }}>
@@ -891,6 +930,7 @@ Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿
         >
           {generando ? 'Generando…' : 'Generar link de pago'}
         </button>
+        {bloqueSubidaManual}
       </div>
     );
   }
@@ -943,40 +983,7 @@ Es seguro, sólo Sofía lo ve. Puedes subir varios si haces más de un pago 🌿
         Reusable: la persona puede subir cuantos comprobantes necesite con el mismo link.
       </div>
 
-      {/* Subida manual: caso cuando mandan el comprobante por WA/IG */}
-      <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(212,138,110,0.3)' }}>
-        <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginBottom: 8, lineHeight: 1.4 }}>
-          ¿Te mandó el comprobante por otro canal? Súbelo aquí:
-        </div>
-        <button
-          type="button"
-          onClick={() => fileRefManual.current?.click()}
-          disabled={subiendoManual}
-          style={{
-            width: '100%', padding: '8px 12px', borderRadius: 10,
-            background: okManual ? 'var(--oliva)' : 'var(--surface)',
-            color: okManual ? '#fff' : 'var(--ink)',
-            border: '1px solid ' + (okManual ? 'transparent' : 'var(--line-soft)'),
-            fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
-            cursor: subiendoManual ? 'not-allowed' : 'pointer',
-            opacity: subiendoManual ? 0.6 : 1,
-          }}
-        >
-          {subiendoManual ? 'Subiendo…' :
-           okManual ? 'Comprobante subido ✓ — pendiente de validar' :
-           'Subir comprobante manual'}
-        </button>
-        {errorManual && (
-          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--rojo)' }}>{errorManual}</div>
-        )}
-        <input
-          ref={fileRefManual}
-          type="file"
-          accept="image/*,application/pdf,.pdf"
-          style={{ display: 'none' }}
-          onChange={(e) => { subirManual(e.target.files?.[0]); e.target.value = ''; }}
-        />
-      </div>
+      {bloqueSubidaManual}
     </div>
   );
 };

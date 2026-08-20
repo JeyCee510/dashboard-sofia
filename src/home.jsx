@@ -1,7 +1,7 @@
 import React from 'react';
 import { alumnaAsisteDia, PRECIOS_DEFAULT } from './lib/precios.js';
 import { supabase as sbClient } from './lib/supabase.js';
-import { usaClasesAbiertas } from './lib/proyecto.js';
+import { usaClasesAbiertas, usaAsistencia } from './lib/proyecto.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -205,6 +205,9 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   const sillasOtorgadas = safeAlumnas.filter(a => a.bonoSilla).length;
   const sillasMax = Number(tweaks.bonoSillaCupos ?? 6);
   const usaSilla = sillasMax > 0;
+  // En proyectos sin asistencia (Seminario) el botón principal no debe
+  // ofrecer "tomar asistencia" aunque hoy sea día de encuentro.
+  const tomarAsistencia = ctx.phase === 'today' && usaAsistencia(tweaks);
 
   // Config del proyecto activo (sedes, matriz de precios, reservas).
   // Si el proyecto define sedes (Seminario Angelo), el home muestra ESAS y no
@@ -427,7 +430,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         </div>
 
         <button
-          onClick={() => onNavigate(ctx.phase === 'today' ? 'asistencia' : 'reservas')}
+          onClick={() => onNavigate(tomarAsistencia ? 'asistencia' : 'reservas')}
           style={{
             marginTop: 18, width: '100%',
             background: 'var(--terracota)', color: '#FBF7F0',
@@ -436,11 +439,10 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          <Icon name={ctx.phase === 'today' ? 'check' : 'users'} size={16} />
-          {ctx.phase === 'today' ? 'Tomar asistencia de hoy'
-            : ctx.phase === 'before' ? 'Ver inscritos'
-            : ctx.phase === 'during' ? 'Ver inscritos'
-            : 'Ver resumen'}
+          <Icon name={tomarAsistencia ? 'check' : 'users'} size={16} />
+          {tomarAsistencia ? 'Tomar asistencia de hoy'
+            : ctx.phase === 'after' ? 'Ver resumen'
+            : 'Ver inscritos'}
         </button>
       </div>
 

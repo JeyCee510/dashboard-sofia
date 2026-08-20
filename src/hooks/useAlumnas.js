@@ -15,7 +15,10 @@ function fromDb(row) {
     instagram: row.instagram || '',
     pago: row.pago || 'pendiente',
     pagado: Number(row.pagado) || 0,
-    total: Number(row.total) || 640,
+    // OJO con `|| 640`: un total de $0 (beca completa) es legítimo y el `||`
+    // lo convertía en 640, así que la persona aparecía debiendo el precio
+    // de la formación. El default sólo aplica si el dato NO existe.
+    total: row.total == null ? 640 : Number(row.total),
     bonoSilla: !!row.bono_silla,
     notas: row.notas || '',
     inscrita: row.inscrita || '',
@@ -116,7 +119,7 @@ export function useAlumnas(proyectoId = 2) {
       instagram: data.instagram || '',
       pago: data.pago || 'pendiente',
       pagado: data.pagado || 0,
-      total: data.total || 640,
+      total: data.total == null ? 640 : Number(data.total),
       bono_silla: !!data.bonoSilla,
       notas: data.notas || '',
       inscrita,
