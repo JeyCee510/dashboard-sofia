@@ -1,7 +1,7 @@
 import React from 'react';
 import { ContactPanel, ComprobanteTokenAdminPanel, PreinscripcionAdminPanel, ClaseAbiertaPanel } from './forms.jsx';
 import { MaterialPanel } from './material.jsx';
-import { usaAsistencia } from './lib/proyecto.js';
+import { usaAsistencia, etiquetaDestino } from './lib/proyecto.js';
 import { useEventosAlumna } from './hooks/useEventosAlumna.js';
 import { useComprobantesAlumna } from './hooks/useComprobantesAlumna.js';
 
@@ -68,7 +68,7 @@ const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComprobantes, onValidarComprobante }) => {
   const a = store.state.alumnas.find(x => x.id === alumnaId);
-  const { eventos, eliminarPago, eliminarEvento, verificarPago } = useEventosAlumna(alumnaId);
+  const { eventos, resumenPagos, eliminarPago, eliminarEvento, verificarPago } = useEventosAlumna(alumnaId);
   const { items: comprobantes, obtenerUrl } = useComprobantesAlumna(alumnaId);
   if (!a) return null;
   const dias = store.state.ajustes.diasFormacion;
@@ -214,6 +214,27 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
               <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 4 }}>Falta ${restante}</div>
             ) : (
               <div style={{ fontSize: 11, color: 'var(--oliva)', marginTop: 4 }}>Pago completo ✓</div>
+            )}
+            {/* Reparto por cuenta: lo que fue directo a un centro NO es plata
+                de Sofía, aunque para esta persona cuente como pagado. */}
+            {resumenPagos.aliados > 0 && (
+              <div style={{
+                marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line-soft)',
+                display: 'flex', flexDirection: 'column', gap: 3,
+              }}>
+                <div style={{ fontSize: 10.5, color: 'var(--ink-mute)', display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+                  <span>A tu cuenta</span>
+                  <strong style={{ color: 'var(--ink)', fontWeight: 600 }}>${resumenPagos.propio}</strong>
+                </div>
+                {Object.entries(resumenPagos.porDestino)
+                  .filter(([d]) => d !== 'sofia')
+                  .map(([d, monto]) => (
+                    <div key={d} style={{ fontSize: 10.5, color: 'var(--ink-mute)', display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+                      <span>{etiquetaDestino(store.state.ajustes, d)}</span>
+                      <strong style={{ color: '#41597A', fontWeight: 600 }}>${monto}</strong>
+                    </div>
+                  ))}
+              </div>
             )}
             {restante > 0 && (
               <PlanPagosEditor

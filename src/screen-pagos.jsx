@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDesglosePagos } from './hooks/useDesglosePagos.js';
+import { etiquetaDestino, tieneCuentasAliadas, DESTINO_PROPIO } from './lib/proyecto.js';
 import { estadoPago, esProntoPagoProducto } from './lib/precios.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
@@ -98,6 +99,9 @@ const PagosScreen = ({ tweaks, store, onOpenAlumna, onNewPago, onNavigate }) => 
 // Vista "Cobros" (lo que era todo antes): KPIs + listado de alumnas con saldo
 const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumnas, filter, setFilter, onOpenAlumna, onNewPago }) => {
   const { desglose } = useDesglosePagos();
+  // Con cuentas de aliados, el número grande es SÓLO la plata de Sofía:
+  // el abono de los retiros va directo al centro y no es suya.
+  const conAliados = tieneCuentasAliadas(tweaks) && desglose.aliados > 0;
   return (
     <div>
 
@@ -105,13 +109,15 @@ const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumn
       <div style={{ padding: '0 22px' }}>
         <div className="hero" style={{ padding: 22, marginTop: 4 }}>
           <div style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.6 }}>
-            Cobrado este ciclo
+            {conAliados ? 'En tu cuenta' : 'Cobrado este ciclo'}
           </div>
           <div className="serif" style={{ fontSize: 44, fontWeight: 400, marginTop: 6, lineHeight: 1 }}>
-            ${totalCobrado.toLocaleString()}
+            ${(conAliados ? desglose.propio : totalCobrado).toLocaleString()}
           </div>
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
-            de ${totalEsperado.toLocaleString()} esperados{totalEsperado > 0 ? ` · ${Math.round((totalCobrado / totalEsperado) * 100)}%` : ''}
+            {conAliados
+              ? `Cobrado en total $${totalCobrado.toLocaleString()} · $${Math.round(desglose.aliados).toLocaleString()} fue directo a los centros`
+              : `de $${totalEsperado.toLocaleString()} esperados${totalEsperado > 0 ? ` · ${Math.round((totalCobrado / totalEsperado) * 100)}%` : ''}`}
           </div>
           <div style={{
             height: 4, background: 'rgba(251,247,240,0.18)', borderRadius: 999,
@@ -135,6 +141,47 @@ const CobrosView = ({ tweaks, totalCobrado, totalEsperado, totalPendiente, alumn
           </div>
         </div>
       </div>
+
+      {/* Reparto por cuenta — de dónde a dónde fue el dinero */}
+      {conAliados && (
+        <div style={{ padding: '14px 22px 0' }}>
+          <div className="card flat" style={{ padding: 14 }}>
+            <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontWeight: 500, marginBottom: 12 }}>
+              Cobrado por cuenta
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Object.entries(desglose.porDestino)
+                .sort((a, b) => b[1] - a[1])
+                .map(([destino, monto]) => {
+                  const esPropio = destino === DESTINO_PROPIO;
+                  const pct = desglose.total > 0 ? (monto / desglose.total) * 100 : 0;
+                  return (
+                    <div key={destino}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12, marginBottom: 4 }}>
+                        <span style={{ color: 'var(--ink)', fontWeight: 500 }}>
+                          {etiquetaDestino(tweaks, destino)}
+                        </span>
+                        <span style={{ color: esPropio ? 'var(--oliva)' : '#41597A', fontWeight: 600 }}>
+                          ${Math.round(monto).toLocaleString('en-US')}
+                          <span style={{ fontSize: 10, color: 'var(--ink-mute)', marginLeft: 6, fontWeight: 400 }}>
+                            {Math.round(pct)}%
+                          </span>
+                        </span>
+                      </div>
+                      <div style={{ height: 4, background: 'var(--line-soft)', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: esPropio ? 'var(--oliva)' : '#7A8FA8' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            <div style={{ marginTop: 10, fontSize: 10.5, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
+              Lo que entró a los centros se paga directo al hospedaje: cuenta como
+              pagado para la persona, pero no es plata tuya.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Desglose por forma de pago */}
       {desglose.count > 0 && (

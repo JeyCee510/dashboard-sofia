@@ -1,7 +1,8 @@
 import React from 'react';
 import { alumnaAsisteDia, PRECIOS_DEFAULT } from './lib/precios.js';
 import { supabase as sbClient } from './lib/supabase.js';
-import { usaClasesAbiertas, usaAsistencia } from './lib/proyecto.js';
+import { usaClasesAbiertas, usaAsistencia, tieneCuentasAliadas } from './lib/proyecto.js';
+import { useDesglosePagos } from './hooks/useDesglosePagos.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -179,6 +180,9 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
     [window.DIAS_FORMACION]
   );
   const ctx = getFormationContext(diasProyecto);
+  // Reparto por cuenta: en el Seminario parte de lo cobrado va directo a
+  // los centros y no es plata de Sofía.
+  const { desglose } = useDesglosePagos();
   const greeting = getGreeting();
   const todayStr = formatTodayLong();
 
@@ -208,6 +212,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   // En proyectos sin asistencia (Seminario) el botón principal no debe
   // ofrecer "tomar asistencia" aunque hoy sea día de encuentro.
   const tomarAsistencia = ctx.phase === 'today' && usaAsistencia(tweaks);
+  const conAliados = tieneCuentasAliadas(tweaks) && desglose.aliados > 0;
 
   // Config del proyecto activo (sedes, matriz de precios, reservas).
   // Si el proyecto define sedes (Seminario Angelo), el home muestra ESAS y no
@@ -403,11 +408,16 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         }}>
           <div style={{ flex: 1 }}>
             <div className="serif" style={{ fontSize: 22, lineHeight: 1, fontWeight: 400, color: 'var(--terracota-soft)' }}>
-              {fmt(totalRecibido)}
+              {fmt(conAliados ? desglose.propio : totalRecibido)}
             </div>
             <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
-              recibido
+              {conAliados ? 'en tu cuenta' : 'recibido'}
             </div>
+            {conAliados && (
+              <div style={{ fontSize: 9.5, opacity: 0.55, marginTop: 3, lineHeight: 1.3 }}>
+                + {fmt(desglose.aliados)} a los centros
+              </div>
+            )}
           </div>
           <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
           <div style={{ flex: 1 }}>

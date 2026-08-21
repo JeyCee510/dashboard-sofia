@@ -191,6 +191,14 @@ descuento por varios ya está incorporado en la matriz, `config.matrizPrecios`):
   se paga **directo al hospedaje**; el saldo va a Sofía. En el Domo todo a
   Sofía. Por eso `pagos` tiene `destino` y `sede_n`, y el formulario pregunta
   "¿A qué cuenta entró?".
+  **La plata que entra a un centro NO es de Sofía**: cuenta como pagado para el
+  estudiante, pero queda fuera de su estado de cuenta. Por eso el número grande
+  de Pagos y el KPI del inicio muestran sólo `destino='sofia'`, con el resto
+  aparte (`useDesglosePagos` devuelve `propio` / `aliados` / `porDestino`, y la
+  ficha muestra el reparto de cada persona).
+  El formulario **sugiere** la cuenta según la sede y si es el primer pago,
+  pero se puede cambiar: hay excepciones reales (Gabriela Moyano trabaja en
+  Izhcayluma y no paga hospedaje, así que su pago entero va a Sofía).
 - El monto del pago es **abierto** (hay muchas combinaciones posibles).
 - **20 plantillas de WhatsApp** en `config.plantillasWA`, ordenadas por el flujo
   real: link de inscripción, primer contacto, info completa, precios especiales,

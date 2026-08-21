@@ -708,6 +708,8 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   // Destino del dinero (Seminario Angelo): el abono de reserva de los retiros
   // se paga DIRECTO al aliado (Izhcayluma / Wisdom Forest); el saldo va a Sofía.
   const [destino, setDestino] = React.useState('sofia');
+  // Si Sofía elige la cuenta a mano, la sugerencia deja de pisarla.
+  const [destinoTocado, setDestinoTocado] = React.useState(false);
   const reglaPagos = store.state.ajustes?.reglaPagos || null;
   const destinosCfg = reglaPagos?.destinos || null;
   // Proyecto tipo taller/seminario: se eligen encuentros/sedes y el precio sale
@@ -743,6 +745,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       setTipo('parcial');
       setForma('transferencia');
       setDestino('sofia');
+      setDestinoTocado(false);
       setConvirtiendo(false);
       setArchivo(null);
       setErrorArchivo('');
@@ -770,6 +773,31 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const precioReserva = store.state.ajustes.precioReserva || 200;
   const precioProntoPago = store.state.ajustes.precioProntoPago || 484;
   const precioRegular = store.state.ajustes.precioRegular || 640;
+
+  // ── A qué cuenta debería entrar este pago ──
+  // Regla del proyecto: el abono de reserva de un retiro se paga DIRECTO a la
+  // cuenta del centro; el saldo va a Sofía. Antes el selector arrancaba
+  // siempre en "Sofía" y había que acordarse de cambiarlo, así que pagos que
+  // fueron al hospedaje quedaban contados como plata de ella.
+  // Es una SUGERENCIA: hay excepciones reales (alguien que trabaja en el
+  // centro y no paga hospedaje), por eso se puede cambiar.
+  const encuentrosPersona = alumna
+    ? (alumna.encuentros_asistir || [])
+    : prodEncuentros;
+  const reglaPorSede = (reglaPagos && reglaPagos.porSede) || null;
+  const sedeRetiro = (encuentrosPersona || []).find(n => {
+    const r = reglaPorSede && reglaPorSede[String(n)];
+    return r && r.primerPago && r.primerPago !== 'sofia';
+  }) || null;
+  // El abono directo al centro es el PRIMER pago de la persona.
+  const esPrimerPago = alumna ? (Number(alumna.pagado) || 0) === 0 : true;
+  const destinoSugerido = (sedeRetiro && esPrimerPago && reglaPorSede)
+    ? reglaPorSede[String(sedeRetiro)].primerPago
+    : 'sofia';
+
+  React.useEffect(() => {
+    if (!destinoTocado) setDestino(destinoSugerido);
+  }, [destinoSugerido, destinoTocado]);
 
   // Total del producto (lead path).
   // Taller/Seminario: suma de los encuentros elegidos según la matriz del
@@ -906,7 +934,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         await validarExistente(comprobantePreData.id, idNum, montoNum);
       }
       // 3. Registrar el pago (esto crea fila en `pagos` + actualiza alumnas + auto-silla)
-      await store.registrarPago(idNum, montoNum, tipo, forma, { destino });
+      await store.registrarPago(idNum, montoNum, tipo, forma, { destino, sedeN: destino === 'sofia' ? null : sedeRetiro });
       onClose();
       return;
     }
@@ -952,7 +980,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             if (archivo) await subirComprobanteValidado(nuevaId, montoNum, archivo);
             // 3) Registrar pago con forma seleccionada.
             //    skipAutoSilla=true porque Sofía ya decidió silla en el picker.
-            await store.registrarPago(nuevaId, montoNum, tipo, forma, { skipAutoSilla: true, destino });
+            await store.registrarPago(nuevaId, montoNum, tipo, forma, { skipAutoSilla: true, destino, sedeN: destino === 'sofia' ? null : sedeRetiro });
             // 4) Si fue precio especial, registrar evento en timeline
             if (precioEspecial && productoTotal !== productoTotalBase) {
               await supabase.from('eventos_alumna').insert({
@@ -1376,9 +1404,15 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         >
           <SelectChips
             value={destino}
-            onChange={setDestino}
+            onChange={(v) => { setDestinoTocado(true); setDestino(v); }}
             options={Object.entries(destinosCfg).map(([value, label]) => ({ value, label }))}
           />
+          {!destinoTocado && destinoSugerido !== 'sofia' && (
+            <div style={{ marginTop: 6, fontSize: 10.5, color: '#41597A', lineHeight: 1.4 }}>
+              Sugerido: es el primer pago de un retiro, así que el abono va directo
+              al centro. Cámbialo si en este caso entró a tu cuenta.
+            </div>
+          )}
         </Field>
       )}
 

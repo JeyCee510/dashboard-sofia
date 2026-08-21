@@ -31,3 +31,27 @@ export function usaClasesAbiertas() {
 export function usaAsistencia(ajustes) {
   return (ajustes && ajustes.usaAsistencia === false) ? false : true;
 }
+
+// ──────────────────────────────────────────────────────────────
+// Cuentas de destino del dinero.
+//
+// En el Seminario hay tres: la de Sofía y las de los dos centros que hospedan
+// los retiros. El abono de reserva se paga DIRECTO al centro, así que esa
+// plata nunca pasa por Sofía y no debe sumar en su estado de cuenta — pero sí
+// cuenta como pagado para el estudiante. Los nombres salen de
+// `config.reglaPagos.destinos` para no hardcodear aliados.
+// ──────────────────────────────────────────────────────────────
+export const DESTINO_PROPIO = 'sofia';
+
+export function etiquetaDestino(ajustes, destino) {
+  if (!destino || destino === DESTINO_PROPIO) return 'A tu cuenta';
+  const mapa = (ajustes && ajustes.reglaPagos && ajustes.reglaPagos.destinos) || {};
+  return mapa[destino] || destino;
+}
+
+// ¿Este proyecto cobra a más de una cuenta? Si no, no tiene sentido mostrar
+// ningún desglose por destino (formación, estudio).
+export function tieneCuentasAliadas(ajustes) {
+  const mapa = (ajustes && ajustes.reglaPagos && ajustes.reglaPagos.destinos) || {};
+  return Object.keys(mapa).filter(k => k !== DESTINO_PROPIO).length > 0;
+}

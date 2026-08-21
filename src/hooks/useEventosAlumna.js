@@ -16,6 +16,9 @@ const { useState, useEffect, useCallback } = React;
 export function useEventosAlumna(alumnaId) {
   const [eventos, setEventos] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Cuánto de lo que pagó esta persona entró a la cuenta de Sofía y cuánto
+  // fue directo a un centro (Izhcayluma / Wisdom Forest).
+  const [resumenPagos, setResumenPagos] = useState({ propio: 0, aliados: 0, porDestino: {} });
 
   const cargar = useCallback(async () => {
     if (!alumnaId) return;
@@ -28,6 +31,16 @@ export function useEventosAlumna(alumnaId) {
     if (evsRes.error) console.error('[eventos] eventos_alumna', evsRes.error);
     const pagos = pagosRes.data || [];
     const evs = evsRes.data || [];
+
+    const resumen = { propio: 0, aliados: 0, porDestino: {} };
+    pagos.forEach(p => {
+      const monto = Number(p.monto) || 0;
+      const destino = p.destino || 'sofia';
+      resumen.porDestino[destino] = (resumen.porDestino[destino] || 0) + monto;
+      if (destino === 'sofia') resumen.propio += monto;
+      else resumen.aliados += monto;
+    });
+    setResumenPagos(resumen);
 
     const merged = [
       ...pagos.map(p => {
@@ -157,7 +170,7 @@ export function useEventosAlumna(alumnaId) {
     });
   }, [alumnaId, eventos, cargar]);
 
-  return { eventos, loading, eliminarPago, eliminarEvento, verificarPago };
+  return { eventos, loading, resumenPagos, eliminarPago, eliminarEvento, verificarPago };
 }
 
 window.useEventosAlumna = useEventosAlumna;
