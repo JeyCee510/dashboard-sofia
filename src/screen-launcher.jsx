@@ -1,4 +1,5 @@
 import React from 'react';
+import { versionLegible, versionCompleta } from './lib/version.js';
 import { useProyectos } from './hooks/useProyectos.js';
 const { useMemo } = React;
 
@@ -156,6 +157,20 @@ const LauncherScreen = ({ ownerName = 'Sofía', esAdmin = true, onAbrirProyecto,
 
         <div style={{ marginTop: 18, textAlign: 'center', fontSize: 11, color: 'var(--ink-mute)', fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic' }}>
           Sofía Lira · Yoga
+        </div>
+        {/* Versión visible: si algo "no aparece", lo primero es saber si el
+            dispositivo tiene la última o una copia cacheada por la PWA.
+            Al tocarla muestra el commit, para reportar con precisión. */}
+        <div
+          onClick={() => alert(versionCompleta())}
+          title="Toca para ver el detalle"
+          style={{
+            marginTop: 6, textAlign: 'center', fontSize: 10,
+            color: 'var(--ink-mute)', opacity: 0.65, cursor: 'pointer',
+            letterSpacing: '0.04em',
+          }}
+        >
+          {versionLegible()}
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { supabase } from './lib/supabase.js';
 import { estadoPush, activarPush, desactivarPush } from './lib/push.js';
 import { MaterialAdminCard } from './material.jsx';
+import { versionCompleta } from './lib/version.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ── Notificaciones push del dispositivo ──
@@ -312,6 +313,20 @@ const AjustesScreen = ({ store, onClose }) => {
         <Section title="Datos">
           <div style={{ padding: '0 22px 6px', fontSize: 12, color: 'var(--ink-mute)' }}>
             {state.alumnas.length} estudiantes · {state.leads.length} leads
+          </div>
+        </Section>
+
+        {/* Versión — para reportar problemas con precisión y para saber si el
+            dispositivo tiene la última o una copia cacheada por la PWA. */}
+        <Section title="Versión de la app">
+          <div style={{ padding: '0 22px 6px' }}>
+            <div style={{ fontSize: 12.5, color: 'var(--ink)', fontFamily: 'monospace' }}>
+              {versionCompleta()}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 4, lineHeight: 1.4 }}>
+              Si algo no te aparece, revisa que esta versión coincida con la que
+              te pasaron. Si no, cierra la app y vuelve a abrirla.
+            </div>
           </div>
         </Section>
 

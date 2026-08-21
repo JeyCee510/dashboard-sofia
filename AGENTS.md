@@ -239,6 +239,19 @@ CSS específico para cada breakpoint en `styles.css`. Las rutas públicas (`/pre
 
 El frame `<IOSDevice>` ya NO se usa en producción — el archivo `ios-frame.jsx` queda solo por compatibilidad con la versión Babel-inline legacy de la raíz.
 
+## Versión de la app
+
+`package.json → version` es la fuente de verdad. Vite la inyecta en el build
+(`__APP_VERSION__`, más fecha y commit corto) y se muestra **en pantalla**: al
+pie del launcher y en Ajustes → "Versión de la app".
+
+**Súbela en CADA deploy que Sofía deba notar** — parche `1.5.x` para arreglos,
+menor `1.x.0` para funcionalidad nueva. Sirve para responder en segundos la
+pregunta más común: "no me aparece el cambio" → ¿qué versión te sale? Si no es
+la última, es la PWA sirviendo una copia cacheada.
+
+Helpers en `src/lib/version.js` (`versionLegible()`, `versionCompleta()`).
+
 ## Deploy
 
 **Auto:** push a `main` → Vercel re-deploya en ~1 min.
