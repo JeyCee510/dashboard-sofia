@@ -20,15 +20,43 @@ cd "$REPO_DIR"
 
 MSG="${1:-cambios desde Claude}"
 TOKEN_FILE=".claude-gh-token"
+REPO_URL="https://github.com/JeyCee510/dashboard-sofia.git"
 
-if [[ ! -f "$TOKEN_FILE" ]]; then
-  echo "✗ Falta $TOKEN_FILE (crea el token y pégalo ahí)."; exit 1
+# ── Cómo nos autenticamos ──────────────────────────────────────────────
+# 1º) GitHub CLI. Si ya hiciste `gh auth login`, la credencial vive en el
+#     llavero de macOS, se renueva sola y no hay ningún token en texto plano
+#     dando vueltas. Es el camino preferido.
+# 2º) El archivo .claude-gh-token (classic PAT). Queda como respaldo porque
+#     los tokens classic CADUCAN: el 13-sep-2026 el push falló con
+#     "Invalid username or token" justamente por eso.
+USAR_GH=0
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  USAR_GH=1
+  echo "• Autenticando con GitHub CLI (llavero de macOS)"
+else
+  if [[ ! -f "$TOKEN_FILE" ]]; then
+    echo "✗ No hay sesión de 'gh' ni $TOKEN_FILE."
+    echo "  Lo más simple: corre 'gh auth login' una vez y listo."
+    exit 1
+  fi
+  TOKEN="$(tr -d ' \t\r\n' < "$TOKEN_FILE")"
+  if [[ -z "$TOKEN" || "$TOKEN" == "PEGA_AQUI_TU_TOKEN" ]]; then
+    echo "✗ El token está vacío o es el placeholder."
+    echo "  Alternativa recomendada: 'gh auth login' (sin tokens que caduquen)."
+    exit 1
+  fi
+  echo "• Autenticando con el token de $TOKEN_FILE"
 fi
 
-TOKEN="$(tr -d ' \t\r\n' < "$TOKEN_FILE")"
-if [[ -z "$TOKEN" || "$TOKEN" == "PEGA_AQUI_TU_TOKEN" ]]; then
-  echo "✗ El token está vacío o es el placeholder. Pega tu token en $TOKEN_FILE."; exit 1
-fi
+# Empuja usando el método disponible. Con gh la URL va limpia (la credencial
+# la resuelve el helper); con token va embebida y NUNCA se imprime.
+empujar() {
+  if [[ "$USAR_GH" == "1" ]]; then
+    git -c credential.helper='!gh auth git-credential' push -q "$REPO_URL" HEAD:main
+  else
+    git push -q "https://x-access-token:${TOKEN}@github.com/JeyCee510/dashboard-sofia.git" HEAD:main
+  fi
+}
 
 # Los locks quedan si un proceso git anterior se cortó; limpiarlos es seguro
 # cuando no hay otro git corriendo.
@@ -51,7 +79,7 @@ if ls .git/*.lock >/dev/null 2>&1; then
     echo "• No hay cambios que commitear."; exit 0
   fi
   git -c user.email="jclira@gmail.com" -c user.name="Juan Cristobal Lira" commit -q -m "$MSG"
-  git push -q "https://x-access-token:${TOKEN}@github.com/JeyCee510/dashboard-sofia.git" HEAD:main
+  empujar
   echo "✓ Push a main OK (vía clon)"
   git log --oneline -1
   echo "⚠ Tu carpeta local quedó detrás: corre 'git pull' cuando puedas."
@@ -67,12 +95,16 @@ else
   echo "✓ Commit: $MSG"
 fi
 
-# Push con el token en la URL (no queda guardado: no se usa `remote set-url`)
-REMOTE_URL="https://x-access-token:${TOKEN}@github.com/JeyCee510/dashboard-sofia.git"
-if git push -q "$REMOTE_URL" HEAD:main 2>/dev/null; then
+if empujar 2>/dev/null; then
   echo "✓ Push a main OK"
   git log --oneline -1
 else
-  echo "✗ Falló el push. Revisa que el token tenga permiso 'repo' y no haya caducado."
+  echo "✗ Falló el push."
+  if [[ "$USAR_GH" == "1" ]]; then
+    echo "  Revisa la sesión con 'gh auth status' (o 'gh auth login' de nuevo)."
+  else
+    echo "  El token de $TOKEN_FILE caducó o perdió el permiso 'repo'."
+    echo "  Camino recomendado: 'gh auth login' y olvidarte del archivo."
+  fi
   exit 1
 fi

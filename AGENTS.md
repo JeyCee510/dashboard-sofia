@@ -256,6 +256,12 @@ Helpers en `src/lib/version.js` (`versionLegible()`, `versionCompleta()`).
 
 **Auto:** push a `main` → Vercel re-deploya en ~1 min.
 
+**Autenticación con GitHub:** `scripts/claude-push.sh` usa **GitHub CLI** si hay
+sesión (`gh auth status`), y sólo cae al archivo `.claude-gh-token` como
+respaldo. Los tokens classic caducan — el 13-sep-2026 el push falló por eso.
+Si algún día falla la auth: `gh auth login` una vez y listo, la credencial
+queda en el llavero de macOS y se renueva sola.
+
 **Cambiar env vars en producción:**
 1. Vercel project settings → Environment Variables
 2. Editar `VITE_SUPABASE_URL` o `VITE_SUPABASE_ANON_KEY`
