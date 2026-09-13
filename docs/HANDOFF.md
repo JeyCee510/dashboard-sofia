@@ -154,7 +154,15 @@ Primer caso de la app con dos usuarias de distinto nivel.
     debiendo el precio de la formación. Con montos, usar `== null ? def : Number(x)`.
     (El mismo patrón sigue vivo y es correcto en `precioProntoPago || 484`,
     donde 0 no es un valor válido — el criterio es si el cero significa algo.)
-15. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
+15. **Al editar una ficha, el total no debe quedar "manual" por defecto.**
+    `AlumnaForm` marcaba `totalManual: true` siempre al abrir en modo edición.
+    Consecuencia: agregar una sede a alguien ya inscrito NO recalculaba el
+    precio y, como el total viejo ya no cuadraba, la app lo tomaba por "precio
+    especial" y exigía un motivo → **no se podía guardar** (Caro López sumó
+    Vilcabamba el 13 sep y quedó con total $0). Hoy el total es manual sólo si
+    de verdad difiere de la tarifa, y la ficha ofrece "Ajustar a $X" cuando el
+    precio guardado no coincide con los encuentros.
+16. **Errores tragados = bugs invisibles.** El mismo caso duró días porque el
     `catch` de la conversión sólo hacía `console.error` y el `finally` cerraba
     la hoja igual: para Sofía parecía que había funcionado. Si una acción
     falla, avisar en pantalla y NO cerrar.

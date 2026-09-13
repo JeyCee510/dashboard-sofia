@@ -13,6 +13,11 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
   let alumnas = MOCK_ALUMNAS;
   if (filter === 'pendientes') alumnas = alumnas.filter(a => (Number(a.total) || 0) > (Number(a.pagado) || 0));
   if (filter === 'silla') alumnas = alumnas.filter(a => a.bonoSilla);
+  // Filtro por sede (Seminario): 'sede:2' → quienes van a Vilcabamba.
+  if (filter.startsWith('sede:')) {
+    const n = Number(filter.split(':')[1]);
+    alumnas = alumnas.filter(a => (a.encuentros_asistir || []).includes(n));
+  }
   if (search) alumnas = alumnas.filter(a => a.nombre.toLowerCase().includes(search.toLowerCase()));
 
   const total = MOCK_ALUMNAS.length;
@@ -123,12 +128,47 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
         <div className="segmented">
           <button className={filter === 'todas' ? 'active' : ''} onClick={() => setFilter('todas')}>Todos · {MOCK_ALUMNAS.length}</button>
           <button className={filter === 'pendientes' ? 'active' : ''} onClick={() => setFilter('pendientes')}>Pendientes · {MOCK_ALUMNAS.filter(a => (Number(a.total) || 0) > (Number(a.pagado) || 0)).length}</button>
-          <button className={filter === 'silla' ? 'active' : ''} onClick={() => setFilter('silla')}>Silla · {sillas}</button>
+          {usaSilla && (
+            <button className={filter === 'silla' ? 'active' : ''} onClick={() => setFilter('silla')}>Silla · {sillas}</button>
+          )}
         </div>
+        {/* Filtro por sede — en el Seminario cada encuentro tiene su propio
+            cupo y su propia logística, así que "¿quiénes van a Tena?" es la
+            pregunta más frecuente. */}
+        {sedesCfg.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            {sedesCfg.map(sede => {
+              const cuantos = MOCK_ALUMNAS.filter(a => (a.encuentros_asistir || []).includes(sede.n)).length;
+              const activo = filter === `sede:${sede.n}`;
+              const cupo = cuposPorSede ? Number(cuposPorSede[String(sede.n)]) : null;
+              return (
+                <button
+                  key={sede.n}
+                  onClick={() => setFilter(activo ? 'todas' : `sede:${sede.n}`)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 999,
+                    background: activo ? 'var(--terracota)' : 'var(--surface)',
+                    border: `1px solid ${activo ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                    color: activo ? '#fff' : 'var(--ink)',
+                    fontFamily: 'inherit', fontSize: 11.5, fontWeight: activo ? 600 : 400,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {String(sede.nombre || `Sede ${sede.n}`).split('·')[0].trim()} · {cuantos}
+                  {cupo ? <span style={{ opacity: 0.6 }}>/{cupo}</span> : null}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic', lineHeight: 1.4 }}>
           {filter === 'todas' && 'Todos los inscritos, sin importar estado de pago.'}
           {filter === 'pendientes' && 'Solo quienes aún deben algo (estado parcial o pendiente).'}
           {filter === 'silla' && 'Solo quienes recibieron bono silla (auto a los primeros 6 con tarifa completa).'}
+          {filter.startsWith('sede:') && (() => {
+            const sede = sedesCfg.find(x => String(x.n) === filter.split(':')[1]);
+            return sede ? `Quienes van a ${sede.nombre || `Sede ${sede.n}`}${sede.fechas ? ` · ${sede.fechas}` : ''}.` : null;
+          })()}
         </div>
       </div>
 

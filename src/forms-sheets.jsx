@@ -46,8 +46,36 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   });
   const [form, setForm] = React.useState(defaultForm);
 
+  // Precio que le corresponde a un conjunto de encuentros, según la tarifa
+  // del proyecto. Se prueba con y sin pronto pago porque la etapa no se
+  // guarda en la ficha: si coincide con cualquiera de las dos, es tarifa
+  // normal y no un precio especial.
+  const tarifaDe = (encuentros, tipo, bonoSilla) => {
+    if (!taller) return calcularTotal({ tipo, bonoSilla, ajustes: store.state.ajustes });
+    if (!tienePreciosPorEncuentro(store.state.ajustes)) return precioTaller((encuentros || []).length, store.state.ajustes);
+    return precioPorEncuentros(encuentros || [], store.state.ajustes, { prontoPago: false });
+  };
+  const esTarifaNormal = (total, encuentros, tipo, bonoSilla) => {
+    const t = Number(total);
+    if (!taller) return t === Number(tarifaDe(encuentros, tipo, bonoSilla));
+    const regular = Number(precioPorEncuentros(encuentros || [], store.state.ajustes, { prontoPago: false }));
+    const pp = Number(precioPorEncuentros(encuentros || [], store.state.ajustes, { prontoPago: true }));
+    return t === regular || t === pp;
+  };
+
   React.useEffect(() => {
-    if (editing) setForm({ ...editing, totalManual: true });
+    if (editing) {
+      // ANTES: al editar se marcaba `totalManual: true` siempre. Consecuencia:
+      // agregar una sede a alguien ya inscrito NO recalculaba el precio, y como
+      // el total viejo ya no cuadraba con el nuevo, la app lo tomaba por
+      // "precio especial" y exigía un motivo para poder guardar. Resultado:
+      // no se podía sumar un encuentro (caso Caro López, 13 sep 2026).
+      // Ahora el total es "manual" sólo si de verdad se apartó de la tarifa.
+      setForm({
+        ...editing,
+        totalManual: !esTarifaNormal(editing.total, editing.encuentros_asistir, editing.tipo_inscripcion, editing.bonoSilla),
+      });
+    }
     else setForm(defaultForm());
   }, [alumnaId, open]);
 
@@ -710,6 +738,8 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   const [destino, setDestino] = React.useState('sofia');
   // Si Sofía elige la cuenta a mano, la sugerencia deja de pisarla.
   const [destinoTocado, setDestinoTocado] = React.useState(false);
+  // Sede a la que corresponde este pago (la fija el atajo de reserva).
+  const [sedeNPago, setSedeNPago] = React.useState(null);
   const reglaPagos = store.state.ajustes?.reglaPagos || null;
   const destinosCfg = reglaPagos?.destinos || null;
   // Proyecto tipo taller/seminario: se eligen encuentros/sedes y el precio sale
@@ -746,6 +776,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       setForma('transferencia');
       setDestino('sofia');
       setDestinoTocado(false);
+      setSedeNPago(null);
       setConvirtiendo(false);
       setArchivo(null);
       setErrorArchivo('');
@@ -934,7 +965,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
         await validarExistente(comprobantePreData.id, idNum, montoNum);
       }
       // 3. Registrar el pago (esto crea fila en `pagos` + actualiza alumnas + auto-silla)
-      await store.registrarPago(idNum, montoNum, tipo, forma, { destino, sedeN: destino === 'sofia' ? null : sedeRetiro });
+      await store.registrarPago(idNum, montoNum, tipo, forma, { destino, sedeN: destino === 'sofia' ? null : (sedeNPago ?? sedeRetiro) });
       onClose();
       return;
     }
@@ -980,7 +1011,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             if (archivo) await subirComprobanteValidado(nuevaId, montoNum, archivo);
             // 3) Registrar pago con forma seleccionada.
             //    skipAutoSilla=true porque Sofía ya decidió silla en el picker.
-            await store.registrarPago(nuevaId, montoNum, tipo, forma, { skipAutoSilla: true, destino, sedeN: destino === 'sofia' ? null : sedeRetiro });
+            await store.registrarPago(nuevaId, montoNum, tipo, forma, { skipAutoSilla: true, destino, sedeN: destino === 'sofia' ? null : (sedeNPago ?? sedeRetiro) });
             // 4) Si fue precio especial, registrar evento en timeline
             if (precioEspecial && productoTotal !== productoTotalBase) {
               await supabase.from('eventos_alumna').insert({
@@ -1023,6 +1054,25 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
 
   // Atajos: 4 botones para alumna y lead, + extra ("sin pago") solo en lead.
   // Para alumna existente, el monto del pronto-pago/completo se ajusta a lo que falta.
+  // Atajos de "abono de reserva" de los retiros: el monto sale de
+  // `reservaPorSede` y la cuenta de `reglaPagos.porSede`. Sin esto había que
+  // acordarse del monto, cambiar la cuenta a mano y saber que existía la regla
+  // (Sofía no sabía cómo registrar los $170 de Vilcabamba de Caro López).
+  const reservasPorSede = store.state.ajustes?.reservaPorSede || null;
+  const atajosReserva = (encuentrosPersona || [])
+    .map(n => {
+      const monto = Number(reservasPorSede?.[String(n)]) || 0;
+      const cuenta = reglaPorSede?.[String(n)]?.primerPago;
+      if (!monto || !cuenta || cuenta === 'sofia') return null;
+      const sede = sedesPago.find(x => x && x.n === n);
+      const nombreCorto = String(sede?.nombre || `Sede ${n}`).split('·')[0].trim();
+      return {
+        label: `Reserva ${nombreCorto} $${monto} → ${(destinosCfg && destinosCfg[cuenta]) || cuenta}`,
+        v: monto, t: 'reserva', destino: cuenta, sedeN: n,
+      };
+    })
+    .filter(Boolean);
+
   const quickButtons = alumna ? [
     { label: `Reserva $${precioReserva}`, v: precioReserva, t: 'reserva' },
     {
@@ -1039,9 +1089,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       v: Math.max(0, (alumna.total || precioRegular) - (alumna.pagado || 0)),
       t: 'completo',
     },
+    ...atajosReserva,
     { label: 'Otro monto', v: 0, t: 'parcial' },
     { label: 'Sin costo · $0 (beca / canje)', v: 0, t: 'cortesia' },
   ] : esLead ? [
+    ...atajosReserva,
     { label: `Reserva $${precioReserva}`, v: precioReserva, t: 'reserva' },
     {
       label: esProntoPago
@@ -1366,7 +1418,13 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
               const seleccionado = tipo === qb.t && (qb.t === 'ninguno' || monto === qb.v);
               return (
                 <button key={qb.t} type="button"
-                  onClick={() => { setMonto(qb.v); setTipo(qb.t); }}
+                  onClick={() => {
+                    setMonto(qb.v);
+                    setTipo(qb.t);
+                    // Los atajos de reserva traen su cuenta: se fija sola y
+                    // queda marcada como elección explícita.
+                    if (qb.destino) { setDestino(qb.destino); setDestinoTocado(true); setSedeNPago(qb.sedeN || null); }
+                  }}
                   style={{
                     background: seleccionado ? 'var(--terracota-tint)' : 'var(--surface)',
                     border: `1px solid ${seleccionado ? 'var(--terracota)' : 'var(--line-soft)'}`,

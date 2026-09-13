@@ -2,6 +2,7 @@ import React from 'react';
 import { ContactPanel, ComprobanteTokenAdminPanel, PreinscripcionAdminPanel, ClaseAbiertaPanel } from './forms.jsx';
 import { MaterialPanel } from './material.jsx';
 import { usaAsistencia, etiquetaDestino } from './lib/proyecto.js';
+import { precioSedeSegunCantidad } from './lib/precios.js';
 import { useEventosAlumna } from './hooks/useEventosAlumna.js';
 import { useComprobantesAlumna } from './hooks/useComprobantesAlumna.js';
 
@@ -83,6 +84,11 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
   // El bono silla es una regla de la FORMACIÓN. Los proyectos por sedes
   // (Seminario) traen bonoSillaCupos = 0 y no deben ver nada de silla:
   // el inicio y la lista ya lo respetaban, la ficha no.
+  // Sedes del proyecto y a cuáles va esta persona (Seminario)
+  const sedesProy = store.state.ajustes?.sedes || [];
+  const sedesInscritas = (a.encuentros_asistir || []).filter(n => sedesProy.some(s => s && s.n === n));
+  const precioSegunSedes = sedesInscritas.reduce(
+    (t, n) => t + precioSedeSegunCantidad(n, sedesInscritas.length, store.state.ajustes), 0);
   const verAsistencia = usaAsistencia(store.state.ajustes);
   const sillasMax = Number(store.state.ajustes.bonoSillaCupos ?? 6);
   const usaSilla = sillasMax > 0;
@@ -313,6 +319,104 @@ const FichaAlumna = ({ alumnaId, onClose, store, onEdit, onPagar, onIrAComproban
             ) : (
               <div style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4 }}>
                 <strong style={{ color: 'var(--rojo)' }}>Sin cupo de silla.</strong> Las 6 sillas ya están asignadas. Para dársela a esta alumna, primero renuncia una desde otra ficha.
+              </div>
+            )}
+          </div>
+        </div>
+        </>
+        )}
+
+        {/* A qué encuentros va — en proyectos por sedes (Seminario) esto es lo
+            que define su precio, así que tiene que verse desde la ficha. */}
+        {sedesProy.length > 0 && (
+        <>
+        <div className="section-title">
+          <h2>Encuentros</h2>
+          <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>
+            {sedesInscritas.length} de {sedesProy.length}
+          </span>
+        </div>
+        <div style={{ padding: '0 22px' }}>
+          <div className="card flat" style={{ padding: '4px 16px' }}>
+            {sedesProy.map((sede, i) => {
+              const va = (a.encuentros_asistir || []).includes(sede.n);
+              const precio = va
+                ? precioSedeSegunCantidad(sede.n, sedesInscritas.length, store.state.ajustes)
+                : null;
+              const reserva = Number((store.state.ajustes.reservaPorSede || {})[String(sede.n)]) || 0;
+              const cuentaReserva = (store.state.ajustes.reglaPagos?.porSede || {})[String(sede.n)]?.primerPago;
+              const reservaAlAliado = reserva > 0 && cuentaReserva && cuentaReserva !== 'sofia';
+              const pagadoAlAliado = Number(resumenPagos.porDestino[cuentaReserva] || 0);
+              return (
+                <div key={sede.n} style={{
+                  display: 'flex', gap: 12, padding: '12px 0', alignItems: 'flex-start',
+                  borderBottom: i === sedesProy.length - 1 ? 'none' : '1px solid var(--line-soft)',
+                  opacity: va ? 1 : 0.45,
+                }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
+                    background: va ? 'var(--oliva)' : 'var(--line-soft)',
+                    color: '#fff', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: 11, fontWeight: 700,
+                  }}>{va ? '✓' : sede.n}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: va ? 600 : 400, color: 'var(--ink)' }}>
+                      {sede.nombre || `Sede ${sede.n}`}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-mute)', marginTop: 1 }}>
+                      {[sede.fechas, sede.lugar].filter(Boolean).join(' · ')}
+                    </div>
+                    {va && reservaAlAliado && (
+                      <div style={{ fontSize: 10.5, marginTop: 4, color: pagadoAlAliado >= reserva ? '#4D5230' : 'var(--ink-mute)' }}>
+                        {pagadoAlAliado >= reserva
+                          ? `✓ Reserva de $${reserva} pagada a ${etiquetaDestino(store.state.ajustes, cuentaReserva)}`
+                          : `Reserva de $${reserva} · se paga directo a ${etiquetaDestino(store.state.ajustes, cuentaReserva)}`}
+                      </div>
+                    )}
+                  </div>
+                  {va && precio ? (
+                    <div className="serif" style={{ fontSize: 15, color: 'var(--ink)', flexShrink: 0 }}>${precio}</div>
+                  ) : null}
+                </div>
+              );
+            })}
+            {sedesInscritas.length > 0 && (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                padding: '10px 0', borderTop: '1px solid var(--line)',
+              }}>
+                <span style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontWeight: 600 }}>
+                  Precio por {sedesInscritas.length} {sedesInscritas.length === 1 ? 'encuentro' : 'encuentros'}
+                </span>
+                <span className="serif" style={{ fontSize: 18, color: 'var(--ink)' }}>${precioSegunSedes}</span>
+              </div>
+            )}
+            {sedesInscritas.length > 0 && Number(a.total) !== precioSegunSedes && (
+              <div style={{ padding: '8px 0 12px' }}>
+                <div style={{ fontSize: 10.5, lineHeight: 1.45, color: 'var(--rojo)' }}>
+                  Su ficha dice <strong>${a.total}</strong>, pero por esos encuentros
+                  corresponden <strong>${precioSegunSedes}</strong>. Si acordaste otro
+                  precio está bien; si no, ajústalo aquí.
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!confirm(`¿Poner el precio de ${a.nombre} en $${precioSegunSedes}?\n\nEs lo que corresponde por los encuentros que tomó. Su total pasa de $${a.total} a $${precioSegunSedes}.`)) return;
+                    const r = await store.ajustarPrecioAlumna(
+                      a.id, precioSegunSedes,
+                      `Ajuste a tarifa por ${sedesInscritas.length} ${sedesInscritas.length === 1 ? 'encuentro' : 'encuentros'}`,
+                      a.total,
+                    );
+                    if (r && r.error) alert(r.error);
+                  }}
+                  style={{
+                    marginTop: 8, padding: '7px 14px', borderRadius: 999,
+                    background: 'var(--terracota)', color: '#fff', border: 'none',
+                    fontFamily: 'inherit', fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Ajustar a ${precioSegunSedes}
+                </button>
               </div>
             )}
           </div>
