@@ -1,6 +1,6 @@
 import React from 'react';
 import { supabase } from './lib/supabase.js';
-import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS, esTaller, encuentrosDeAjustes, precioTaller, tienePreciosPorEncuentro, precioPorEncuentros, precioSedeSegunCantidad } from './lib/precios.js';
+import { calcularTotal, TIPOS_INSCRIPCION, ENCUENTROS, esTaller, esViaje, tarifasViaje, tarifaPorTotal, encuentrosDeAjustes, precioTaller, tienePreciosPorEncuentro, precioPorEncuentros, precioSedeSegunCantidad } from './lib/precios.js';
 import { destinatariosAviso, mensajeTraspasoLead, abrirAvisoWhatsApp, etiquetasInteres } from './lib/avisos.js';
 import { registrarActividad, actorActividad } from './lib/actividad.js';
 import { ContactPanel, PreinscripcionAdminPanel, ComprobanteTokenAdminPanel, InstaInput, TelInput, ClaseAbiertaPanel } from './forms.jsx';
@@ -27,9 +27,20 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   const editing = alumnaId && store.state.alumnas.find(a => a.id === alumnaId);
   // Modo taller drop-in: precio por nº de encuentros (tiers), sin completa/2/1 ni silla.
   const taller = esTaller(store.state.ajustes);
+  // Modo viaje: una tarifa (regular / pronto pago / feria) y nada de encuentros ni silla.
+  const viaje = esViaje(store.state.ajustes);
+  const tarifas = tarifasViaje(store.state.ajustes) || [];
   const encuentrosProy = encuentrosDeAjustes(store.state.ajustes);
   const totalEncuentros = encuentrosProy.length;
-  const defaultForm = () => taller ? ({
+  const defaultForm = () => viaje ? ({
+    nombre: '', tel: '', instagram: '', notas: '', bonoSilla: false, pago: 'pendiente',
+    pagado: 0,
+    tipo_inscripcion: 'completa',
+    encuentros_asistir: [1, 2, 3],
+    total: Number(tarifas[0].precio),
+    tarifa: tarifas[0].key,
+    totalManual: false,
+  }) : taller ? ({
     nombre: '', tel: '', instagram: '', notas: '', bonoSilla: false, pago: 'pendiente',
     pagado: 0,
     tipo_inscripcion: 'taller',
@@ -57,6 +68,7 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   };
   const esTarifaNormal = (total, encuentros, tipo, bonoSilla) => {
     const t = Number(total);
+    if (viaje) return !!tarifaPorTotal(store.state.ajustes, t);
     if (!taller) return t === Number(tarifaDe(encuentros, tipo, bonoSilla));
     const regular = Number(precioPorEncuentros(encuentros || [], store.state.ajustes, { prontoPago: false }));
     const pp = Number(precioPorEncuentros(encuentros || [], store.state.ajustes, { prontoPago: true }));
@@ -73,6 +85,7 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
       // Ahora el total es "manual" sólo si de verdad se apartó de la tarifa.
       setForm({
         ...editing,
+        tarifa: viaje ? (tarifaPorTotal(store.state.ajustes, editing.total)?.key || null) : undefined,
         totalManual: !esTarifaNormal(editing.total, editing.encuentros_asistir, editing.tipo_inscripcion, editing.bonoSilla),
       });
     }
@@ -125,7 +138,10 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
   // manualmente Y difiere del calculado automáticamente.
   const [precioMotivo, setPrecioMotivo] = React.useState('');
   React.useEffect(() => { setPrecioMotivo(''); }, [alumnaId, open]);
-  const totalCalculado = taller
+  const tarifaSel = viaje ? (tarifas.find(t => t.key === form.tarifa) || null) : null;
+  const totalCalculado = viaje
+    ? (tarifaSel ? Number(tarifaSel.precio) : Number(form.total))
+    : taller
     ? (tienePreciosPorEncuentro(store.state.ajustes)
         ? precioPorEncuentros(form.encuentros_asistir || [], store.state.ajustes, { prontoPago: !!form.prontoPago })
         : precioTaller((form.encuentros_asistir || []).length, store.state.ajustes))
@@ -190,7 +206,31 @@ const AlumnaForm = ({ open, onClose, store, alumnaId }) => {
       <Field label="Instagram (opcional)">
         <InstaInput value={form.instagram} onChange={v => set('instagram', v)} />
       </Field>
-      {taller ? (
+      {viaje ? (
+        <Field label="Tarifa" hint="El total se ajusta solo. Si acordaron otro monto, edítalo abajo (pide motivo).">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {tarifas.map(t => {
+              const sel = form.tarifa === t.key;
+              return (
+                <button key={t.key} type="button"
+                  onClick={() => setForm(f => ({ ...f, tarifa: t.key, total: Number(t.precio), totalManual: false }))}
+                  style={{
+                    padding: '10px 14px', borderRadius: 12, textAlign: 'left', cursor: 'pointer',
+                    background: sel ? 'var(--ink)' : 'var(--surface)',
+                    color: sel ? 'var(--bg)' : 'var(--ink-soft)',
+                    border: '1px solid ' + (sel ? 'transparent' : 'var(--line-soft)'),
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
+                  }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span>{t.label}</span><span>${Number(t.precio).toLocaleString('en-US')}</span>
+                  </div>
+                  {t.sub && <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 400, marginTop: 2 }}>{t.sub}</div>}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+      ) : taller ? (
         <>
         {tienePreciosPorEncuentro(store.state.ajustes) && (
           <SwitchToggle
@@ -752,6 +792,11 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   // Proyecto tipo taller/seminario: se eligen encuentros/sedes y el precio sale
   // de la matriz del proyecto. No hay "pronto pago único" ni bono silla.
   const esTallerProy = esTaller(store.state.ajustes);
+  // Viaje (India): un producto con varias tarifas; sin encuentros, silla ni reserva fija.
+  const viajeProy = esViaje(store.state.ajustes);
+  const tarifasPago = tarifasViaje(store.state.ajustes) || [];
+  const [tarifaKey, setTarifaKey] = React.useState(tarifasPago[0]?.key || null);
+  const tarifaPago = tarifasPago.find(t => t.key === tarifaKey) || tarifasPago[0] || null;
   const encuentrosProyPago = encuentrosDeAjustes(store.state.ajustes);
   const sedesPago = store.state.ajustes?.sedes || [];
   const [convirtiendo, setConvirtiendo] = React.useState(false);
@@ -784,6 +829,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
       setDestino('sofia');
       setDestinoTocado(false);
       setSedeNPago(null);
+      setTarifaKey(tarifasPago[0]?.key || null);
       setConvirtiendo(false);
       setArchivo(null);
       setErrorArchivo('');
@@ -841,7 +887,9 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
   // Taller/Seminario: suma de los encuentros elegidos según la matriz del
   // proyecto (el precio por sede cambia según cuántas tome) + etapa del precio.
   // Formación: depende de tipo + silla; pronto pago es fijo.
-  const productoTotalBase = esTallerProy
+  const productoTotalBase = viajeProy
+    ? Number(tarifaPago?.precio || 0)
+    : esTallerProy
     ? precioPorEncuentros(prodEncuentros, store.state.ajustes, { prontoPago: esProntoPago })
     : (esProntoPago
         ? precioProntoPago
@@ -997,7 +1045,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
           // El bono silla es de la formación. En proyectos por sedes NUNCA se
           // asigna: como allí 'pronto pago' es sólo una etapa de precio, la
           // regla vieja marcaba con silla a TODO inscrito del Seminario.
-          bonoSilla: esTallerProy ? false : (esProntoPago ? true : prodSilla),
+          bonoSilla: (esTallerProy || viajeProy) ? false : (esProntoPago ? true : prodSilla),
         };
         if (sinPago) {
           // Convertir sin pago: crea alumna con el producto definido, pagado=0
@@ -1080,7 +1128,22 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
     })
     .filter(Boolean);
 
-  const quickButtons = alumna ? [
+  const quickButtons = viajeProy ? (alumna ? [
+    {
+      label: alumna.pagado > 0 && alumna.pagado < alumna.total
+        ? `Pago completo (saldo $${alumna.total - alumna.pagado})`
+        : `Pago completo $${alumna.total}`,
+      v: Math.max(0, (alumna.total || 0) - (alumna.pagado || 0)),
+      t: 'completo',
+    },
+    { label: 'Cuota / otro monto', v: 0, t: 'parcial' },
+    { label: 'Sin costo · $0 (beca / canje)', v: 0, t: 'cortesia' },
+  ] : esLead ? [
+    { label: `Pago completo $${productoTotal}`, v: productoTotal, t: 'completo' },
+    { label: 'Primera cuota / otro monto', v: 0, t: 'parcial' },
+    { label: 'Sin costo · $0 (beca / canje)', v: 0, t: 'cortesia' },
+    { label: 'Inscribir sin pago aún', v: 0, t: 'ninguno' },
+  ] : []) : alumna ? [
     { label: `Reserva $${precioReserva}`, v: precioReserva, t: 'reserva' },
     {
       label: alumna.pagado > 0 && alumna.pagado < precioProntoPago
@@ -1212,7 +1275,27 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             </div>
           </div>
 
-          {esTallerProy ? (
+          {viajeProy ? (
+            <Field label="① Tarifa">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {tarifasPago.map(t => {
+                  const sel = tarifaPago?.key === t.key;
+                  return (
+                    <button key={t.key} type="button" onClick={() => setTarifaKey(t.key)} style={{
+                      background: sel ? 'var(--terracota-tint)' : 'var(--surface)',
+                      border: `1px solid ${sel ? 'var(--terracota)' : 'var(--line-soft)'}`,
+                      borderRadius: 10, padding: '10px 14px', fontFamily: 'inherit',
+                      fontSize: 13, color: 'var(--ink)', cursor: 'pointer', textAlign: 'left',
+                      fontWeight: sel ? 600 : 400,
+                    }}>
+                      {t.label} · ${Number(t.precio).toLocaleString('en-US')}
+                      {t.sub && <div style={{ fontSize: 11, color: 'var(--ink-mute)', fontWeight: 400, marginTop: 2 }}>{t.sub}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          ) : esTallerProy ? (
             <>
               {/* Taller / Seminario: se eligen los encuentros (sedes) y el
                   precio sale de la matriz del proyecto. Sin silla. */}
@@ -1293,7 +1376,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
           </Field>
           )}
 
-          {!esTallerProy && !esProntoPago && (prodTipo === 'dos_encuentros' || prodTipo === 'un_encuentro') && (
+          {!esTallerProy && !viajeProy && !esProntoPago && (prodTipo === 'dos_encuentros' || prodTipo === 'un_encuentro') && (
             <Field label={prodTipo === 'dos_encuentros' ? '¿Cuáles 2 encuentros?' : '¿Cuál encuentro?'}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {ENCUENTROS.map(e => {
@@ -1315,7 +1398,7 @@ const PagoForm = ({ open, onClose, store, alumnaPreId, leadPreId, comprobantePre
             </Field>
           )}
 
-          {!esTallerProy && !esProntoPago && (
+          {!esTallerProy && !viajeProy && !esProntoPago && (
             <Field label="② Bono silla ($40)">
               <div style={{ display: 'flex', gap: 6 }}>
                 {[

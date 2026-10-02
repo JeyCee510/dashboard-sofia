@@ -101,6 +101,29 @@ function getFormationContext(dias = DIAS_FECHAS) {
   };
 }
 
+// Viaje (India Retreat): no hay días de clase, sólo inicio y fin del viaje
+// (`config.viaje = { inicio, fin, fechasTexto }`). Cuenta regresiva al inicio.
+function contextoViaje(viaje, web, studioName) {
+  const titulo = [web?.titulo, web?.titulo2].filter(Boolean).join(' ') || studioName || 'Viaje';
+  const fechas = viaje?.fechasTexto || web?.fechas || 'Fechas por confirmar';
+  const iso = (x) => { const m = String(x || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const ini = iso(viaje?.inicio), fin = iso(viaje?.fin);
+  const now = new Date();
+  const hoy = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dias = (a, b) => Math.round((b - a) / 86400000);
+  if (!ini) return { phase: 'planificando', heroEyebrow: fechas, heroTitle: titulo, heroEmphasis: 'captando interesados', showSchedule: false };
+  if (hoy < ini) {
+    const n = dias(hoy, ini);
+    return { phase: 'before', daysToStart: n, heroEyebrow: n === 1 ? 'Mañana partimos' : `Faltan ${n} días`, heroTitle: titulo, heroEmphasis: fechas, showSchedule: false };
+  }
+  if (!fin || hoy <= fin) {
+    const d = dias(ini, hoy) + 1;
+    const total = fin ? dias(ini, fin) + 1 : null;
+    return { phase: 'viajando', heroEyebrow: total ? `Día ${d} de ${total}` : `Día ${d}`, heroTitle: titulo, heroEmphasis: 'en viaje', showSchedule: false };
+  }
+  return { phase: 'after', heroEyebrow: 'Viaje completo', heroTitle: titulo, heroEmphasis: fechas, showSchedule: false };
+}
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Buenos días';
@@ -183,15 +206,10 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   // cuenta regresiva posible. Sin esto caía a las fechas de junio 2026 y el
   // inicio decía "Formación completa".
   const webProy = window.AJUSTES_PROYECTO?.web;
+  const viajeCfg = window.AJUSTES_PROYECTO?.viaje;
   const sinFechas = !(Array.isArray(window.DIAS_FORMACION) && window.DIAS_FORMACION.length);
   const ctx = (webProy?.publica && sinFechas)
-    ? {
-        phase: 'planificando',
-        heroEyebrow: webProy.fechas || 'Fechas por confirmar',
-        heroTitle: webProy.titulo || tweaks.studioName || 'Proyecto',
-        heroEmphasis: 'captando interesados',
-        showSchedule: false,
-      }
+    ? contextoViaje(viajeCfg, webProy, tweaks.studioName)
     : getFormationContext(diasProyecto);
   // Reparto por cuenta: en el Seminario parte de lo cobrado va directo a
   // los centros y no es plata de Sofía.
@@ -231,6 +249,8 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
   // Si el proyecto define sedes (Seminario Angelo), el home muestra ESAS y no
   // los precios de la formación.
   const ajustesProy = (window.AJUSTES_PROYECTO || {});
+  // Viaje con web pública: mientras no haya inscritos, el botón lleva a los leads
+  const irALeads = ctx.phase === 'planificando' || (!!webProy?.publica && totalAlumnas === 0);
   const sedesCfg = Array.isArray(ajustesProy.sedes) ? ajustesProy.sedes : [];
   const matriz = ajustesProy.matrizPrecios || null;
   const reservasCfg = ajustesProy.reservaPorSede || null;
@@ -306,6 +326,11 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
                 <div className="serif" style={{ fontSize: 26, lineHeight: 1, fontWeight: 400 }}>{ctx.daysToStart}</div>
                 <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>{ctx.daysToStart === 1 ? 'día' : 'días'}</div>
               </>
+            ) : ctx.phase === 'viajando' ? (
+              <>
+                <div className="serif" style={{ fontSize: 22, lineHeight: 1, fontWeight: 400 }}>🙏</div>
+                <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>en viaje</div>
+              </>
             ) : ctx.phase === 'planificando' ? (
               <>
                 <div className="serif" style={{ fontSize: 26, lineHeight: 1, fontWeight: 400 }}>{(leads || []).length}</div>
@@ -373,9 +398,10 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
               </div>
               <div style={{ width: 1, background: 'rgba(251,247,240,0.14)' }} />
               <div style={{ flex: 1 }}>
-                <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>50 h</div>
+                {/* Duración del programa: config.duracion (viaje: 15 días); 50 h es la formación */}
+                <div className="serif" style={{ fontSize: 24, lineHeight: 1, fontWeight: 400 }}>{ajustesProy.duracion?.valor || '50 h'}</div>
                 <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.6, marginTop: 4 }}>
-                  programa
+                  {ajustesProy.duracion?.label || 'programa'}
                 </div>
               </div>
             </>
@@ -458,7 +484,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         </div>
 
         <button
-          onClick={() => onNavigate(tomarAsistencia ? 'asistencia' : ctx.phase === 'planificando' ? 'marketing' : 'reservas')}
+          onClick={() => onNavigate(tomarAsistencia ? 'asistencia' : irALeads ? 'marketing' : 'reservas')}
           style={{
             marginTop: 18, width: '100%',
             background: 'var(--terracota)', color: '#FBF7F0',
@@ -470,7 +496,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
           <Icon name={tomarAsistencia ? 'check' : 'users'} size={16} />
           {tomarAsistencia ? 'Tomar asistencia de hoy'
             : ctx.phase === 'after' ? 'Ver resumen'
-            : ctx.phase === 'planificando' ? 'Ver interesados'
+            : irALeads ? 'Ver interesados'
             : 'Ver inscritos'}
         </button>
       </div>

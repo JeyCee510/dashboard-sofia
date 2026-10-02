@@ -1,5 +1,5 @@
 import React from 'react';
-import { estadoPago, esProntoPagoProducto } from './lib/precios.js';
+import { estadoPago, esProntoPagoProducto, esViaje, tarifaPorTotal } from './lib/precios.js';
 const { useState, useEffect, useMemo, useRef, useCallback, useReducer } = React;
 
 // ──────────────────────────────────────────
@@ -187,8 +187,11 @@ const ReservasScreen = ({ tweaks, onNavigate, onOpenAlumna }) => {
             // En proyectos por sedes (Seminario) el paquete son los encuentros
             // que tomó: se nombran por sede en vez de "completo / 2 / 1".
             const sedesProy = (window.AJUSTES_PROYECTO && window.AJUSTES_PROYECTO.sedes) || [];
-            const paqueteLabel =
-              a.tipo_inscripcion === 'taller'
+            // Viaje: la tarifa (regular / pronto pago / feria) según el total
+            const ajP = window.AJUSTES_PROYECTO || {};
+            const paqueteLabel = esViaje(ajP)
+              ? (tarifaPorTotal(ajP, a.total)?.label || 'Precio especial')
+              : a.tipo_inscripcion === 'taller'
                 ? (a.encuentros_asistir || [])
                     .map(n => {
                       const s = sedesProy.find(x => x && x.n === n);

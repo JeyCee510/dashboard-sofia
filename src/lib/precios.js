@@ -35,6 +35,27 @@ export function esTaller(ajustes) {
   return ajustes?.tipo === 'taller' && Array.isArray(ajustes?.diasFormacion);
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Modo VIAJE (India Retreat): un solo producto, sin encuentros ni silla, con
+// varias tarifas posibles (regular, pronto pago, precio feria…). Vienen de
+// `config.tarifas = [{ key, label, precio, sub? }]`. Sin esto los
+// formularios caían a los productos de la formación ($640 / $484 / silla).
+// ─────────────────────────────────────────────────────────────────────
+export function tarifasViaje(ajustes) {
+  const t = ajustes && ajustes.tarifas;
+  return Array.isArray(t) && t.length ? t : null;
+}
+
+export function esViaje(ajustes) {
+  return ajustes?.tipo === 'viaje' && !!tarifasViaje(ajustes);
+}
+
+// Tarifa que corresponde a un total (null si es un precio especial)
+export function tarifaPorTotal(ajustes, total) {
+  const t = tarifasViaje(ajustes) || [];
+  return t.find(x => Number(x.precio) === Number(total)) || null;
+}
+
 // Encuentros del proyecto. Formación → ENCUENTROS fijo (3, pares de días).
 // Taller → uno por cada día de ajustes.diasFormacion.
 export function encuentrosDeAjustes(ajustes) {

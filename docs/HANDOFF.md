@@ -419,3 +419,23 @@ funnel de leads es lo central). Migración `044`.
   completo hasta lun 11 ene 2027 · no reembolsable · cuotas, transferencia o
   tarjeta. Se quitó el abono del 50%.
 - Pendiente de Sofía: fecha límite del pronto pago y vigencia del precio feria.
+
+### India en el dashboard + vista previa propia (2 oct 2026, v1.8.0)
+- **Modo viaje** (`lib/precios.js`: `esViaje`, `tarifasViaje`, `tarifaPorTotal`):
+  `config.tipo='viaje'` + `config.tarifas=[{key,label,precio,sub}]`.
+  AlumnaForm y PagoForm muestran las tarifas (regular 3.600 · pronto pago
+  3.300 · feria 3.150) en vez de completa/2/1 encuentros + silla; atajos de
+  pago sin "Reserva $200". Inscritos muestra la tarifa según el total.
+  `config.precios` también apunta a 3.600 por si algo usa `calcularTotal`.
+- **Inicio**: `config.viaje={inicio,fin,fechasTexto}` → cuenta regresiva al
+  2 mar 2027 (`contextoViaje` en home.jsx); `config.duracion` reemplaza el
+  "50 h programa" fijo.
+- **Formulario de inscripción propio** (`config.formulario`, 13 preguntas:
+  pasaporte, nacionalidad, compañer@ de habitación, salud, alimentación…).
+  Antes el link abría el cuestionario de la formación de 50h.
+- **Plantillas WA** reescritas (8), con precios y condiciones. Se quitó
+  `[DATOS_PAGO]`, que la app no reemplaza.
+- **Vista previa al compartir**: plugin `paginasOpenGraph` en vite.config.js
+  genera `dist/og/viaje-india.html` con sus propias meta OG, y vercel.json
+  lo sirve sólo en `/viaje/viaje-india`. Imagen: `public/viaje-india/og.jpg`.
+  Para otra página pública: entrada en `PAGINAS_OG` + rewrite.
