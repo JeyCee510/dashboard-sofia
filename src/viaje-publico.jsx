@@ -95,6 +95,7 @@ const CSS = `
 .vj-precio { background: var(--o); color: #F4EFE3; border-radius: 22px; padding: 28px 22px; text-align: center; }
 .vj-precio-m { font-size: clamp(44px, 12vw, 64px); font-weight: 700; line-height: 1; margin: 6px 0 4px; }
 .vj-precio-pp { display: inline-block; margin: 14px 0 6px; padding: 10px 16px; border-radius: 14px; background: rgba(230,201,135,.16); border: 1px solid rgba(230,201,135,.5); color: #F1DDAE; font-size: 15px; }
+.vj-precio-feria { margin: 8px auto 0; max-width: 420px; font-size: 14.5px; line-height: 1.5; color: #F7F3EA; }
 .vj-precio ul { list-style: none; padding: 0; margin: 16px auto 0; max-width: 440px; text-align: left; display: grid; gap: 8px; }
 .vj-precio li { font-size: 14.5px; line-height: 1.5; color: #E7E1D0; display: flex; gap: 10px; }
 .vj-precio li::before { content: '·'; color: #E6C987; font-weight: 700; }
@@ -372,6 +373,7 @@ const ViajePublico = ({ slug }) => {
               <div className="vj-kicker" style={{ color: '#E6C987', marginBottom: 0 }}>{w.inversion.titulo || 'Inversión por persona'}</div>
               <div className="vj-precio-m">{w.inversion.monto}</div>
               {w.inversion.prontoPago && <div className="vj-precio-pp">{w.inversion.prontoPago}</div>}
+              {w.inversion.feria && <div className="vj-precio-feria">{w.inversion.feria}</div>}
               {lista(w.inversion.condiciones).length > 0 && <ul>{lista(w.inversion.condiciones).map((x, i) => <li key={i}>{x}</li>)}</ul>}
             </div>
             {w.nota && <p className="vj-nota">{w.nota}</p>}

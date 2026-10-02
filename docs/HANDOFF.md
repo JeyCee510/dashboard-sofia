@@ -407,3 +407,15 @@ funnel de leads es lo central). Migración `044`.
 - Descarga **detrás del formulario**: el botón aparece en la pantalla de
   gracias (`config.web.descarga`). También quedó en `config.material` para
   mandarlo desde la ficha del lead.
+
+### India Retreat — erratas y precios nuevos (2 oct 2026, v1.7.4)
+- PDF corregido sobre el original de Canva con PyMuPDF (redacción sólo de
+  texto + reinserción con IBM Plex Serif, respetando tracking y justificado):
+  erratas págs 2/4/5/9/10/13/14/15/18, bio de Angelo completa, sin Udaipur,
+  sin el logo roto "OCT 2026" (pág 13), Sofía 14 años, y pág 17 rehecha.
+  Original corregido (pesado) en `../India Retreat 2027 - originales/`.
+- Precios (fuente: Sofía, 2 oct): 3.600 USD · pronto pago 3.300 · precio
+  feria 3.150 + 30% en un encuentro del Yoga Seminar Series 2026 · pago
+  completo hasta lun 11 ene 2027 · no reembolsable · cuotas, transferencia o
+  tarjeta. Se quitó el abono del 50%.
+- Pendiente de Sofía: fecha límite del pronto pago y vigencia del precio feria.

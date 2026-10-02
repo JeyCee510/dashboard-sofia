@@ -1,7 +1,7 @@
 {
   "name": "dashboard-sofia-lira",
   "private": true,
-  "version": "1.7.3",
+  "version": "1.7.4",
   "type": "module",
   "description": "Dashboard del Arte de Enseñar Yoga · Sofía Lira",
   "scripts": {
