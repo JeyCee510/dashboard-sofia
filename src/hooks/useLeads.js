@@ -11,6 +11,7 @@ function fromDb(row) {
     nombre: row.nombre,
     tel: row.tel || '',
     instagram: row.instagram || '',
+    email: row.email || '',
     fuente: row.fuente || 'otro',
     estado: row.estado || 'nuevo',
     mensaje: row.mensaje || '',
@@ -34,6 +35,7 @@ function toDb(patch) {
   if ('nombre' in patch) out.nombre = patch.nombre;
   if ('tel' in patch) out.tel = patch.tel;
   if ('instagram' in patch) out.instagram = patch.instagram;
+  if ('email' in patch) out.email = (patch.email || '').trim() || null;
   if ('fuente' in patch) out.fuente = patch.fuente;
   if ('estado' in patch) out.estado = patch.estado;
   if ('mensaje' in patch) out.mensaje = patch.mensaje;

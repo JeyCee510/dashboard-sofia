@@ -46,6 +46,8 @@ const App = () => {
   // Proyecto que corre el motor de la formación: 2 = formación junio (default),
   // 1 = taller Refinar. El store filtra todo por este id (no-op para la formación).
   const [formacionProyectoId, setFormacionProyectoId] = useState(2);
+  // Slug del proyecto con web pública (para armar [LINK_WEB] en las plantillas)
+  const [formacionSlug, setFormacionSlug] = useState(null);
   const store = useStore(formacionProyectoId);
   const [tab, setTab] = useState('home');
   const [overlay, setOverlay] = useState(null);
@@ -81,6 +83,9 @@ const App = () => {
     // Seminario Angelo (3 sedes, nov–dic 2026): mismo motor de la formación,
     // con sus datos (proyecto_id=4) y su config. Lo gestionan Sofía y Micaela.
     else if (p.slug === 'seminario-angelo') { setFormacionProyectoId(4); setModuloActivo('formacion'); }
+    // Viaje a la India: mismo motor (el funnel de leads es lo central). Los
+    // leads llegan solos desde la web pública /viaje/<slug> (QR).
+    else if (p.slug === 'viaje-india' && p.id) { setFormacionProyectoId(p.id); setFormacionSlug(p.slug); setModuloActivo('formacion'); }
     // Proyectos nuevos del wizard → shell convergido (personas/participaciones)
     else { setProyectoActivo(p); setModuloActivo('proyecto'); }
   };
@@ -136,6 +141,7 @@ const App = () => {
   window.AJUSTES_PROYECTO = store.state.ajustes;
   window.PROYECTO_ID = formacionProyectoId;
   window.PROYECTO_NOMBRE = store.state.ajustes.studioName || '';
+  window.PROYECTO_SLUG = store.state.ajustes.web?.publica ? formacionSlug : null;
 
   const screenTweaks = {
     capacidad: store.state.ajustes.capacidad,

@@ -339,3 +339,29 @@ permisos del mount: verificar copiando el proyecto a `/tmp` y corriendo
 `041` `comprobantes_pago.proyecto_id` + trigger que lo deriva ·
 `042` `crear_preinscripcion_alumna` (formulario para quien ya está inscrito) ·
 `043` `pagos.verificado_at/por/notas` (revisión contra la cuenta)
+
+## Viaje a la India (2 oct 2026) · v1.7.0
+
+Proyecto **id 5, slug `viaje-india`**, corre el motor de la formación (el
+funnel de leads es lo central). Migración `044`.
+
+- **Web pública** `/viaje/<slug>` (`src/viaje-publico.jsx`). Todo el contenido
+  sale de `proyectos.config.web` (titulo, subtitulo, fechas, duracion, precio,
+  cupos, intro, `destinos[{dias,nombre,texto}]`, `incluye[]`,
+  `preguntas[{p,r}]`, `imagen`, `whatsapp`, ctaTexto, graciasTexto,
+  `publica`). Se edita sin tocar código. `publica=false` la apaga.
+- **QR**: `public/qr-viaje-india.png|svg` → `…/viaje/viaje-india?src=qr`.
+  El parámetro `src=qr` deja el lead con fuente `qr` (sin él: `web`).
+- RPCs anon: `viaje_obtener_publico(slug)` (sólo `config.web`, nunca cuentas) y
+  `viaje_registrar_interes(...)`: crea el lead (estado `nuevo`,
+  `creado_por_nombre='Web del viaje'`), deja bitácora y **no duplica**: si el
+  teléfono (últimos 9 dígitos) o el email ya existe en el proyecto, agrega la
+  nota y registra `web_interes`. Freno anti-spam: 40 registros / 10 min.
+- Push al equipo al llegar un lead nuevo desde la web.
+- `leads.email` (nuevo): editable en la ficha, botón mailto en ContactPanel.
+- Plantillas WA con `[LINK_WEB]` (se reemplaza por la URL pública).
+- Home: sin `diasFormacion` y con web pública → fase `planificando`
+  ("Fechas por confirmar", contador de leads) en vez de caer a junio 2026.
+- Pestaña Leads: tarjeta "Web pública" (abrir, copiar link, descargar QR).
+- Pendiente: contenido real del viaje (fechas, itinerario, precio, incluye,
+  FAQ, foto) y decidir si Micaela accede (`usuarios_proyectos`).

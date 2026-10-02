@@ -21,6 +21,7 @@ if ('serviceWorker' in navigator) {
 //   /taller/<slug>                     taller: inscribirse (público)
 //   /taller/<slug>/i/<token>           taller: inscribirse (link personalizado)
 //   /taller-comprobante/<token>        taller: subir comprobante
+//   /viaje/<slug>                      viaje: web informativa + registro de interés (QR)
 const path = window.location.pathname;
 const preinscripcionMatch = path.match(/^\/preinscripcion\/([\w-]+)\/?$/);
 const comprobanteTokenMatch = path.match(/^\/comprobante\/([\w-]+)\/?$/);
@@ -29,8 +30,18 @@ const claseMatch = path.match(/^\/clase\/([\w-]+)\/?$/);
 const tallerPersonalizadoMatch = path.match(/^\/taller\/([\w-]+)\/i\/([\w-]+)\/?$/);
 const tallerPublicoMatch = path.match(/^\/taller\/([\w-]+)\/?$/);
 const tallerComprobanteMatch = path.match(/^\/taller-comprobante\/([\w-]+)\/?$/);
+const viajeMatch = path.match(/^\/viaje\/([\w-]+)\/?$/);
 
-if (tallerComprobanteMatch) {
+if (viajeMatch) {
+  const vslug = viajeMatch[1];
+  document.body.classList.add('public-route');
+  document.documentElement.classList.add('public-route');
+  import('./viaje-publico.jsx').then(({ ViajePublico }) => {
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <ViajePublico slug={vslug} />
+    );
+  });
+} else if (tallerComprobanteMatch) {
   const t = tallerComprobanteMatch[1];
   document.body.classList.add('public-route');
   document.documentElement.classList.add('public-route');

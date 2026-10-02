@@ -179,7 +179,20 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
     () => diasDeAjustes(window.DIAS_FORMACION),
     [window.DIAS_FORMACION]
   );
-  const ctx = getFormationContext(diasProyecto);
+  // Proyecto con web pública (Viaje a la India) y sin fechas cargadas: no hay
+  // cuenta regresiva posible. Sin esto caía a las fechas de junio 2026 y el
+  // inicio decía "Formación completa".
+  const webProy = window.AJUSTES_PROYECTO?.web;
+  const sinFechas = !(Array.isArray(window.DIAS_FORMACION) && window.DIAS_FORMACION.length);
+  const ctx = (webProy?.publica && sinFechas)
+    ? {
+        phase: 'planificando',
+        heroEyebrow: webProy.fechas || 'Fechas por confirmar',
+        heroTitle: webProy.titulo || tweaks.studioName || 'Proyecto',
+        heroEmphasis: 'captando interesados',
+        showSchedule: false,
+      }
+    : getFormationContext(diasProyecto);
   // Reparto por cuenta: en el Seminario parte de lo cobrado va directo a
   // los centros y no es plata de Sofía.
   const { desglose } = useDesglosePagos();
@@ -292,6 +305,11 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
               <>
                 <div className="serif" style={{ fontSize: 26, lineHeight: 1, fontWeight: 400 }}>{ctx.daysToStart}</div>
                 <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>{ctx.daysToStart === 1 ? 'día' : 'días'}</div>
+              </>
+            ) : ctx.phase === 'planificando' ? (
+              <>
+                <div className="serif" style={{ fontSize: 26, lineHeight: 1, fontWeight: 400 }}>{(leads || []).length}</div>
+                <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, marginTop: 2 }}>leads</div>
               </>
             ) : ctx.phase === 'during' && ctx.nextDia ? (
               <>
@@ -440,7 +458,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
         </div>
 
         <button
-          onClick={() => onNavigate(tomarAsistencia ? 'asistencia' : 'reservas')}
+          onClick={() => onNavigate(tomarAsistencia ? 'asistencia' : ctx.phase === 'planificando' ? 'marketing' : 'reservas')}
           style={{
             marginTop: 18, width: '100%',
             background: 'var(--terracota)', color: '#FBF7F0',
@@ -452,6 +470,7 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
           <Icon name={tomarAsistencia ? 'check' : 'users'} size={16} />
           {tomarAsistencia ? 'Tomar asistencia de hoy'
             : ctx.phase === 'after' ? 'Ver resumen'
+            : ctx.phase === 'planificando' ? 'Ver interesados'
             : 'Ver inscritos'}
         </button>
       </div>

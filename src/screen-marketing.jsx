@@ -95,17 +95,51 @@ const fuenteIcon = {
   instagram: 'instagram',
   whatsapp: 'whatsapp',
   referido: 'users',
+  qr: 'sparkle',
+  web: 'sparkle',
 };
 const fuenteLabel = {
   instagram: 'Instagram',
   whatsapp: 'WhatsApp',
   referido: 'Referido',
+  qr: 'QR',
+  web: 'Web',
 };
 const estadoColor = {
   nuevo: { bg: 'var(--terracota-tint)', fg: '#8A3D26', label: 'Nuevo' },
   interesado: { bg: '#F2E2C2', fg: 'var(--gold)', label: 'Interesado' },
   reservado: { bg: '#DDE0CC', fg: '#4D5230', label: 'Reservó' },
   'frío': { bg: 'var(--bg-warm)', fg: 'var(--ink-mute)', label: 'Frío' },
+};
+
+const WebPublicaCard = ({ slug }) => {
+  const [copiado, setCopiado] = useState(false);
+  const url = `${window.location.origin}/viaje/${slug}`;
+  const copiar = async () => {
+    try { await navigator.clipboard.writeText(url); } catch (_) {}
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  };
+  const btn = {
+    flex: 1, padding: '9px 8px', borderRadius: 10, border: '1px solid var(--line-soft)',
+    background: 'var(--surface)', color: 'var(--ink)', fontFamily: 'inherit', fontSize: 12,
+    textAlign: 'center', textDecoration: 'none', cursor: 'pointer',
+  };
+  return (
+    <div style={{ padding: '0 22px 12px' }}>
+      <div className="card flat" style={{ padding: '14px 16px' }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 4 }}>
+          Web pública · los registros llegan aquí
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--ink-soft)', wordBreak: 'break-all', marginBottom: 10 }}>{url.replace(/^https?:\/\//, '')}</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <a href={url} target="_blank" rel="noopener noreferrer" style={btn}>Abrir web</a>
+          <button type="button" onClick={copiar} style={btn}>{copiado ? 'Copiado ✓' : 'Copiar link'}</button>
+          <a href={`/qr-${slug}.png`} download={`QR ${slug}.png`} style={btn}>Descargar QR</a>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // Tiempo relativo en español: "hace 5 min", "ayer", "hace 3 días", "12 abr".
@@ -256,6 +290,10 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
         </div>
       </div>
 
+      {/* Web pública del proyecto (Viaje a la India): los leads del QR entran
+          solos a esta lista. Link + QR a mano para compartir. */}
+      {window.PROYECTO_SLUG && <WebPublicaCard slug={window.PROYECTO_SLUG} />}
+
       {/* Embudo visual */}
       <div style={{ padding: '0 22px', display: 'flex', gap: 8, marginTop: 6 }}>
         <FunnelStep n={counts.nuevo} label="Nuevos" tint="terracota" />
@@ -268,7 +306,10 @@ const MarketingScreen = ({ onOpenLead, onNavigate }) => {
       </div>
       <div style={{ padding: '0 22px' }}>
         <div className="card flat" style={{ padding: '14px 16px', display: 'flex', gap: 16 }}>
-          {['instagram', 'whatsapp', 'referido'].map(f => {
+          {['instagram', 'whatsapp', 'referido', 'qr', 'web']
+            // QR / Web sólo aparecen en proyectos con web pública (Viaje a la India)
+            .filter(f => ['instagram', 'whatsapp', 'referido'].includes(f) || MOCK_LEADS.some(l => l.fuente === f))
+            .map(f => {
             const n = MOCK_LEADS.filter(l => l.fuente === f).length;
             return (
               <div key={f} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -86,4 +86,5 @@ export const ETIQUETA_ACCION = {
   envio_wa: 'le escribió a',
   verifico: 'verificó en la cuenta',
   elimino: 'eliminó',
+  web_interes: 'volvió a dejar sus datos en la web:',
 };

@@ -25,6 +25,7 @@ const COLOR_ACCION = {
   link_pago: 'var(--gold)',
   envio_wa: 'var(--whatsapp)',
   verifico: 'var(--oliva)',
+  web_interes: 'var(--terracota)',
 };
 
 const fechaCorta = (iso) => {

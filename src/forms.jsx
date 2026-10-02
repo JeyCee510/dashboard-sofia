@@ -356,7 +356,7 @@ async function copyAndOpenIg(handle, mensaje) {
 //  · inscripcion → panel "Inscripción" de la ficha (genera el link único)
 const PLANTILLAS_ESPECIALES = new Set(['followup_clase', 'recordatorio_clase', 'inscripcion']);
 
-const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago, leadId, alumnaId }) => {
+const ContactPanel = ({ tel, instagram, email, plantillas, nombre, fechaProntoPago, leadId, alumnaId }) => {
   const [showPlantillas, setShowPlantillas] = React.useState(false);
   const [igCopiado, setIgCopiado] = React.useState(false);
   const waUrl = buildWaUrl(tel);
@@ -401,6 +401,10 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago, lea
     }
     if (fechaProntoPago) {
       texto = texto.replace(/\[fechaProntoPago\]/gi, fechaProntoPago);
+    }
+    // Web pública del proyecto (Viaje a la India: /viaje/<slug>)
+    if (window.PROYECTO_SLUG) {
+      texto = texto.replace(/\[LINK_WEB\]/gi, `${window.location.origin}/viaje/${window.PROYECTO_SLUG}`);
     }
     if (imagenUrl) texto = `${texto}\n\n${imagenUrl}`;
     return texto;
@@ -460,6 +464,25 @@ const ContactPanel = ({ tel, instagram, plantillas, nombre, fechaProntoPago, lea
           </a>
         )}
       </div>
+      {email && (
+        <a
+          href={`mailto:${email}`}
+          onClick={() => registrarMovimiento({
+            leadId, alumnaId, accion: 'envio_wa',
+            titulo: `Le escribió por email a ${nombre || 'la persona'}`,
+            detalle: { via: 'email', plantilla: null },
+          })}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '10px 14px', borderRadius: 12,
+            background: 'var(--bg-warm)', border: '1px solid var(--line-soft)',
+            color: 'var(--ink)', fontFamily: 'inherit', fontSize: 13,
+            textDecoration: 'none', wordBreak: 'break-all',
+          }}
+        >
+          ✉ {email}
+        </a>
+      )}
       {igCopiado && (
         <div style={{
           padding: '8px 12px', borderRadius: 10, background: 'rgba(220, 39, 67, 0.1)',

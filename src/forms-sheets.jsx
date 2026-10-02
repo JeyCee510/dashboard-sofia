@@ -462,7 +462,7 @@ const ResponsablesLead = ({ form, leadId, store }) => {
 };
 
 const LEAD_VACIO = {
-  nombre: '', tel: '', instagram: '', mensaje: '', fuente: 'instagram', estado: 'nuevo',
+  nombre: '', tel: '', instagram: '', email: '', mensaje: '', fuente: 'instagram', estado: 'nuevo',
   interesSedes: [],
 };
 
@@ -550,6 +550,7 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
               <ContactPanel
                 tel={form.tel}
                 instagram={form.instagram}
+                email={form.email}
                 plantillas={store.state.ajustes.plantillasWA}
                 nombre={form.nombre}
                 fechaProntoPago={store.state.ajustes.fechaProntoPago}
@@ -658,6 +659,9 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
       <Field label="Instagram (opcional)">
         <InstaInput value={form.instagram} onChange={v => set('instagram', v)} />
       </Field>
+      <Field label="Email (opcional)">
+        <TextInput value={form.email || ''} onChange={v => set('email', v)} placeholder="nombre@correo.com" />
+      </Field>
       <Field label="¿Cómo llegó?">
         <SelectChips
           value={form.fuente}
@@ -666,6 +670,9 @@ const LeadForm = ({ open, onClose, store, leadId, onConvertir }) => {
             { value: 'instagram', label: 'Instagram' },
             { value: 'whatsapp', label: 'WhatsApp' },
             { value: 'referido', label: 'Referido/a' },
+            // Los leads que entran por la web pública traen 'qr' o 'web'
+            ...(['qr', 'web'].includes(form.fuente) || window.AJUSTES_PROYECTO?.web?.publica
+              ? [{ value: 'qr', label: 'QR' }, { value: 'web', label: 'Web' }] : []),
           ]}
         />
       </Field>
