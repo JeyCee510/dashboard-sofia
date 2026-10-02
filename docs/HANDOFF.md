@@ -393,3 +393,17 @@ funnel de leads es lo central). Migración `044`.
   Haridwar y Mathura (en el PDF, no en el arte), "Udaipur" en guías locales
   (no está en el itinerario), Jaipur "ciudad blanca" (pág 2) vs "rosa"
   (pág 11), "OCT 2026" suelto en pág 12.
+
+### India Retreat — PDF final y descarga (2 oct 2026, v1.7.3)
+- Fuente final: `India Retreat 2027 con Sofía_20261002_112617_0000.pdf`
+  (19 págs, 210 MB, NO se commitea). Cambios vs versión (3): portada 2–16,
+  página nueva de Amritsar, y el taller ya no trae fechas (12–15 quitado
+  también de la web).
+- Versión liviana: `public/viaje-india/India-Retreat-2027.pdf` (6,5 MB).
+  Páginas rasterizadas a 150 dpi JPEG q74 con PyMuPDF, conservando el link de
+  trenes (pág 8). Texto no seleccionable: aceptable para un brochure.
+  Si cambia el PDF, regenerar igual (scratchpad: rewrite_images sólo bajaba a
+  23 MB por las imágenes con transparencia).
+- Descarga **detrás del formulario**: el botón aparece en la pantalla de
+  gracias (`config.web.descarga`). También quedó en `config.material` para
+  mandarlo desde la ficha del lead.

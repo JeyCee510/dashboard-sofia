@@ -398,6 +398,13 @@ const ViajePublico = ({ slug }) => {
               <div style={{ textAlign: 'center', padding: '12px 0' }}>
                 <div className="vj-h2" style={{ marginBottom: 10 }}>¡Recibido!</div>
                 <p className="vj-p" style={{ marginBottom: 20 }}>{w.graciasTexto || 'Gracias por tu interés. Te escribiremos pronto.'}</p>
+                {/* El programa en PDF se entrega después de dejar los datos:
+                    así la descarga alimenta el funnel en vez de reemplazarlo. */}
+                {w.descarga?.url && (
+                  <a className="vj-btn vj-btn-o" href={w.descarga.url} download style={{ width: '100%', marginBottom: 10 }}>
+                    {w.descarga.titulo || 'Descargar el programa'}{w.descarga.peso ? ` · ${w.descarga.peso}` : ''}
+                  </a>
+                )}
                 {waDirecto && <a className="vj-btn vj-btn-wa" href={waDirecto} target="_blank" rel="noopener noreferrer">Escribirnos ahora por WhatsApp</a>}
               </div>
             ) : (
