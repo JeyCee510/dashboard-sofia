@@ -379,3 +379,17 @@ funnel de leads es lo central). Migración `044`.
   destinos[].img/.contain, formTitulo, formTexto, pie.
 - Arte con QR para imprimir/publicar: `public/viaje-india/arte-india-qr.jpg`
   (2160×2700, QR verificado).
+
+### India Retreat — info del PDF (2 oct 2026, v1.7.2)
+- Fuente: `India Retreat 2027 con Sofía (3).pdf` (18 págs, no se commitea: 196 MB).
+  Cargado en `config.web`: datos (15 días/14 noches), itinerario con 8 lugares
+  (tag + texto), taller 12–15 mar con bio de Angelo, guías Sofía Lira
+  (@lasofita) y Jhonatan Castro (@vamsyoga), incluye / no incluye, inversión
+  3.500 USD (pronto pago 3.250 hasta 15 dic 2026; 50% abono no reembolsable,
+  saldo hasta 31 dic 2026), nota de 2 reuniones informativas y 4 FAQ.
+- Fotos identificadas con el PDF: 18 = Sofía, 19 = Jhonatan, 28 = Angelo.
+- Inconsistencias del material pendientes de confirmar con Sofía: fechas
+  (arte 2–16 / portada PDF 2–17), Amritsar (en el arte, sin página en el PDF),
+  Haridwar y Mathura (en el PDF, no en el arte), "Udaipur" en guías locales
+  (no está en el itinerario), Jaipur "ciudad blanca" (pág 2) vs "rosa"
+  (pág 11), "OCT 2026" suelto en pág 12.

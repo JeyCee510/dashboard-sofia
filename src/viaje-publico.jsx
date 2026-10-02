@@ -75,7 +75,34 @@ const CSS = `
 .vj-foot { text-align: center; color: var(--mute); padding: 44px 0 96px; font-style: italic; font-size: 15px; }
 .vj-sticky { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to top, rgba(245,241,234,.98) 70%, rgba(245,241,234,0)); display: flex; justify-content: center; z-index: 5; transition: opacity .2s; }
 .vj-sticky .vj-btn { width: 100%; max-width: 420px; box-shadow: 0 8px 22px rgba(67,69,30,.25); }
+.vj-datos { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+.vj-dato { font-size: 13px; letter-spacing: .06em; padding: 7px 12px; border: 1px solid var(--o); border-radius: 999px; font-weight: 600; }
+.vj-bio { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: center; margin-top: 18px; }
+.vj-bio img { width: 100%; max-width: 420px; border-radius: 16px; display: block; justify-self: center; filter: grayscale(1); }
+.vj-guias { display: grid; grid-template-columns: 1fr; gap: 18px; }
+.vj-guia { background: var(--card); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+.vj-guia img { width: 100%; height: 340px; object-fit: contain; padding-top: 12px; display: block; background: #fff; filter: grayscale(1); }
+.vj-guia-b { padding: 18px 20px 22px; }
+.vj-guia-n { font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.vj-guia-h { font-size: 14px; color: var(--m); margin: 2px 0 10px; }
+.vj-incl { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.vj-incl-box { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px 20px; }
+.vj-incl-box h3 { margin: 0 0 12px; font-size: 18px; letter-spacing: .08em; text-transform: uppercase; }
+.vj-ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.vj-ul li { display: flex; gap: 10px; font-size: 15px; line-height: 1.45; color: var(--ink2); }
+.vj-ul li::before { content: '✦'; color: var(--g); flex: none; }
+.vj-ul.no li::before { content: '—'; color: var(--mute); }
+.vj-precio { background: var(--o); color: #F4EFE3; border-radius: 22px; padding: 28px 22px; text-align: center; }
+.vj-precio-m { font-size: clamp(44px, 12vw, 64px); font-weight: 700; line-height: 1; margin: 6px 0 4px; }
+.vj-precio-pp { display: inline-block; margin: 14px 0 6px; padding: 10px 16px; border-radius: 14px; background: rgba(230,201,135,.16); border: 1px solid rgba(230,201,135,.5); color: #F1DDAE; font-size: 15px; }
+.vj-precio ul { list-style: none; padding: 0; margin: 16px auto 0; max-width: 440px; text-align: left; display: grid; gap: 8px; }
+.vj-precio li { font-size: 14.5px; line-height: 1.5; color: #E7E1D0; display: flex; gap: 10px; }
+.vj-precio li::before { content: '·'; color: #E6C987; font-weight: 700; }
+.vj-nota { text-align: center; font-size: 15px; color: var(--ink2); font-style: italic; margin-top: 16px; }
 @media (min-width: 760px) {
+  .vj-bio { grid-template-columns: 1fr 1fr; }
+  .vj-guias { grid-template-columns: 1fr 1fr; }
+  .vj-incl { grid-template-columns: 1fr 1fr; }
   .vj-hero { grid-template-columns: 1.05fr 1fr; padding: 56px 0 24px; }
   .vj-dest { grid-template-columns: 1fr 1fr; }
   .vj-dcard { grid-template-columns: 140px 1fr; }
@@ -218,6 +245,7 @@ const ViajePublico = ({ slug }) => {
             {w.mes && <div className="vj-mes">{w.mes}</div>}
             {w.fechas && <div className="vj-fechas">{w.fechas}</div>}
             {w.subtitulo && <p className="vj-sub">{w.subtitulo}</p>}
+            {lista(w.datos).length > 0 && <div className="vj-datos">{lista(w.datos).map(d => <span key={d} className="vj-dato">{d}</span>)}</div>}
             <a href="#interes" className="vj-btn vj-btn-o">{cta} →</a>
           </div>
           {w.imagenHero && <img className="vj-hero-img" src={w.imagenHero} alt="" />}
@@ -242,7 +270,7 @@ const ViajePublico = ({ slug }) => {
                 <div key={i} className="vj-dcard">
                   <div className={`vj-dimg${d.contain ? ' contain' : ''}`}>{d.img && <img src={d.img} alt={d.nombre} loading="lazy" />}</div>
                   <div className="vj-dbody">
-                    <div className="vj-dn">{String(i + 1).padStart(2, '0')}</div>
+                    {d.tag && <div className="vj-dn">{d.tag}</div>}
                     <div className="vj-dt">{d.nombre}</div>
                     {d.texto && <p className="vj-dd">{d.texto}</p>}
                   </div>
@@ -260,11 +288,44 @@ const ViajePublico = ({ slug }) => {
                 <h2 className="vj-h2" style={{ color: '#F7F3EA' }}>{dest.titulo}</h2>
                 {dest.con && <div style={{ fontSize: 14, letterSpacing: '.24em', textTransform: 'uppercase', marginBottom: 2 }}>con</div>}
                 {dest.con && <div style={{ fontSize: 28, fontStyle: 'italic', fontWeight: 700, marginBottom: 16 }}>{dest.con}</div>}
+                {dest.fechas && <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '.08em', marginBottom: 14, color: '#E6C987' }}>{dest.fechas}</div>}
                 {dest.texto && <p className="vj-p">{dest.texto}</p>}
               </div>
               {lista(dest.imgs).length > 0 && (
                 <div className="vj-big-imgs">{lista(dest.imgs).slice(0, 2).map((s, i) => <img key={i} src={s} alt="" loading="lazy" />)}</div>
               )}
+            </div>
+          </section>
+        )}
+
+        {dest?.bio && (
+          <section className="vj-sec vj-wrap">
+            <div className="vj-bio">
+              <div>
+                <div className="vj-kicker">{dest.bioKicker || 'Quién guía el taller'}</div>
+                <h2 className="vj-h2">{dest.con}</h2>
+                <p className="vj-p">{dest.bio}</p>
+              </div>
+              {dest.bioImg && <img src={dest.bioImg} alt={dest.con} loading="lazy" />}
+            </div>
+          </section>
+        )}
+
+        {lista(w.guias).length > 0 && (
+          <section className="vj-sec vj-wrap">
+            <div className="vj-kicker">Acompañan todo el viaje</div>
+            <h2 className="vj-h2">Nuestros guías</h2>
+            <div className="vj-guias">
+              {lista(w.guias).map((g, i) => (
+                <div key={i} className="vj-guia">
+                  {g.img && <img src={g.img} alt={g.nombre} loading="lazy" />}
+                  <div className="vj-guia-b">
+                    <div className="vj-guia-n">{g.nombre}</div>
+                    {g.handle && <div className="vj-guia-h">{g.handle}</div>}
+                    {g.texto && <p className="vj-p" style={{ fontSize: 15.5 }}>{g.texto}</p>}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         )}
@@ -281,6 +342,39 @@ const ViajePublico = ({ slug }) => {
             <h2 className="vj-h2">{aloj.titulo}</h2>
             {aloj.texto && <p className="vj-p">{aloj.texto}</p>}
             {lista(aloj.imgs).length > 0 && <div className="vj-aloj">{lista(aloj.imgs).map((s, i) => <img key={i} src={s} alt="" loading="lazy" />)}</div>}
+          </section>
+        )}
+
+        {(lista(w.incluye).length > 0 || lista(w.noIncluye).length > 0) && (
+          <section className="vj-sec vj-wrap">
+            <div className="vj-kicker">Detalles del viaje</div>
+            <h2 className="vj-h2">Qué incluye</h2>
+            <div className="vj-incl">
+              {lista(w.incluye).length > 0 && (
+                <div className="vj-incl-box">
+                  <h3>Incluye</h3>
+                  <ul className="vj-ul">{lista(w.incluye).map((x, i) => <li key={i}>{x}</li>)}</ul>
+                </div>
+              )}
+              {lista(w.noIncluye).length > 0 && (
+                <div className="vj-incl-box">
+                  <h3>No incluye</h3>
+                  <ul className="vj-ul no">{lista(w.noIncluye).map((x, i) => <li key={i}>{x}</li>)}</ul>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {w.inversion && (
+          <section className="vj-sec vj-narrow">
+            <div className="vj-precio">
+              <div className="vj-kicker" style={{ color: '#E6C987', marginBottom: 0 }}>{w.inversion.titulo || 'Inversión por persona'}</div>
+              <div className="vj-precio-m">{w.inversion.monto}</div>
+              {w.inversion.prontoPago && <div className="vj-precio-pp">{w.inversion.prontoPago}</div>}
+              {lista(w.inversion.condiciones).length > 0 && <ul>{lista(w.inversion.condiciones).map((x, i) => <li key={i}>{x}</li>)}</ul>}
+            </div>
+            {w.nota && <p className="vj-nota">{w.nota}</p>}
           </section>
         )}
 
