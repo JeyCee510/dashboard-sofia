@@ -365,3 +365,17 @@ funnel de leads es lo central). Migración `044`.
 - Pestaña Leads: tarjeta "Web pública" (abrir, copiar link, descargar QR).
 - Pendiente: contenido real del viaje (fechas, itinerario, precio, incluye,
   FAQ, foto) y decidir si Micaela accede (`usuarios_proyectos`).
+
+### India Retreat — contenido real (2 oct 2026, v1.7.1)
+- Fuente: mail de Sofía "Info India para html y arte con QR" (arte adjunto +
+  carpeta Drive "Fotos PDF" de kathe.romero, 31 PNG). Datos confirmados por el
+  arte: **2–16 marzo 2027**, Delhi · Jaipur · Agra · Dharamshala · Amritsar ·
+  Rishikesh, **taller de yoga intensivo en Rishikesh con Angelo Cecchi**.
+  No hay precio ni itinerario día a día: la web los ofrece "por WhatsApp".
+- Web rediseñada con la estética del arte (IBM Plex Serif, oliva #43451E).
+  Fotos optimizadas en `public/viaje-india/*.webp` (recortadas, ≤1000 px).
+  Nuevos campos de `config.web`: titulo2, mes, imagenHero, destacado
+  {kicker,titulo,con,texto,imgs}, galeria[], alojamiento{titulo,texto,imgs},
+  destinos[].img/.contain, formTitulo, formTexto, pie.
+- Arte con QR para imprimir/publicar: `public/viaje-india/arte-india-qr.jpg`
+  (2160×2700, QR verificado).
