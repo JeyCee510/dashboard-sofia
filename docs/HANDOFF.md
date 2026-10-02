@@ -445,3 +445,7 @@ funnel de leads es lo central). Migración `044`.
   y la tarjeta "Web pública" (`config.web.linkCorto`). También se corrigió
   `/viaje/viaje-india/` (con barra final), que caía al index del Seminario.
   El QR sigue apuntando a `/viaje/viaje-india?src=qr` (funciona igual).
+- (v1.8.2) Precios actualizados: **3.500 USD** · pronto pago **3.300** · precio
+  feria **3.200** (+30% en un encuentro del Seminar Series). Cambiados en
+  `config` (tarifas, web.inversion, plantillas, precios) y en el PDF (pág 17).
+  Link del PDF con `?v=3` para saltar caché.
