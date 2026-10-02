@@ -404,7 +404,9 @@ const ContactPanel = ({ tel, instagram, email, plantillas, nombre, fechaProntoPa
     }
     // Web pública del proyecto (Viaje a la India: /viaje/<slug>)
     if (window.PROYECTO_SLUG) {
-      texto = texto.replace(/\[LINK_WEB\]/gi, `${window.location.origin}/viaje/${window.PROYECTO_SLUG}`);
+      // Atajo corto si el proyecto lo define (India: /india), si no /viaje/<slug>
+      const ruta = window.AJUSTES_PROYECTO?.web?.linkCorto || `/viaje/${window.PROYECTO_SLUG}`;
+      texto = texto.replace(/\[LINK_WEB\]/gi, `${window.location.origin}${ruta}`);
     }
     if (imagenUrl) texto = `${texto}\n\n${imagenUrl}`;
     return texto;

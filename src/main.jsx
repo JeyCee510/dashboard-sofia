@@ -22,6 +22,7 @@ if ('serviceWorker' in navigator) {
 //   /taller/<slug>/i/<token>           taller: inscribirse (link personalizado)
 //   /taller-comprobante/<token>        taller: subir comprobante
 //   /viaje/<slug>                      viaje: web informativa + registro de interés (QR)
+//   /india                             atajo corto de /viaje/viaje-india (para compartir)
 const path = window.location.pathname;
 const preinscripcionMatch = path.match(/^\/preinscripcion\/([\w-]+)\/?$/);
 const comprobanteTokenMatch = path.match(/^\/comprobante\/([\w-]+)\/?$/);
@@ -30,7 +31,7 @@ const claseMatch = path.match(/^\/clase\/([\w-]+)\/?$/);
 const tallerPersonalizadoMatch = path.match(/^\/taller\/([\w-]+)\/i\/([\w-]+)\/?$/);
 const tallerPublicoMatch = path.match(/^\/taller\/([\w-]+)\/?$/);
 const tallerComprobanteMatch = path.match(/^\/taller-comprobante\/([\w-]+)\/?$/);
-const viajeMatch = path.match(/^\/viaje\/([\w-]+)\/?$/);
+const viajeMatch = path.match(/^\/viaje\/([\w-]+)\/?$/) || (/^\/india\/?$/.test(path) ? [path, 'viaje-india'] : null);
 
 if (viajeMatch) {
   const vslug = viajeMatch[1];

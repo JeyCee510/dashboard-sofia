@@ -439,3 +439,9 @@ funnel de leads es lo central). Migración `044`.
   genera `dist/og/viaje-india.html` con sus propias meta OG, y vercel.json
   lo sirve sólo en `/viaje/viaje-india`. Imagen: `public/viaje-india/og.jpg`.
   Para otra página pública: entrada en `PAGINAS_OG` + rewrite.
+- (v1.8.1) WhatsApp siguió mostrando la vista previa vieja: cachea por URL y
+  `/viaje/viaje-india` ya se había compartido. Se creó el atajo **`/india`**
+  (main.jsx + rewrite), es la URL canónica (og:url) y la que usan [LINK_WEB]
+  y la tarjeta "Web pública" (`config.web.linkCorto`). También se corrigió
+  `/viaje/viaje-india/` (con barra final), que caía al index del Seminario.
+  El QR sigue apuntando a `/viaje/viaje-india?src=qr` (funciona igual).

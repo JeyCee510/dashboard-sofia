@@ -114,7 +114,7 @@ const estadoColor = {
 
 const WebPublicaCard = ({ slug }) => {
   const [copiado, setCopiado] = useState(false);
-  const url = `${window.location.origin}/viaje/${slug}`;
+  const url = `${window.location.origin}${window.AJUSTES_PROYECTO?.web?.linkCorto || `/viaje/${slug}`}`;
   const copiar = async () => {
     try { await navigator.clipboard.writeText(url); } catch (_) {}
     setCopiado(true);

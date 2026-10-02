@@ -1,7 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/viaje/viaje-india",
+      "source": "/viaje/viaje-india/?",
+      "destination": "/og/viaje-india.html"
+    },
+    {
+      "source": "/india/?",
       "destination": "/og/viaje-india.html"
     },
     {

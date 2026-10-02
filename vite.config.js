@@ -43,10 +43,12 @@ const BASE_URL = 'https://dashboard-sofia.vercel.app';
 const PAGINAS_OG = [
   {
     archivo: 'og/viaje-india.html',
-    ruta: '/viaje/viaje-india',
+    // URL canónica: el atajo corto. WhatsApp ya tenía cacheada la vista previa
+    // vieja de /viaje/viaje-india y no hay forma de purgarla desde aquí.
+    ruta: '/india',
     titulo: 'India Retreat 2027 · Sofía Lira Yoga',
     descripcion: '15 días por el norte de la India · 2 al 16 de marzo 2027 · Taller intensivo de yoga en Rishikesh con Angelo Cecchi',
-    imagen: '/viaje-india/og.jpg?v=1',
+    imagen: '/viaje-india/og.jpg?v=2',
     ancho: 1200, alto: 630,
   },
 ];
