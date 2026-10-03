@@ -1,5 +1,5 @@
 import React from 'react';
-import { alumnaAsisteDia, PRECIOS_DEFAULT } from './lib/precios.js';
+import { alumnaAsisteDia, PRECIOS_DEFAULT, esViaje, tarifasViaje } from './lib/precios.js';
 import { supabase as sbClient } from './lib/supabase.js';
 import { usaClasesAbiertas, usaAsistencia, tieneCuentasAliadas } from './lib/proyecto.js';
 import { useDesglosePagos } from './hooks/useDesglosePagos.js';
@@ -622,7 +622,35 @@ const HomeScreen = ({ tweaks, onNavigate, asistenciaHoy, alumnas, leads, mensaje
       </div>
       <div style={{ padding: '0 22px' }}>
         <div className="card flat" style={{ padding: 16 }}>
-          {sedesCfg.length > 0 && matriz ? (
+          {esViaje(ajustesProy) ? (
+            <>
+              {/* Viaje (India): un solo producto con varias tarifas. Sin
+                  encuentros, silla ni reserva fija — eso es de la formación. */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px 8px', fontSize: 12, alignItems: 'baseline' }}>
+                {tarifasViaje(ajustesProy).map((t, i) => (
+                  <React.Fragment key={t.key || i}>
+                    <div style={{ color: i === 0 ? 'var(--ink)' : t.key === 'feria' ? 'var(--terracota)' : 'var(--ink)', fontWeight: 500 }}>
+                      {t.label}
+                      {t.sub && <div style={{ fontSize: 10, color: 'var(--ink-mute)', fontWeight: 400, marginTop: 2, lineHeight: 1.35 }}>{t.sub}</div>}
+                    </div>
+                    <div className="serif" style={{ fontSize: 18, textAlign: 'right', color: t.key === 'feria' ? 'var(--terracota)' : 'var(--ink)' }}>
+                      ${Number(t.precio).toLocaleString('es-EC')}
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
+              {(ajustesProy.viaje?.fechasTexto || (ajustesProy.web?.inversion?.condiciones || []).length > 0) && (
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line-soft)', fontSize: 11, color: 'var(--ink-soft)', lineHeight: 1.55 }}>
+                  {ajustesProy.viaje?.fechasTexto && (
+                    <div style={{ color: 'var(--ink)', fontWeight: 500, marginBottom: 4 }}>
+                      Viaje · {ajustesProy.viaje.fechasTexto} · USD por persona
+                    </div>
+                  )}
+                  {(ajustesProy.web?.inversion?.condiciones || []).map((c, i) => <div key={i}>· {c}</div>)}
+                </div>
+              )}
+            </>
+          ) : sedesCfg.length > 0 && matriz ? (
             <>
               {/* Tabla COMPLETA: el precio de cada sede según cuántas toma.
                   Es la misma tabla que maneja Sofía al negociar. */}
